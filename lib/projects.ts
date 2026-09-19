@@ -5,6 +5,10 @@ import { auth } from "@/auth";
 import { connectDB } from "@/lib/db";
 import { Project } from "@/lib/models/project";
 import type { ProjectType, SectionId } from "@/lib/project-config";
+import {
+  DEFAULT_MANUSCRIPT_SETTINGS,
+  type ManuscriptSettings,
+} from "@/lib/manuscript-config";
 
 export type SerializedProject = {
   id: string;
@@ -14,11 +18,13 @@ export type SerializedProject = {
   blurb?: string;
   targetWordCount?: number;
   sections: SectionId[];
+  manuscriptSettings: ManuscriptSettings;
   createdAt: string;
   updatedAt: string;
 };
 
 function serializeProject(doc: Record<string, unknown>): SerializedProject {
+  const rawSettings = (doc.manuscriptSettings as Partial<ManuscriptSettings>) ?? {};
   return {
     id: String(doc._id),
     title: doc.title as string,
@@ -27,6 +33,7 @@ function serializeProject(doc: Record<string, unknown>): SerializedProject {
     blurb: (doc.blurb as string) || undefined,
     targetWordCount: (doc.targetWordCount as number) || undefined,
     sections: (doc.sections as SectionId[]) ?? [],
+    manuscriptSettings: { ...DEFAULT_MANUSCRIPT_SETTINGS, ...rawSettings },
     createdAt: new Date(doc.createdAt as string).toISOString(),
     updatedAt: new Date(doc.updatedAt as string).toISOString(),
   };

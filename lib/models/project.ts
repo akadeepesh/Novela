@@ -1,8 +1,23 @@
 import { Schema, model, models, type InferSchemaType } from "mongoose";
 import { PROJECT_TYPES, SECTION_DEFS } from "@/lib/project-config";
+import { BACKGROUND_IDS, LINE_WIDTHS } from "@/lib/manuscript-config";
 
 const PROJECT_TYPE_VALUES = PROJECT_TYPES.map((t) => t.value);
 const SECTION_ID_VALUES = Object.keys(SECTION_DEFS);
+
+const manuscriptSettingsSchema = new Schema(
+  {
+    background: { type: String, enum: BACKGROUND_IDS, default: "paper" },
+    showHeader: { type: Boolean, default: false },
+    headerText: { type: String, trim: true, maxlength: 120, default: "" },
+    showFooter: { type: Boolean, default: false },
+    footerText: { type: String, trim: true, maxlength: 120, default: "" },
+    fontSize: { type: Number, min: 14, max: 28, default: 18 },
+    lineHeight: { type: Number, min: 1.3, max: 2.2, default: 1.75 },
+    lineWidth: { type: String, enum: LINE_WIDTHS, default: "medium" },
+  },
+  { _id: false }
+);
 
 const projectSchema = new Schema(
   {
@@ -20,6 +35,7 @@ const projectSchema = new Schema(
       required: true,
       default: [],
     },
+    manuscriptSettings: { type: manuscriptSettingsSchema, default: () => ({}) },
   },
   { timestamps: true }
 );
