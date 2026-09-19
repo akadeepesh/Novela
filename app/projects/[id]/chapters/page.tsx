@@ -1,18 +1,49 @@
+import { PlusIcon } from "@phosphor-icons/react/dist/ssr"
+import {
+  PageShell,
+  PageShellHeader,
+  PageShellTitle,
+  PageShellDescription,
+} from "@/components/layout/page-shell"
+import { EmptyState } from "@/components/ui/empty-state"
+import { Button } from "@/components/ui/button"
 import { SECTION_DEFS, sectionLabel } from "@/lib/project-config"
 import { requireProjectSection } from "@/lib/require-project-section"
-import { SectionComingSoon } from "@/components/project/section-coming-soon"
+import { listChaptersForProject } from "@/lib/chapters"
+import { ChapterList } from "./chapter-list"
+import { createChapterAction } from "./actions"
 
 export default async function ChaptersPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const project = await requireProjectSection(id, "chapters")
+  const chapters = await listChaptersForProject(id)
   const label = sectionLabel("chapters", project.type)
+  const singular = label.endsWith("s") ? label.slice(0, -1) : label
 
   return (
-    <SectionComingSoon
-      title={label}
-      description={`Where you'll actually write.`}
-      icon={SECTION_DEFS.chapters.icon}
-      note={`The full writing editor — rich text, autosave, focus mode, and a customizable page background/header/footer — lands in Part 2.`}
-    />
+    <PageShell>
+      <PageShellHeader>
+        <PageShellTitle>{label}</PageShellTitle>
+        <PageShellDescription>Where {project.title} actually gets written.</PageShellDescription>
+      </PageShellHeader>
+
+      {chapters.length === 0 ? (
+        <EmptyState
+          icon={SECTION_DEFS.chapters.icon}
+          title={`No ${label.toLowerCase()} yet`}
+          description={`Start your first ${singular.toLowerCase()} — you can always reorder or rename it later.`}
+          action={
+            <form action={createChapterAction.bind(null, id)}>
+              <Button type="submit" size="sm">
+                <PlusIcon />
+                New {singular.toLowerCase()}
+              </Button>
+            </form>
+          }
+        />
+      ) : (
+        <ChapterList projectId={id} chapters={chapters} label={label} />
+      )}
+    </PageShell>
   )
 }
