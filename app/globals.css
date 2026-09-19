@@ -158,3 +158,61 @@
     @apply font-sans;
   }
 }
+
+/* ---- Manuscript editor (Tiptap) ---- */
+
+.manuscript-prose {
+  font-family: var(--font-serif), ui-serif, Georgia, serif;
+  color: inherit;
+}
+
+.manuscript-prose .ProseMirror {
+  outline: none;
+  min-height: 60vh;
+}
+
+.manuscript-prose .ProseMirror > * + * {
+  margin-top: 0.9em;
+}
+
+.manuscript-prose .ProseMirror h1,
+.manuscript-prose .ProseMirror h2,
+.manuscript-prose .ProseMirror h3 {
+  font-family: var(--font-heading), ui-sans-serif, sans-serif;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.manuscript-prose .ProseMirror blockquote {
+  border-left: 3px solid currentColor;
+  opacity: 0.85;
+  padding-left: 1em;
+  font-style: italic;
+}
+
+.manuscript-prose .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Poetry: tighter stanza rhythm instead of prose paragraph spacing */
+.manuscript-prose.is-poetry .ProseMirror > * + * {
+  margin-top: 0.35em;
+}
+
+.manuscript-prose.is-poetry .ProseMirror p {
+  white-space: pre-wrap;
+}
+
+/* Focus/typewriter mode: dim every block except the one being edited */
+.manuscript-prose.focus-mode .ProseMirror > * {
+  opacity: 0.32;
+  transition: opacity 0.2s ease;
+}
+
+.manuscript-prose.focus-mode .ProseMirror > .is-focused-block {
+  opacity: 1;
+}
