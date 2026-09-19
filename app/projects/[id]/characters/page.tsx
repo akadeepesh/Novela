@@ -1,17 +1,47 @@
+import { PlusIcon } from "@phosphor-icons/react/dist/ssr"
+import {
+  PageShell,
+  PageShellHeader,
+  PageShellTitle,
+  PageShellDescription,
+} from "@/components/layout/page-shell"
+import { EmptyState } from "@/components/ui/empty-state"
+import { Button } from "@/components/ui/button"
 import { SECTION_DEFS } from "@/lib/project-config"
 import { requireProjectSection } from "@/lib/require-project-section"
-import { SectionComingSoon } from "@/components/project/section-coming-soon"
+import { listCharactersForProject } from "@/lib/characters"
+import { CharacterGrid } from "./character-grid"
+import { createCharacterAction } from "./actions"
 
 export default async function CharactersPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  await requireProjectSection(id, "characters")
+  const project = await requireProjectSection(id, "characters")
+  const characters = await listCharactersForProject(id)
 
   return (
-    <SectionComingSoon
-      title="Characters"
-      description="Everyone who appears in your story."
-      icon={SECTION_DEFS.characters.icon}
-      note="Character profiles, plus automatic backlinks showing which chapters they appear in, land in Part 3."
-    />
+    <PageShell>
+      <PageShellHeader>
+        <PageShellTitle>Characters</PageShellTitle>
+        <PageShellDescription>Everyone who appears in {project.title}.</PageShellDescription>
+      </PageShellHeader>
+
+      {characters.length === 0 ? (
+        <EmptyState
+          icon={SECTION_DEFS.characters.icon}
+          title="No characters yet"
+          description="Add the people (or otherwise) who populate your story — you can fill in the details any time."
+          action={
+            <form action={createCharacterAction.bind(null, id)}>
+              <Button type="submit" size="sm">
+                <PlusIcon />
+                New character
+              </Button>
+            </form>
+          }
+        />
+      ) : (
+        <CharacterGrid projectId={id} characters={characters} />
+      )}
+    </PageShell>
   )
 }
