@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Public_Sans, Manrope, Literata } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { Providers } from "./providers";
 
 // Headings — used in app chrome (sidebar, dashboard, dialogs), not in manuscripts
 const manropeHeading = Manrope({ subsets: ["latin"], variable: "--font-heading" });
@@ -38,7 +39,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         literataSerif.variable
       )}
     >
-      <body className="min-h-full flex flex-col bg-background text-foreground">{children}</body>
+      <body className="min-h-full flex flex-col bg-background text-foreground">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }
