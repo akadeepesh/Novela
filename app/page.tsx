@@ -1,4 +1,5 @@
 import { BookOpenTextIcon, FeatherIcon } from "@phosphor-icons/react/dist/ssr"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 
 export default function Home() {
@@ -20,17 +21,17 @@ export default function Home() {
         </p>
 
         <div className="mt-2 flex items-center gap-3">
-          <Button size="lg">
+          <Button size="lg" render={<Link href="/signup" />} nativeButton={false}>
             <BookOpenTextIcon />
             Start writing
           </Button>
-          <Button size="lg" variant="outline">
+          <Button size="lg" variant="outline" render={<Link href="/login" />} nativeButton={false}>
             Sign in
           </Button>
         </div>
 
         <p className="mt-8 text-xs text-muted-foreground">
-          Part 0 foundation — dashboard, projects, and the editor land next.
+          Part 1 — projects, story types, and the dynamic sidebar are live.
         </p>
       </div>
     </div>
