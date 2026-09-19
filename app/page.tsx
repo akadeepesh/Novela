@@ -21,11 +21,11 @@ export default function Home() {
         </p>
 
         <div className="mt-2 flex items-center gap-3">
-          <Button size="lg" render={<Link href="/signup" />} nativeButton={false}>
+          <Button size="lg" render={<Link href="/signup" />}>
             <BookOpenTextIcon />
             Start writing
           </Button>
-          <Button size="lg" variant="outline" render={<Link href="/login" />} nativeButton={false}>
+          <Button size="lg" variant="outline" render={<Link href="/login" />}>
             Sign in
           </Button>
         </div>
