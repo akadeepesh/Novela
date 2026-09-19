@@ -9,7 +9,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <span className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
             <FeatherIcon className="size-4" weight="duotone" />
           </span>
-          <span className="font-heading text-base font-semibold text-foreground">Inkwell</span>
+          <span className="font-heading text-base font-semibold text-foreground">KoraKagaj</span>
         </Link>
         {children}
       </div>

@@ -15,17 +15,17 @@ export default function Home() {
         </h1>
 
         <p className="font-serif text-lg leading-relaxed text-muted-foreground">
-          Inkwell is a focused workspace for novels, poetry, and everything
+          KoraKagaj is a focused workspace for novels, poetry, and everything
           in between — manuscript, characters, world, and plot, all in one
           quiet place.
         </p>
 
         <div className="mt-2 flex items-center gap-3">
-          <Button size="lg" render={<Link href="/signup" />}>
+          <Button size="lg" render={<Link href="/signup" />} nativeButton={false}>
             <BookOpenTextIcon />
             Start writing
           </Button>
-          <Button size="lg" variant="outline" render={<Link href="/login" />}>
+          <Button size="lg" variant="outline" render={<Link href="/login" />} nativeButton={false}>
             Sign in
           </Button>
         </div>

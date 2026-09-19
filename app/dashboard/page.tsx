@@ -29,7 +29,7 @@ export default async function DashboardPage() {
               Sign out
             </Button>
           </form>
-          <Button size="sm" render={<Link href="/projects/new" />}>
+          <Button size="sm" render={<Link href="/projects/new" />} nativeButton={false}>
             <PlusIcon />
             New project
           </Button>
@@ -42,7 +42,7 @@ export default async function DashboardPage() {
           title="No projects yet"
           description="Start your first novel, poetry collection, or story bible — it takes less than a minute to set up."
           action={
-            <Button size="sm" render={<Link href="/projects/new" />}>
+            <Button size="sm" render={<Link href="/projects/new" />} nativeButton={false}>
               <PlusIcon />
               New project
             </Button>

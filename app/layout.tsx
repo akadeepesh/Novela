@@ -20,7 +20,7 @@ const literataSerif = Literata({
 });
 
 export const metadata: Metadata = {
-  title: "Inkwell — a calmer place to write your book",
+  title: "KoraKagaj — a calmer place to write your book",
   description:
     "A focused writing workspace for novelists, poets, and storytellers — manuscript, characters, world, and plot, all in one place.",
 };
