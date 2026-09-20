@@ -68,6 +68,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     blurb: (projectDoc.blurb as string) || undefined,
     authorName: (searchParams.get("author") || (projectDoc.authorName as string)) || undefined,
     targetWordCount: (projectDoc.targetWordCount as number) || undefined,
+    dailyWordGoal: (projectDoc.dailyWordGoal as number) ?? 300,
     sections: (projectDoc.sections as SectionId[]) ?? [],
     manuscriptSettings: { ...DEFAULT_MANUSCRIPT_SETTINGS, ...rawSettings },
     createdAt: new Date(projectDoc.createdAt as string).toISOString(),
