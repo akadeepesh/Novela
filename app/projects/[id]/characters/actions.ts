@@ -4,9 +4,10 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { connectDB } from "@/lib/db";
 import { Character } from "@/lib/models/character";
-import { requireUserId } from "@/lib/projects";
+import { requireProject, requireUserId } from "@/lib/projects";
 
 export async function createCharacterAction(projectId: string) {
+  await requireProject(projectId);
   const userId = await requireUserId();
   await connectDB();
 
