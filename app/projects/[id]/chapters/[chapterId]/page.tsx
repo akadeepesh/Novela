@@ -1,8 +1,20 @@
+import type { Metadata } from "next"
 import { sectionLabelSingular } from "@/lib/project-config"
 import { requireProjectSection } from "@/lib/require-project-section"
 import { requireChapter } from "@/lib/chapters"
 import { listMentionablesForProject } from "@/lib/mentions"
 import { ManuscriptEditor } from "./manuscript-editor"
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string; chapterId: string }>
+}): Promise<Metadata> {
+  const { id, chapterId } = await params
+  const project = await requireProjectSection(id, "chapters")
+  const chapter = await requireChapter(id, chapterId)
+  return { title: `${chapter.title} — ${project.title}` }
+}
 
 export default async function ChapterEditorPage({
   params,

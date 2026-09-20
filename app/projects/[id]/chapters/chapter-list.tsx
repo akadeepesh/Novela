@@ -24,14 +24,15 @@ export function ChapterList({
   projectId,
   chapters,
   label,
+  singular,
 }: {
   projectId: string
   chapters: SerializedChapterSummary[]
   label: string
+  singular: string
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const singular = label.endsWith("s") ? label.slice(0, -1) : label
 
   function handleDelete(chapterId: string, title: string) {
     if (!window.confirm(`Delete "${title}"? This can't be undone.`)) return
