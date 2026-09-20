@@ -1,6 +1,6 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, createElement } from "react"
 import {
   Card,
   CardHeader,
@@ -23,7 +23,7 @@ const initialState: UpdateWorldEntryState = {}
 export function WorldEntryForm({ entry }: { entry: SerializedWorldEntry }) {
   const boundAction = updateWorldEntryAction.bind(null, entry.projectId, entry.id)
   const [state, formAction, pending] = useActionState(boundAction, initialState)
-  const TypeIcon = worldEntryTypeIcon(entry.type)
+  const worldEntryTypeIconComponent = worldEntryTypeIcon(entry.type)
 
   return (
     <Card>
@@ -46,7 +46,7 @@ export function WorldEntryForm({ entry }: { entry: SerializedWorldEntry }) {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={entry.imageUrl} alt={entry.name} className="size-full object-cover" />
               ) : (
-                <TypeIcon className="size-7" weight="duotone" />
+                createElement(worldEntryTypeIconComponent, { className: "size-7", weight: "duotone" })
               )}
             </div>
             <div className="flex flex-1 flex-col gap-1.5">

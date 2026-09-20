@@ -76,8 +76,6 @@ export function CommandPalette({
     return [...filteredNav, ...filteredResults]
   }, [query, navEntries, items, projectId])
 
-  useEffect(() => setSelectedIndex(0), [entries.length, query])
-
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -93,11 +91,26 @@ export function CommandPalette({
 
   useEffect(() => {
     if (open) {
-      setQuery("")
       // Wait a tick for the input to mount before focusing.
       requestAnimationFrame(() => inputRef.current?.focus())
     }
   }, [open])
+
+  // Reset the selection whenever the visible entries change, and clear the
+  // query whenever the palette opens — both are "adjust state during
+  // render" cases, not side effects, so they're handled inline rather than
+  // via useEffect (which would cause an extra render pass).
+  const [lastQuery, setLastQuery] = useState(query)
+  if (query !== lastQuery) {
+    setLastQuery(query)
+    setSelectedIndex(0)
+  }
+
+  const [wasOpen, setWasOpen] = useState(open)
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (open) setQuery("")
+  }
 
   function go(entry: Entry) {
     router.push(entry.href)
