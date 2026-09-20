@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { ArrowLeftIcon } from "@phosphor-icons/react/dist/ssr"
 import {
@@ -14,6 +15,17 @@ import { listChaptersMentioning } from "@/lib/mentions"
 import { AppearsIn } from "@/components/project/appears-in"
 import { PlotThreadForm } from "./plot-thread-form"
 import { DeletePlotThreadButton } from "./delete-plot-thread-button"
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string; threadId: string }>
+}): Promise<Metadata> {
+  const { id, threadId } = await params
+  const project = await requireProjectSection(id, "plot")
+  const thread = await requirePlotThread(id, threadId)
+  return { title: `${thread.title} — ${project.title}` }
+}
 
 export default async function PlotThreadDetailPage({
   params,

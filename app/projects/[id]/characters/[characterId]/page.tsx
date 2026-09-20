@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { ArrowLeftIcon } from "@phosphor-icons/react/dist/ssr"
 import {
@@ -14,6 +15,17 @@ import { listChaptersMentioning } from "@/lib/mentions"
 import { AppearsIn } from "@/components/project/appears-in"
 import { CharacterForm } from "./character-form"
 import { DeleteCharacterButton } from "./delete-character-button"
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string; characterId: string }>
+}): Promise<Metadata> {
+  const { id, characterId } = await params
+  const project = await requireProjectSection(id, "characters")
+  const character = await requireCharacter(id, characterId)
+  return { title: `${character.name} — ${project.title}` }
+}
 
 export default async function CharacterDetailPage({
   params,

@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { ArrowLeftIcon } from "@phosphor-icons/react/dist/ssr"
 import {
@@ -14,6 +15,17 @@ import { listChaptersMentioning } from "@/lib/mentions"
 import { AppearsIn } from "@/components/project/appears-in"
 import { WorldEntryForm } from "./world-entry-form"
 import { DeleteWorldEntryButton } from "./delete-world-entry-button"
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string; entryId: string }>
+}): Promise<Metadata> {
+  const { id, entryId } = await params
+  const project = await requireProjectSection(id, "world")
+  const entry = await requireWorldEntry(id, entryId)
+  return { title: `${entry.name} — ${project.title}` }
+}
 
 export default async function WorldEntryDetailPage({
   params,
