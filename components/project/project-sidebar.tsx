@@ -6,8 +6,16 @@ import { ArrowLeftIcon } from "@phosphor-icons/react/dist/ssr"
 import { cn } from "cn"
 import { SECTION_DEFS, sectionLabel, projectTypeLabel } from "@/lib/project-config"
 import type { SerializedProject } from "@/lib/projects"
+import type { SearchItem } from "@/lib/search"
+import { CommandPalette } from "./command-palette"
 
-export function ProjectSidebar({ project }: { project: SerializedProject }) {
+export function ProjectSidebar({
+  project,
+  searchItems,
+}: {
+  project: SerializedProject
+  searchItems: SearchItem[]
+}) {
   const pathname = usePathname()
 
   return (
@@ -30,6 +38,13 @@ export function ProjectSidebar({ project }: { project: SerializedProject }) {
           {projectTypeLabel(project.type)}
         </span>
       </div>
+
+      <CommandPalette
+        projectId={project.id}
+        projectType={project.type}
+        sections={project.sections}
+        items={searchItems}
+      />
 
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-4">
         {project.sections.map((sectionId) => {

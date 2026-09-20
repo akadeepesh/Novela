@@ -83,6 +83,16 @@ export const CHAPTER_LABEL: Record<ProjectType, string> = {
   custom: "Chapters",
 }
 
+// Singular form of the above — kept as its own map rather than derived by
+// stripping a trailing "s", which mangles "Stories" into "Storie".
+export const CHAPTER_LABEL_SINGULAR: Record<ProjectType, string> = {
+  novel: "Chapter",
+  poetry: "Poem",
+  "short-stories": "Story",
+  nonfiction: "Chapter",
+  custom: "Chapter",
+}
+
 // Sections always included, per type, before any optional story-bible add-ons.
 const BASE_SECTIONS: Record<ProjectType, SectionId[]> = {
   novel: ["overview", "chapters", "characters", "world", "plot", "notes", "research", "export"],
@@ -116,6 +126,13 @@ export function getDefaultSections(type: ProjectType, includeStoryBible: boolean
 export function sectionLabel(id: SectionId, type: ProjectType): string {
   if (id === "chapters") return CHAPTER_LABEL[type]
   return SECTION_DEFS[id].label
+}
+
+/** Singular form — "Poem" not "Poems" — for prompts like "New Poem" or "Untitled Story". */
+export function sectionLabelSingular(id: SectionId, type: ProjectType): string {
+  if (id === "chapters") return CHAPTER_LABEL_SINGULAR[type]
+  const label = SECTION_DEFS[id].label
+  return label.endsWith("s") ? label.slice(0, -1) : label
 }
 
 export function projectTypeLabel(type: ProjectType): string {

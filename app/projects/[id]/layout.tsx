@@ -1,4 +1,5 @@
 import { requireProject } from "@/lib/projects"
+import { listSearchIndexForProject } from "@/lib/search"
 import { ProjectSidebar } from "@/components/project/project-sidebar"
 
 export default async function ProjectLayout({
@@ -10,10 +11,11 @@ export default async function ProjectLayout({
 }) {
   const { id } = await params
   const project = await requireProject(id)
+  const searchItems = await listSearchIndexForProject(id)
 
   return (
     <div className="flex flex-1">
-      <ProjectSidebar project={project} />
+      <ProjectSidebar project={project} searchItems={searchItems} />
       <main className="min-w-0 flex-1">{children}</main>
     </div>
   )
