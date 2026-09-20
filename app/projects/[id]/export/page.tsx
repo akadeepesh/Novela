@@ -1,17 +1,36 @@
-import { SECTION_DEFS } from "@/lib/project-config"
+import {
+  PageShell,
+  PageShellHeader,
+  PageShellTitle,
+  PageShellDescription,
+} from "@/components/layout/page-shell"
+import { sectionLabel, type SectionId } from "@/lib/project-config"
 import { requireProjectSection } from "@/lib/require-project-section"
-import { SectionComingSoon } from "@/components/project/section-coming-soon"
+import { ExportForm } from "./export-form"
+
+const OPTIONAL_SECTIONS: SectionId[] = ["characters", "world", "plot", "notes", "research"]
 
 export default async function ExportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  await requireProjectSection(id, "export")
+  const project = await requireProjectSection(id, "export")
+
+  const availableSections = OPTIONAL_SECTIONS.filter((s) => project.sections.includes(s)).map(
+    (id) => ({ id, label: sectionLabel(id, project.type) })
+  )
 
   return (
-    <SectionComingSoon
-      title="Export"
-      description="Turn this project into a real manuscript file."
-      icon={SECTION_DEFS.export.icon}
-      note="PDF, EPUB, and DOCX export, with proper typeset styling, lands in Part 5."
-    />
+    <PageShell width="prose">
+      <PageShellHeader>
+        <PageShellTitle>Export</PageShellTitle>
+        <PageShellDescription>Turn {project.title} into a real file.</PageShellDescription>
+      </PageShellHeader>
+
+      <ExportForm
+        projectId={id}
+        projectTitle={project.title}
+        defaultAuthorName={project.authorName}
+        availableSections={availableSections}
+      />
+    </PageShell>
   )
 }
