@@ -33,11 +33,13 @@ export function CommandPalette({
   projectType,
   sections,
   items,
+  hideTrigger,
 }: {
   projectId: string
   projectType: ProjectType
   sections: SectionId[]
   items: SearchItem[]
+  hideTrigger?: boolean
 }) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
@@ -133,15 +135,17 @@ export function CommandPalette({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="mx-4 mb-1 flex items-center gap-2 rounded-md border border-sidebar-border bg-sidebar-accent/40 px-2.5 py-1.5 text-left text-xs text-sidebar-foreground/60 transition-colors hover:text-sidebar-foreground"
-      >
-        <MagnifyingGlassIcon className="size-3.5 shrink-0" />
-        <span className="flex-1">Search…</span>
-        <kbd className="rounded border border-sidebar-border px-1 font-sans text-[10px]">⌘K</kbd>
-      </button>
+      {!hideTrigger ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="mx-4 mb-1 flex items-center gap-2 rounded-md border border-sidebar-border bg-sidebar-accent/40 px-2.5 py-1.5 text-left text-xs text-sidebar-foreground/60 transition-colors hover:text-sidebar-foreground"
+        >
+          <MagnifyingGlassIcon className="size-3.5 shrink-0" />
+          <span className="flex-1">Search…</span>
+          <kbd className="rounded border border-sidebar-border px-1 font-sans text-[10px]">⌘K</kbd>
+        </button>
+      ) : null}
 
       {open ? (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-foreground/20 pt-[15vh]" onClick={() => setOpen(false)}>

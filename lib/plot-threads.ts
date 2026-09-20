@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { connectDB } from "@/lib/db";
 import { PlotThread } from "@/lib/models/plot-thread";
@@ -51,10 +52,10 @@ export async function listPlotThreadsForProject(
   return docs.map(serializeSummary);
 }
 
-export async function requirePlotThread(
+export const requirePlotThread = cache(async (
   projectId: string,
   threadId: string
-): Promise<SerializedPlotThread> {
+): Promise<SerializedPlotThread> => {
   const userId = await requireUserId();
   await connectDB();
 
@@ -71,4 +72,4 @@ export async function requirePlotThread(
   if (!doc) notFound();
 
   return serializePlotThread(doc);
-}
+});

@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { connectDB } from "@/lib/db";
 import { Character } from "@/lib/models/character";
@@ -57,10 +58,10 @@ export async function listCharactersForProject(
   return docs.map(serializeSummary);
 }
 
-export async function requireCharacter(
+export const requireCharacter = cache(async (
   projectId: string,
   characterId: string
-): Promise<SerializedCharacter> {
+): Promise<SerializedCharacter> => {
   const userId = await requireUserId();
   await connectDB();
 
@@ -77,4 +78,4 @@ export async function requireCharacter(
   if (!doc) notFound();
 
   return serializeCharacter(doc);
-}
+});

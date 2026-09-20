@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { connectDB } from "@/lib/db";
 import { Note } from "@/lib/models/note";
@@ -46,7 +47,10 @@ export async function listNotesForProject(projectId: string): Promise<Serialized
   return docs.map(serializeSummary);
 }
 
-export async function requireNote(projectId: string, noteId: string): Promise<SerializedNote> {
+export const requireNote = cache(async (
+  projectId: string,
+  noteId: string
+): Promise<SerializedNote> => {
   const userId = await requireUserId();
   await connectDB();
 
@@ -61,4 +65,4 @@ export async function requireNote(projectId: string, noteId: string): Promise<Se
   if (!doc) notFound();
 
   return serializeNote(doc);
-}
+});

@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { connectDB } from "@/lib/db";
 import { Chapter } from "@/lib/models/chapter";
@@ -40,10 +41,10 @@ export async function listChaptersForProject(
   return docs.map(serializeSummary);
 }
 
-export async function requireChapter(
+export const requireChapter = cache(async (
   projectId: string,
   chapterId: string
-): Promise<SerializedChapter> {
+): Promise<SerializedChapter> => {
   const userId = await requireUserId();
   await connectDB();
 
@@ -64,4 +65,4 @@ export async function requireChapter(
     projectId,
     content: doc.content ?? null,
   };
-}
+});

@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { connectDB } from "@/lib/db";
 import { WorldEntry } from "@/lib/models/world-entry";
@@ -53,10 +54,10 @@ export async function listWorldEntriesForProject(
   return docs.map(serializeSummary);
 }
 
-export async function requireWorldEntry(
+export const requireWorldEntry = cache(async (
   projectId: string,
   entryId: string
-): Promise<SerializedWorldEntry> {
+): Promise<SerializedWorldEntry> => {
   const userId = await requireUserId();
   await connectDB();
 
@@ -73,4 +74,4 @@ export async function requireWorldEntry(
   if (!doc) notFound();
 
   return serializeWorldEntry(doc);
-}
+});
