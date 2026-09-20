@@ -13,6 +13,7 @@ import {
   QuotesIcon,
   GearSixIcon,
   BookOpenTextIcon,
+  ClockCounterClockwiseIcon,
 } from "@phosphor-icons/react/dist/ssr"
 import { cn } from "cn"
 import { Button } from "@/components/ui/button"
@@ -24,6 +25,7 @@ import { MentionExtension } from "@/components/editor/mention-extension"
 import type { Mentionable } from "@/lib/mentions"
 import { saveChapterAction } from "./actions"
 import { ManuscriptSettingsPanel } from "./manuscript-settings-panel"
+import { VersionHistoryPanel } from "./version-history-panel"
 
 const SAVE_DEBOUNCE_MS = 900
 
@@ -47,6 +49,7 @@ export function ManuscriptEditor({
   const [title, setTitle] = useState(chapter.title)
   const [focusMode, setFocusMode] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
   const [settings, setSettings] = useState(manuscriptSettings)
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle")
   const [wordCount, setWordCount] = useState(chapter.wordCount)
@@ -154,6 +157,15 @@ export function ManuscriptEditor({
           <Button
             type="button"
             size="icon-sm"
+            variant={historyOpen ? "secondary" : "ghost"}
+            onClick={() => setHistoryOpen((v) => !v)}
+            aria-label="Version history"
+          >
+            <ClockCounterClockwiseIcon />
+          </Button>
+          <Button
+            type="button"
+            size="icon-sm"
             variant={settingsOpen ? "secondary" : "ghost"}
             onClick={() => setSettingsOpen((v) => !v)}
             aria-label="Page appearance"
@@ -172,6 +184,7 @@ export function ManuscriptEditor({
         />
       ) : null}
 
+      <div className="flex flex-1 overflow-hidden">
       <div className="flex-1 overflow-y-auto" style={bg.style}>
         <div
           className="mx-auto flex flex-col px-8 py-12"
@@ -204,6 +217,16 @@ export function ManuscriptEditor({
             <p className="mt-10 text-center text-xs opacity-50">{settings.footerText}</p>
           ) : null}
         </div>
+      </div>
+
+      {historyOpen && editor ? (
+        <VersionHistoryPanel
+          projectId={projectId}
+          chapterId={chapter.id}
+          getCurrentContent={() => editor.getJSON()}
+          onClose={() => setHistoryOpen(false)}
+        />
+      ) : null}
       </div>
 
       <div className="flex items-center justify-between border-t border-border px-4 py-1.5 text-xs text-muted-foreground">

@@ -7,6 +7,10 @@ import { Chapter } from "@/lib/models/chapter";
 import { Project } from "@/lib/models/project";
 import { requireUserId } from "@/lib/projects";
 import { BACKGROUND_IDS, LINE_WIDTHS } from "@/lib/manuscript-config";
+import { maybeCreateAutoSnapshot, createManualSnapshot, restoreVersion, listVersionsForChapter, requireVersionContent } from "@/lib/versions";
+import { recordDailyProgress } from "@/lib/analytics";
+import { tiptapToBlocks, runsText } from "@/lib/export/document-model";
+import { diffWords } from "@/lib/text-diff";
 
 const saveSchema = z.object({
   title: z.string().trim().min(1).max(200).optional(),
@@ -31,7 +35,70 @@ export async function saveChapterAction(
     { $set: parsed.data }
   );
 
+  // Version snapshots and daily progress only matter for actual content
+  // changes — a title-only save shouldn't churn either.
+  if (result.matchedCount > 0 && "content" in parsed.data) {
+    const chapter = await Chapter.findOne({ _id: chapterId, projectId, ownerId: userId }).lean<{
+      title: string;
+      content: unknown;
+      wordCount: number;
+    }>();
+    if (chapter) {
+      await Promise.all([
+        maybeCreateAutoSnapshot({
+          userId,
+          projectId,
+          chapterId,
+          title: chapter.title,
+          content: chapter.content,
+          wordCount: chapter.wordCount ?? 0,
+        }),
+        recordDailyProgress(userId, projectId),
+      ]);
+    }
+  }
+
   return { ok: result.matchedCount > 0 };
+}
+
+export async function createVersionAction(
+  projectId: string,
+  chapterId: string,
+  label?: string
+): Promise<{ ok: boolean }> {
+  return createManualSnapshot(projectId, chapterId, label);
+}
+
+export async function restoreVersionAction(
+  projectId: string,
+  chapterId: string,
+  versionId: string
+): Promise<{ ok: boolean }> {
+  const result = await restoreVersion(projectId, chapterId, versionId);
+  if (result.ok) {
+    revalidatePath(`/projects/${projectId}/chapters/${chapterId}`);
+  }
+  return result;
+}
+
+export async function listVersionsAction(projectId: string, chapterId: string) {
+  return listVersionsForChapter(projectId, chapterId);
+}
+
+export async function getVersionDiffAction(
+  projectId: string,
+  chapterId: string,
+  versionId: string,
+  currentContent: unknown
+) {
+  const version = await requireVersionContent(projectId, chapterId, versionId);
+  const oldText = runsText(tiptapToBlocks(version.content).flatMap((b) => b.runs));
+  const newText = runsText(tiptapToBlocks(currentContent).flatMap((b) => b.runs));
+  return {
+    title: version.title,
+    wordCount: version.wordCount,
+    diff: diffWords(oldText, newText),
+  };
 }
 
 const statusSchema = z.enum(["draft", "in-progress", "done"]);
