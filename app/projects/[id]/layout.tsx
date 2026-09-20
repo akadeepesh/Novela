@@ -1,6 +1,7 @@
+import { cookies } from "next/headers"
 import { requireProject } from "@/lib/projects"
 import { listSearchIndexForProject } from "@/lib/search"
-import { ProjectSidebar } from "@/components/project/project-sidebar"
+import { ProjectShell } from "@/components/project/project-shell"
 
 export default async function ProjectLayout({
   children,
@@ -12,11 +13,12 @@ export default async function ProjectLayout({
   const { id } = await params
   const project = await requireProject(id)
   const searchItems = await listSearchIndexForProject(id)
+  const cookieStore = await cookies()
+  const defaultCollapsed = cookieStore.get("sidebar-collapsed")?.value === "1"
 
   return (
-    <div className="flex flex-1">
-      <ProjectSidebar project={project} searchItems={searchItems} />
-      <main className="min-w-0 flex-1">{children}</main>
-    </div>
+    <ProjectShell project={project} searchItems={searchItems} defaultCollapsed={defaultCollapsed}>
+      {children}
+    </ProjectShell>
   )
 }
