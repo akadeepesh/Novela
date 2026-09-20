@@ -20,6 +20,8 @@ import type { SerializedChapter } from "@/lib/chapters"
 import { getBackgroundPreset, LINE_WIDTH_PX, type ManuscriptSettings } from "@/lib/manuscript-config"
 import type { ProjectType } from "@/lib/project-config"
 import { FocusMode } from "@/components/editor/focus-mode-extension"
+import { MentionExtension } from "@/components/editor/mention-extension"
+import type { Mentionable } from "@/lib/mentions"
 import { saveChapterAction } from "./actions"
 import { ManuscriptSettingsPanel } from "./manuscript-settings-panel"
 
@@ -31,6 +33,7 @@ type Props = {
   chapter: SerializedChapter
   chapterLabelSingular: string
   manuscriptSettings: ManuscriptSettings
+  mentionables: Mentionable[]
 }
 
 export function ManuscriptEditor({
@@ -39,6 +42,7 @@ export function ManuscriptEditor({
   chapter,
   chapterLabelSingular,
   manuscriptSettings,
+  mentionables,
 }: Props) {
   const [title, setTitle] = useState(chapter.title)
   const [focusMode, setFocusMode] = useState(false)
@@ -73,6 +77,7 @@ export function ManuscriptEditor({
       }),
       CharacterCount,
       FocusMode,
+      MentionExtension.configure({ mentionables }),
     ],
     content: (chapter.content as object | string | null) ?? "",
     onUpdate: ({ editor }) => scheduleContentSave(editor),
