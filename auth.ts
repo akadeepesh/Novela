@@ -50,6 +50,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         loginUrl.searchParams.set("callbackUrl", pathname);
         return Response.redirect(loginUrl);
       }
+
+      // Signed-in visitors never need the marketing landing page — send
+      // them straight to their dashboard. This runs in middleware, before
+      // any page rendering starts, so there's nothing to flash.
+      if (pathname === "/" && isLoggedIn) {
+        return Response.redirect(new URL("/dashboard", request.nextUrl.origin));
+      }
+
       return true;
     },
     jwt({ token, user }) {
