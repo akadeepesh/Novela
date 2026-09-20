@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { PlusIcon } from "@phosphor-icons/react/dist/ssr"
 import {
   PageShell,
@@ -12,6 +13,16 @@ import { requireProjectSection } from "@/lib/require-project-section"
 import { listPlotThreadsForProject } from "@/lib/plot-threads"
 import { PlotThreadList } from "./plot-thread-list"
 import { createPlotThreadAction } from "./actions"
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}): Promise<Metadata> {
+  const { id } = await params
+  const project = await requireProjectSection(id, "plot")
+  return { title: `Plot — ${project.title}` }
+}
 
 export default async function PlotPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
