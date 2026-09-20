@@ -5,11 +5,7 @@ import { revalidatePath } from "next/cache";
 import { connectDB } from "@/lib/db";
 import { Chapter } from "@/lib/models/chapter";
 import { requireProject, requireUserId } from "@/lib/projects";
-import { sectionLabel } from "@/lib/project-config";
-
-function singularLabel(label: string): string {
-  return label.endsWith("s") ? label.slice(0, -1) : label;
-}
+import { sectionLabelSingular } from "@/lib/project-config";
 
 export async function createChapterAction(projectId: string) {
   const project = await requireProject(projectId);
@@ -17,7 +13,7 @@ export async function createChapterAction(projectId: string) {
   await connectDB();
 
   const count = await Chapter.countDocuments({ projectId });
-  const label = singularLabel(sectionLabel("chapters", project.type));
+  const label = sectionLabelSingular("chapters", project.type);
 
   const chapter = await Chapter.create({
     projectId,
