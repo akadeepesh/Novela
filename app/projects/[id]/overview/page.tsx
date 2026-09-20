@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import {
   PageShell,
   PageShellHeader,
@@ -11,6 +12,16 @@ import { SECTION_DEFS, projectTypeLabel, sectionLabel } from "@/lib/project-conf
 import { requireProjectSection } from "@/lib/require-project-section"
 import { getProjectProgress } from "@/lib/analytics"
 import { OverviewForm } from "./overview-form"
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}): Promise<Metadata> {
+  const { id } = await params
+  const project = await requireProjectSection(id, "overview")
+  return { title: project.title }
+}
 
 export default async function OverviewPage({
   params,
