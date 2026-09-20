@@ -54,7 +54,7 @@ export function OverviewForm({ project }: { project: SerializedProject }) {
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="genre">Genre</Label>
               <Select name="genre" defaultValue={project.genre}>
@@ -80,6 +80,18 @@ export function OverviewForm({ project }: { project: SerializedProject }) {
                 min={0}
                 placeholder="e.g. 80000"
                 defaultValue={project.targetWordCount ?? ""}
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="dailyWordGoal">Daily word goal</Label>
+              <Input
+                id="dailyWordGoal"
+                name="dailyWordGoal"
+                type="number"
+                min={0}
+                placeholder="e.g. 300"
+                defaultValue={project.dailyWordGoal}
               />
             </div>
           </div>

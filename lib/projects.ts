@@ -18,6 +18,7 @@ export type SerializedProject = {
   blurb?: string;
   authorName?: string;
   targetWordCount?: number;
+  dailyWordGoal: number;
   sections: SectionId[];
   manuscriptSettings: ManuscriptSettings;
   createdAt: string;
@@ -34,6 +35,7 @@ function serializeProject(doc: Record<string, unknown>): SerializedProject {
     blurb: (doc.blurb as string) || undefined,
     authorName: (doc.authorName as string) || undefined,
     targetWordCount: (doc.targetWordCount as number) || undefined,
+    dailyWordGoal: (doc.dailyWordGoal as number) ?? 300,
     sections: (doc.sections as SectionId[]) ?? [],
     manuscriptSettings: { ...DEFAULT_MANUSCRIPT_SETTINGS, ...rawSettings },
     createdAt: new Date(doc.createdAt as string).toISOString(),

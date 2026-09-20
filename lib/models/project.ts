@@ -28,6 +28,7 @@ const projectSchema = new Schema(
     blurb: { type: String, trim: true, maxlength: 2000 },
     authorName: { type: String, trim: true, maxlength: 120, default: "" },
     targetWordCount: { type: Number, min: 0 },
+    dailyWordGoal: { type: Number, min: 0, max: 100_000, default: 300 },
     // Ordered snapshot of enabled sidebar sections for this project —
     // computed once at creation from project-config presets, then stored,
     // so changing the presets later never reshuffles an existing project.

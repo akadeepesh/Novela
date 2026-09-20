@@ -6,8 +6,10 @@ import {
 } from "@/components/layout/page-shell"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import { ProgressCard } from "@/components/project/progress-card"
 import { SECTION_DEFS, projectTypeLabel, sectionLabel } from "@/lib/project-config"
 import { requireProjectSection } from "@/lib/require-project-section"
+import { getProjectProgress } from "@/lib/analytics"
 import { OverviewForm } from "./overview-form"
 
 export default async function OverviewPage({
@@ -17,6 +19,7 @@ export default async function OverviewPage({
 }) {
   const { id } = await params
   const project = await requireProjectSection(id, "overview")
+  const progress = await getProjectProgress(id, project.targetWordCount, project.dailyWordGoal)
 
   return (
     <PageShell width="prose">
@@ -36,6 +39,8 @@ export default async function OverviewPage({
       </PageShellHeader>
 
       <div className="flex flex-col gap-6">
+        <ProgressCard progress={progress} />
+
         <OverviewForm project={project} />
 
         <Card>
