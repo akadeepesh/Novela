@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import Google from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { connectDB } from "@/lib/db";
 import { User } from "@/lib/models/user";
@@ -10,6 +11,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/login",
   },
   providers: [
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    }),
     Credentials({
       credentials: {
         email: { label: "Email", type: "email" },
@@ -24,7 +29,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const user = await User.findOne({ email: email.toLowerCase() }).select(
           "+passwordHash"
         );
-        if (!user) return null;
+        // No account, or an account that only ever signed in via Google
+        // (no password set) — either way, credentials login can't succeed.
+        if (!user || !user.passwordHash) return null;
 
         const valid = await bcrypt.compare(password, user.passwordHash);
         if (!valid) return null;
@@ -39,6 +46,41 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
+    async signIn({ user, account }) {
+      // Credentials already resolved against our own User collection in
+      // `authorize` above — nothing more to do there.
+      if (account?.provider !== "google") return true;
+
+      const email = user.email?.toLowerCase();
+      if (!email) return false;
+
+      await connectDB();
+      let dbUser = await User.findOne({ email });
+
+      if (!dbUser) {
+        // First time this email has ever signed in — create the account.
+        dbUser = await User.create({
+          name: user.name || email.split("@")[0],
+          email,
+          image: user.image || undefined,
+          provider: "google",
+        });
+      } else if (user.image && dbUser.image !== user.image) {
+        // Existing account (possibly a credentials one) signing in with
+        // Google for the first time, or Google's avatar changed — link
+        // them by email rather than creating a duplicate account, and
+        // pick up the profile photo.
+        dbUser.image = user.image;
+        await dbUser.save();
+      }
+
+      // Normalize the id NextAuth carries forward to our own Mongo _id,
+      // not Google's account id, so every downstream `ownerId` reference
+      // (projects, chapters, etc.) is consistent regardless of how
+      // someone signed in.
+      user.id = String(dbUser._id);
+      return true;
+    },
     authorized({ auth, request }) {
       const isLoggedIn = !!auth?.user;
       const { pathname } = request.nextUrl;
