@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { PlusIcon, FolderOpenIcon } from "@phosphor-icons/react/dist/ssr"
 import {
@@ -12,6 +13,8 @@ import { ProjectCard } from "@/components/project/project-card"
 import { listProjectsForCurrentUser } from "@/lib/projects"
 import { auth } from "@/auth"
 import { signOutAction } from "./actions"
+
+export const metadata: Metadata = { title: "Dashboard" }
 
 export default async function DashboardPage() {
   const [session, projects] = await Promise.all([auth(), listProjectsForCurrentUser()])
