@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { PlusIcon } from "@phosphor-icons/react/dist/ssr"
 import {
   PageShell,
@@ -12,6 +13,16 @@ import { requireProjectSection } from "@/lib/require-project-section"
 import { listNotesForProject } from "@/lib/notes"
 import { NoteGrid } from "./note-grid"
 import { createNoteAction } from "./actions"
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}): Promise<Metadata> {
+  const { id } = await params
+  const project = await requireProjectSection(id, "notes")
+  return { title: `Notes — ${project.title}` }
+}
 
 export default async function NotesPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params

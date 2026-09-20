@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { ArrowLeftIcon, ArrowSquareOutIcon } from "@phosphor-icons/react/dist/ssr"
 import {
@@ -11,6 +12,17 @@ import { requireResearchEntry } from "@/lib/research-entries"
 import { researchEntryTypeLabel } from "@/lib/research-config"
 import { ResearchEntryForm } from "./research-entry-form"
 import { DeleteResearchEntryButton } from "./delete-research-entry-button"
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string; entryId: string }>
+}): Promise<Metadata> {
+  const { id, entryId } = await params
+  const project = await requireProjectSection(id, "research")
+  const entry = await requireResearchEntry(id, entryId)
+  return { title: `${entry.title} — ${project.title}` }
+}
 
 export default async function ResearchEntryDetailPage({
   params,
