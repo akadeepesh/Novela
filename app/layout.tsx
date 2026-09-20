@@ -20,7 +20,10 @@ const literataSerif = Literata({
 });
 
 export const metadata: Metadata = {
-  title: "KoraKagaj — a calmer place to write your book",
+  title: {
+    default: "KoraKagaj — a calmer place to write your book",
+    template: "%s — KoraKagaj",
+  },
   description:
     "A focused writing workspace for novelists, poets, and storytellers — manuscript, characters, world, and plot, all in one place.",
 };
