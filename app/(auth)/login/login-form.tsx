@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
+import { GoogleSignInButton } from "@/components/auth/google-signin-button"
 import { loginAction, type LoginState } from "./actions"
 
 const initialState: LoginState = {}
@@ -19,6 +20,15 @@ export function LoginForm() {
         <CardTitle className="text-lg">Welcome back</CardTitle>
         <CardDescription>Sign in to pick up where you left off.</CardDescription>
       </CardHeader>
+
+      <CardContent className="flex flex-col gap-4">
+        <GoogleSignInButton />
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-xs text-muted-foreground">or</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+      </CardContent>
 
       <form action={formAction}>
         <CardContent className="flex flex-col gap-4">
