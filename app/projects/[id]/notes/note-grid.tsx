@@ -2,11 +2,12 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useTransition } from "react"
+import { useState, useTransition } from "react"
 import { PlusIcon, PushPinIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import type { SerializedNoteSummary } from "@/lib/notes"
 import { createNoteAction, deleteNoteAction, togglePinNoteAction } from "./actions"
 
@@ -19,11 +20,13 @@ export function NoteGrid({
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null)
 
-  function handleDelete(noteId: string, title: string) {
-    if (!window.confirm(`Delete "${title}"? This can't be undone.`)) return
+  function handleConfirmDelete() {
+    if (!deleteTarget) return
     startTransition(async () => {
-      await deleteNoteAction(projectId, noteId)
+      await deleteNoteAction(projectId, deleteTarget.id)
+      setDeleteTarget(null)
       router.refresh()
     })
   }
@@ -69,7 +72,7 @@ export function NoteGrid({
               <button
                 type="button"
                 disabled={isPending}
-                onClick={() => handleDelete(note.id, note.title)}
+                onClick={() => setDeleteTarget({ id: note.id, title: note.title })}
                 className="text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100 disabled:pointer-events-none"
                 aria-label={`Delete ${note.title}`}
               >
@@ -101,6 +104,15 @@ export function NoteGrid({
           </Card>
         ))}
       </div>
+
+      <DeleteConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        itemName={deleteTarget?.title ?? ""}
+        itemLabel="note"
+        onConfirm={handleConfirmDelete}
+        pending={isPending}
+      />
     </div>
   )
 }

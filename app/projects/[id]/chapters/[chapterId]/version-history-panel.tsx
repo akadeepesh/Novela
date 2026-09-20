@@ -5,6 +5,14 @@ import { XIcon, ClockCounterClockwiseIcon, FloppyDiskIcon } from "@phosphor-icon
 import { cn } from "cn"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+} from "@/components/ui/alert-dialog"
 import type { SerializedVersion } from "@/lib/versions"
 import type { DiffPart } from "@/lib/text-diff"
 import { createVersionAction, listVersionsAction, getVersionDiffAction, restoreVersionAction } from "./actions"
@@ -42,6 +50,7 @@ export function VersionHistoryPanel({
   const [diff, setDiff] = useState<DiffPart[] | null>(null)
   const [diffLoading, setDiffLoading] = useState(false)
   const [restoringId, setRestoringId] = useState<string | null>(null)
+  const [restoreTarget, setRestoreTarget] = useState<{ id: string; title: string } | null>(null)
 
   async function refresh() {
     const list = await listVersionsAction(projectId, chapterId)
@@ -80,9 +89,14 @@ export function VersionHistoryPanel({
     setDiffLoading(false)
   }
 
-  async function handleRestore(versionId: string, title: string) {
-    if (!window.confirm(`Restore "${title}"? Your current draft will be saved first, so nothing is lost.`))
-      return
+  function handleRestoreClick(versionId: string, title: string) {
+    setRestoreTarget({ id: versionId, title })
+  }
+
+  async function handleConfirmRestore() {
+    if (!restoreTarget) return
+    const versionId = restoreTarget.id
+    setRestoreTarget(null)
     setRestoringId(versionId)
     const result = await restoreVersionAction(projectId, chapterId, versionId)
     if (result.ok) {
@@ -149,7 +163,7 @@ export function VersionHistoryPanel({
                   <button
                     type="button"
                     disabled={restoringId === v.id}
-                    onClick={() => handleRestore(v.id, v.label || KIND_LABEL[v.kind])}
+                    onClick={() => handleRestoreClick(v.id, v.label || KIND_LABEL[v.kind])}
                     className="text-[11px] font-medium text-muted-foreground hover:text-foreground disabled:opacity-50"
                   >
                     {restoringId === v.id ? "Restoring…" : "Restore"}
@@ -179,6 +193,26 @@ export function VersionHistoryPanel({
           </ul>
         )}
       </div>
+
+      <AlertDialog open={restoreTarget !== null} onOpenChange={(open) => !open && setRestoreTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Restore this version?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Restore &ldquo;{restoreTarget?.title}&rdquo;? Your current draft will be saved first,
+              so nothing is lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <Button type="button" variant="outline" onClick={() => setRestoreTarget(null)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleConfirmRestore}>
+              Restore
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

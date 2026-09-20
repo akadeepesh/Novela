@@ -2,11 +2,12 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useTransition } from "react"
+import { useState, useTransition } from "react"
 import { PlusIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr"
 import { Button } from "@/components/ui/button"
 import { Badge, type badgeVariants } from "@/components/ui/badge"
 import type { VariantProps } from "class-variance-authority"
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { plotStatusLabel } from "@/lib/plot-config"
 import type { SerializedPlotThreadSummary } from "@/lib/plot-threads"
 import { createPlotThreadAction, deletePlotThreadAction } from "./actions"
@@ -29,11 +30,13 @@ export function PlotThreadList({
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null)
 
-  function handleDelete(threadId: string, title: string) {
-    if (!window.confirm(`Delete "${title}"? This can't be undone.`)) return
+  function handleConfirmDelete() {
+    if (!deleteTarget) return
     startTransition(async () => {
-      await deletePlotThreadAction(projectId, threadId)
+      await deletePlotThreadAction(projectId, deleteTarget.id)
+      setDeleteTarget(null)
       router.refresh()
     })
   }
@@ -84,7 +87,7 @@ export function PlotThreadList({
             <button
               type="button"
               disabled={isPending}
-              onClick={() => handleDelete(thread.id, thread.title)}
+              onClick={() => setDeleteTarget({ id: thread.id, title: thread.title })}
               className="text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100 disabled:pointer-events-none"
               aria-label={`Delete ${thread.title}`}
             >
@@ -93,6 +96,15 @@ export function PlotThreadList({
           </div>
         ))}
       </div>
+
+      <DeleteConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        itemName={deleteTarget?.title ?? ""}
+        itemLabel="thread"
+        onConfirm={handleConfirmDelete}
+        pending={isPending}
+      />
     </div>
   )
 }
