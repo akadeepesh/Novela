@@ -6,9 +6,12 @@ import {
   PageShellTitle,
 } from "@/components/layout/page-shell"
 import { Badge } from "@/components/ui/badge"
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { requireProjectSection } from "@/lib/require-project-section"
 import { requirePlotThread } from "@/lib/plot-threads"
 import { plotStatusLabel } from "@/lib/plot-config"
+import { listChaptersMentioning } from "@/lib/mentions"
+import { AppearsIn } from "@/components/project/appears-in"
 import { PlotThreadForm } from "./plot-thread-form"
 import { DeletePlotThreadButton } from "./delete-plot-thread-button"
 
@@ -18,8 +21,9 @@ export default async function PlotThreadDetailPage({
   params: Promise<{ id: string; threadId: string }>
 }) {
   const { id, threadId } = await params
-  await requireProjectSection(id, "plot")
+  const project = await requireProjectSection(id, "plot")
   const thread = await requirePlotThread(id, threadId)
+  const mentionedIn = await listChaptersMentioning(id, "plot", threadId)
 
   return (
     <PageShell width="prose">
@@ -42,6 +46,16 @@ export default async function PlotThreadDetailPage({
       </PageShellHeader>
 
       <PlotThreadForm thread={thread} />
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="text-base">Appears in</CardTitle>
+          <CardDescription>Chapters that @mention this thread.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AppearsIn projectId={id} projectType={project.type} chapters={mentionedIn} />
+        </CardContent>
+      </Card>
     </PageShell>
   )
 }

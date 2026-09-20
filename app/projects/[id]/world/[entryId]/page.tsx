@@ -6,9 +6,12 @@ import {
   PageShellTitle,
 } from "@/components/layout/page-shell"
 import { Badge } from "@/components/ui/badge"
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { requireProjectSection } from "@/lib/require-project-section"
 import { requireWorldEntry } from "@/lib/world-entries"
 import { worldEntryTypeLabel } from "@/lib/world-config"
+import { listChaptersMentioning } from "@/lib/mentions"
+import { AppearsIn } from "@/components/project/appears-in"
 import { WorldEntryForm } from "./world-entry-form"
 import { DeleteWorldEntryButton } from "./delete-world-entry-button"
 
@@ -18,8 +21,9 @@ export default async function WorldEntryDetailPage({
   params: Promise<{ id: string; entryId: string }>
 }) {
   const { id, entryId } = await params
-  await requireProjectSection(id, "world")
+  const project = await requireProjectSection(id, "world")
   const entry = await requireWorldEntry(id, entryId)
+  const mentionedIn = await listChaptersMentioning(id, "world", entryId)
 
   return (
     <PageShell width="prose">
@@ -42,6 +46,16 @@ export default async function WorldEntryDetailPage({
       </PageShellHeader>
 
       <WorldEntryForm entry={entry} />
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="text-base">Appears in</CardTitle>
+          <CardDescription>Chapters that @mention this entry.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AppearsIn projectId={id} projectType={project.type} chapters={mentionedIn} />
+        </CardContent>
+      </Card>
     </PageShell>
   )
 }

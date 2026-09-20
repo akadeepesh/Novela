@@ -6,9 +6,12 @@ import {
   PageShellTitle,
 } from "@/components/layout/page-shell"
 import { Badge } from "@/components/ui/badge"
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { requireProjectSection } from "@/lib/require-project-section"
 import { requireCharacter } from "@/lib/characters"
 import { characterRoleLabel } from "@/lib/character-config"
+import { listChaptersMentioning } from "@/lib/mentions"
+import { AppearsIn } from "@/components/project/appears-in"
 import { CharacterForm } from "./character-form"
 import { DeleteCharacterButton } from "./delete-character-button"
 
@@ -18,8 +21,9 @@ export default async function CharacterDetailPage({
   params: Promise<{ id: string; characterId: string }>
 }) {
   const { id, characterId } = await params
-  await requireProjectSection(id, "characters")
+  const project = await requireProjectSection(id, "characters")
   const character = await requireCharacter(id, characterId)
+  const mentionedIn = await listChaptersMentioning(id, "character", characterId)
 
   return (
     <PageShell width="prose">
@@ -42,6 +46,16 @@ export default async function CharacterDetailPage({
       </PageShellHeader>
 
       <CharacterForm character={character} />
+
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="text-base">Appears in</CardTitle>
+          <CardDescription>Chapters that @mention this character.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AppearsIn projectId={id} projectType={project.type} chapters={mentionedIn} />
+        </CardContent>
+      </Card>
     </PageShell>
   )
 }
