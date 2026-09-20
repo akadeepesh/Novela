@@ -44,6 +44,16 @@ export function OverviewForm({ project }: { project: SerializedProject }) {
             <Input id="title" name="title" defaultValue={project.title} />
           </div>
 
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="authorName">Author name</Label>
+            <Input
+              id="authorName"
+              name="authorName"
+              placeholder="How your name should appear on the title page"
+              defaultValue={project.authorName}
+            />
+          </div>
+
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="genre">Genre</Label>

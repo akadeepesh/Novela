@@ -16,6 +16,7 @@ export type SerializedProject = {
   type: ProjectType;
   genre?: string;
   blurb?: string;
+  authorName?: string;
   targetWordCount?: number;
   sections: SectionId[];
   manuscriptSettings: ManuscriptSettings;
@@ -31,6 +32,7 @@ function serializeProject(doc: Record<string, unknown>): SerializedProject {
     type: doc.type as ProjectType,
     genre: (doc.genre as string) || undefined,
     blurb: (doc.blurb as string) || undefined,
+    authorName: (doc.authorName as string) || undefined,
     targetWordCount: (doc.targetWordCount as number) || undefined,
     sections: (doc.sections as SectionId[]) ?? [],
     manuscriptSettings: { ...DEFAULT_MANUSCRIPT_SETTINGS, ...rawSettings },

@@ -26,6 +26,7 @@ const projectSchema = new Schema(
     type: { type: String, enum: PROJECT_TYPE_VALUES, required: true },
     genre: { type: String, trim: true, maxlength: 60 },
     blurb: { type: String, trim: true, maxlength: 2000 },
+    authorName: { type: String, trim: true, maxlength: 120, default: "" },
     targetWordCount: { type: Number, min: 0 },
     // Ordered snapshot of enabled sidebar sections for this project —
     // computed once at creation from project-config presets, then stored,

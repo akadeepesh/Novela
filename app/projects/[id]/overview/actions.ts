@@ -10,6 +10,7 @@ const schema = z.object({
   title: z.string().trim().min(1, "Give your project a title").max(200),
   genre: z.string().trim().max(60).optional(),
   blurb: z.string().trim().max(2000).optional(),
+  authorName: z.string().trim().max(120).optional(),
   targetWordCount: z.coerce.number().min(0).max(10_000_000).optional(),
 });
 
@@ -30,6 +31,7 @@ export async function updateOverviewAction(
     title: formData.get("title"),
     genre: (formData.get("genre") as string) || undefined,
     blurb: (formData.get("blurb") as string) || undefined,
+    authorName: (formData.get("authorName") as string) || undefined,
     targetWordCount: rawWordCount ? rawWordCount : undefined,
   });
 
