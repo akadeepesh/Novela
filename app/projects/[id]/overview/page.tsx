@@ -12,6 +12,7 @@ import { SECTION_DEFS, projectTypeLabel, sectionLabel } from "@/lib/project-conf
 import { requireProjectSection } from "@/lib/require-project-section"
 import { getProjectProgress } from "@/lib/analytics"
 import { OverviewForm } from "./overview-form"
+import { DeleteProjectSection } from "./delete-project-section"
 
 export async function generateMetadata({
   params,
@@ -77,6 +78,8 @@ export default async function OverviewPage({
             </div>
           </CardContent>
         </Card>
+
+        <DeleteProjectSection projectId={id} projectTitle={project.title} />
       </div>
     </PageShell>
   )
