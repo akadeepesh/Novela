@@ -9,6 +9,7 @@ import { SECTION_DEFS, sectionLabel, projectTypeLabel } from "@/lib/project-conf
 import type { SerializedProject } from "@/lib/projects"
 import type { SearchItem } from "@/lib/search"
 import { CommandPalette } from "./command-palette"
+import { AddSectionControl } from "./add-section-control"
 
 const COLLAPSE_COOKIE = "sidebar-collapsed"
 // How long the peek stays open after the pointer leaves, so moving the
@@ -101,6 +102,12 @@ function SidebarNav({
           )
         })}
       </nav>
+
+      <AddSectionControl
+        projectId={project.id}
+        projectType={project.type}
+        sections={project.sections}
+      />
     </>
   )
 }
