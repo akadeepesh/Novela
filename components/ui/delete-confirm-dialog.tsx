@@ -26,7 +26,7 @@ export function DeleteConfirmDialog({
   /** What kind of thing it is, e.g. "character" — used in the title as "Delete character?". */
   itemLabel?: string
   /** Override the default "This will permanently delete…" body text entirely. */
-  description?: string
+  description?: React.ReactNode
   onConfirm: () => void
   pending?: boolean
 }) {
