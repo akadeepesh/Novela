@@ -16,9 +16,10 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import {
-  GENRES,
   PROJECT_TYPES,
   STORY_BIBLE_OPTIONAL_TYPES,
+  genreFieldLabel,
+  genreOptions,
   type ProjectType,
 } from "@/lib/project-config"
 import { createProjectAction, type NewProjectState } from "./actions"
@@ -58,7 +59,7 @@ export function NewProjectForm() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="type">What kind of book is it?</Label>
+            <Label htmlFor="type">What kind of project is it?</Label>
             <Select
               value={type}
               onValueChange={(value) => setType(value as ProjectType)}
@@ -81,15 +82,15 @@ export function NewProjectForm() {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="genre">Genre</Label>
-            <Select name="genre">
+            <Label htmlFor="genre">{genreFieldLabel(type)}</Label>
+            <Select key={type} name="genre">
               <SelectTrigger id="genre">
-                <SelectValue placeholder="Select a genre (optional)" />
+                <SelectValue placeholder={`Select a ${genreFieldLabel(type).toLowerCase()} (optional)`} />
               </SelectTrigger>
               <SelectContent>
-                {GENRES.map((genre) => (
-                  <SelectItem key={genre} value={genre}>
-                    {genre}
+                {genreOptions(type).map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
                   </SelectItem>
                 ))}
               </SelectContent>
