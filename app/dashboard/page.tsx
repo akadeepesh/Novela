@@ -1,63 +1,61 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { PlusIcon, FolderOpenIcon } from "@phosphor-icons/react/dist/ssr"
-import {
-  PageShell,
-  PageShellHeader,
-  PageShellTitle,
-  PageShellDescription,
-} from "@/components/layout/page-shell"
-import { EmptyState } from "@/components/ui/empty-state"
+import { FeatherIcon, PlusIcon } from "@phosphor-icons/react/dist/ssr"
 import { Button } from "@/components/ui/button"
-import { ProjectCard } from "@/components/project/project-card"
-import { listProjectsForCurrentUser } from "@/lib/projects"
+import { AvatarMenu } from "@/components/account/avatar-menu"
+import { Greeting } from "@/components/dashboard/greeting"
+import { HeroCard } from "@/components/dashboard/hero-card"
+import { OtherWritings } from "@/components/dashboard/other-writings"
 import { auth } from "@/auth"
-import { signOutAction } from "./actions"
+import { getDashboardData } from "@/lib/dashboard"
 
-export const metadata: Metadata = { title: "Dashboard" }
+export const metadata: Metadata = { title: "Your writings" }
 
 export default async function DashboardPage() {
-  const [session, projects] = await Promise.all([auth(), listProjectsForCurrentUser()])
+  const [session, { hero, others }] = await Promise.all([auth(), getDashboardData()])
+  const firstName = session?.user?.name?.split(" ")[0]
 
   return (
-    <PageShell>
-      <PageShellHeader className="flex-row items-center justify-between">
-        <div>
-          <PageShellTitle>Your projects</PageShellTitle>
-          <PageShellDescription>Signed in as {session?.user?.email}</PageShellDescription>
-        </div>
-        <div className="flex items-center gap-2">
-          <form action={signOutAction}>
-            <Button type="submit" variant="outline" size="sm">
-              Sign out
-            </Button>
-          </form>
-          <Button size="sm" render={<Link href="/projects/new" />} nativeButton={false}>
+    <div className="flex min-h-screen flex-col">
+      <header className="flex items-center justify-between px-6 py-5 sm:px-10">
+        <Link href="/dashboard" className="flex items-center gap-2 text-foreground">
+          <FeatherIcon className="size-4 text-primary" weight="duotone" />
+          <span className="font-heading text-sm font-semibold">KoraKagaj</span>
+        </Link>
+        <div className="flex items-center gap-3">
+          <Button
+            size="sm"
+            variant="ghost"
+            render={<Link href="/projects/new" />}
+            nativeButton={false}
+          >
             <PlusIcon />
-            New project
+            New
           </Button>
+          <AvatarMenu />
         </div>
-      </PageShellHeader>
+      </header>
 
-      {projects.length === 0 ? (
-        <EmptyState
-          icon={FolderOpenIcon}
-          title="No projects yet"
-          description="Start your first novel, poetry collection, or story bible — it takes less than a minute to set up."
-          action={
-            <Button size="sm" render={<Link href="/projects/new" />} nativeButton={false}>
-              <PlusIcon />
-              New project
-            </Button>
-          }
-        />
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
-          ))}
+      <main className="flex flex-1 flex-col px-6 pb-24 sm:px-10">
+        <div className="mx-auto w-full max-w-2xl">
+          <Greeting firstName={firstName} />
+
+          {hero ? (
+            <>
+              <HeroCard hero={hero} />
+              <OtherWritings others={others} />
+            </>
+          ) : (
+            <div className="flex flex-col items-center gap-4 py-16 text-center">
+              <p className="text-muted-foreground">Nothing here yet — what do you want to write?</p>
+              <Button size="lg" render={<Link href="/projects/new" />} nativeButton={false}>
+                <PlusIcon />
+                Start writing
+              </Button>
+            </div>
+          )}
         </div>
-      )}
-    </PageShell>
+      </main>
+    </div>
   )
 }
