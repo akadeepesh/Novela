@@ -56,6 +56,14 @@ export const PROJECT_TYPES = [
 
 export type ProjectType = (typeof PROJECT_TYPES)[number]["value"]
 
+// Types whose base sections don't already include Characters/World/Plot —
+// for these, the "story bible" sections are offered as an opt-in checkbox
+// at creation time instead of being included automatically. ("novel" is
+// the only type that ships with them by default — see BASE_SECTIONS below.)
+export const STORY_BIBLE_OPTIONAL_TYPES: ProjectType[] = PROJECT_TYPES.map(
+  (t) => t.value
+).filter((value) => value !== "novel")
+
 export const GENRES = [
   "Literary Fiction",
   "Fantasy",
