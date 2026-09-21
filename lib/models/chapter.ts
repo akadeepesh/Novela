@@ -21,6 +21,8 @@ const chapterSchema = new Schema(
 );
 
 chapterSchema.index({ projectId: 1, order: 1 });
+// Serves the dashboard's "most recently edited chapter" lookup.
+chapterSchema.index({ ownerId: 1, updatedAt: -1 });
 
 export type ChapterDoc = InferSchemaType<typeof chapterSchema>;
 
