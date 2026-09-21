@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { ArrowLeftIcon, SidebarSimpleIcon } from "@phosphor-icons/react/dist/ssr"
 import { cn } from "cn"
 import { SECTION_DEFS, sectionLabel, projectTypeLabel } from "@/lib/project-config"
@@ -30,6 +30,16 @@ export function ProjectShell({
 }) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(defaultCollapsed)
+
+  useEffect(() => {
+    // Set on <html> (not just this subtree) so the accent reaches Base
+    // UI's portaled dialogs/selects/popups too — those render into
+    // document.body, outside whatever DOM this component sits in.
+    document.documentElement.setAttribute("data-genre", project.type)
+    return () => {
+      document.documentElement.removeAttribute("data-genre")
+    }
+  }, [project.type])
 
   function toggle() {
     setCollapsed((prev) => {
@@ -98,7 +108,10 @@ export function ProjectShell({
                       : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
                   )}
                 >
-                  <IconComponent className="size-4 shrink-0" weight={isActive ? "fill" : "regular"} />
+                  <IconComponent
+                    className="size-4 shrink-0"
+                    weight={isActive || project.type === "novel" ? "fill" : "regular"}
+                  />
                   {sectionLabel(sectionId, project.type)}
                 </Link>
               )

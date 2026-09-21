@@ -100,6 +100,76 @@
   --manuscript-fg: oklch(0.22 0.012 55);
 }
 
+/* ---- Per-project-type accent ----
+   Set as a data-genre attribute on <html> (see ProjectShell), so it reaches
+   everything — including Base UI's portaled dialogs/selects, which render
+   into document.body and would otherwise miss a scoped-subtree override.
+   Only the accent triad + a couple of structural tokens shift; neutrals,
+   backgrounds, and spacing stay identical so it still reads as one app. */
+
+:root[data-genre="novel"] {
+  /* Deeper ink accent — confident and structured, not decorative */
+  --primary: oklch(0.34 0.03 50);
+  --sidebar-primary: oklch(0.34 0.03 50);
+  --ring: oklch(0.34 0.03 50 / 45%);
+  --sidebar-ring: oklch(0.34 0.03 50 / 45%);
+}
+
+:root[data-genre="poetry"] {
+  /* Lighter sage — pushes the app's existing calm tone further, not a new one */
+  --primary: oklch(0.58 0.07 150);
+  --sidebar-primary: oklch(0.58 0.07 150);
+  --ring: oklch(0.58 0.07 150 / 40%);
+  --sidebar-ring: oklch(0.58 0.07 150 / 40%);
+}
+
+:root[data-genre="short-stories"] {
+  /* Warm amber — brisk and a little brighter, episodic rather than epic */
+  --primary: oklch(0.64 0.13 70);
+  --sidebar-primary: oklch(0.64 0.13 70);
+  --ring: oklch(0.64 0.13 70 / 40%);
+  --sidebar-ring: oklch(0.64 0.13 70 / 40%);
+}
+
+:root[data-genre="nonfiction"] {
+  /* Cool blue-grey + slightly sharper corners — a more reference-like feel */
+  --primary: oklch(0.46 0.05 250);
+  --sidebar-primary: oklch(0.46 0.05 250);
+  --ring: oklch(0.46 0.05 250 / 40%);
+  --sidebar-ring: oklch(0.46 0.05 250 / 40%);
+  --radius: 0.55rem;
+}
+
+/* Dark-mode equivalents (the tokens above win once .dark is toggled) */
+.dark[data-genre="novel"] {
+  --primary: oklch(0.62 0.03 50);
+  --sidebar-primary: oklch(0.62 0.03 50);
+  --ring: oklch(0.62 0.03 50 / 45%);
+  --sidebar-ring: oklch(0.62 0.03 50 / 45%);
+}
+
+.dark[data-genre="poetry"] {
+  --primary: oklch(0.72 0.07 150);
+  --sidebar-primary: oklch(0.72 0.07 150);
+  --ring: oklch(0.72 0.07 150 / 40%);
+  --sidebar-ring: oklch(0.72 0.07 150 / 40%);
+}
+
+.dark[data-genre="short-stories"] {
+  --primary: oklch(0.74 0.12 70);
+  --sidebar-primary: oklch(0.74 0.12 70);
+  --ring: oklch(0.74 0.12 70 / 40%);
+  --sidebar-ring: oklch(0.74 0.12 70 / 40%);
+}
+
+.dark[data-genre="nonfiction"] {
+  --primary: oklch(0.72 0.05 250);
+  --sidebar-primary: oklch(0.72 0.05 250);
+  --ring: oklch(0.72 0.05 250 / 40%);
+  --sidebar-ring: oklch(0.72 0.05 250 / 40%);
+  --radius: 0.55rem;
+}
+
 .dark {
   /* Warm charcoal, not black — easier on the eyes for long writing sessions */
   --background: oklch(0.22 0.011 55);
@@ -215,4 +285,24 @@
 
 .manuscript-prose.focus-mode .ProseMirror > .is-focused-block {
   opacity: 1;
+}
+
+/* ---- Per-project-type manuscript feel ---- */
+
+/* Novel: heavier chapter headings — reads as a serious manuscript */
+[data-genre="novel"] .manuscript-prose .ProseMirror h1,
+[data-genre="novel"] .manuscript-prose .ProseMirror h2,
+[data-genre="novel"] .manuscript-prose .ProseMirror h3 {
+  font-weight: 700;
+}
+
+/* Poetry: extra breathing room around the page and between paragraphs —
+   stanza-internal spacing (.is-poetry above) stays tight and untouched,
+   since that's about respecting line breaks, not about calm */
+[data-genre="poetry"] .manuscript-prose {
+  line-height: 1.85;
+}
+
+[data-genre="poetry"] .manuscript-prose .ProseMirror {
+  padding-top: 1.5em;
 }
