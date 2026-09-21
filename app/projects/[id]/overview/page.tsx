@@ -59,8 +59,8 @@ export default async function OverviewPage({
           <CardContent className="flex flex-col gap-3">
             <p className="text-sm font-medium text-foreground">Structure</p>
             <p className="text-sm text-muted-foreground">
-              These sections were set up when you created this project — you can revisit that
-              choice any time by asking us to add or remove sections.
+              The sections in your sidebar. Need Characters, World, Plot, Notes or Research?
+              Use “Add section” at the bottom of the sidebar.
             </p>
             <div className="flex flex-wrap gap-1.5">
               {project.sections.map((sectionId) => {
