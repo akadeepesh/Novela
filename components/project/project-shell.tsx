@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { ArrowLeftIcon, SidebarSimpleIcon } from "@phosphor-icons/react/dist/ssr"
 import { cn } from "cn"
 import { SECTION_DEFS, sectionLabel, projectTypeLabel } from "@/lib/project-config"
@@ -11,10 +11,98 @@ import type { SearchItem } from "@/lib/search"
 import { CommandPalette } from "./command-palette"
 
 const COLLAPSE_COOKIE = "sidebar-collapsed"
+// How long the peek stays open after the pointer leaves, so moving the
+// mouse diagonally from the trigger strip into the panel doesn't close it.
+const PEEK_CLOSE_DELAY_MS = 200
 
 function setCollapseCookie(collapsed: boolean) {
   // A year is effectively "remember this forever" for a UI preference.
   document.cookie = `${COLLAPSE_COOKIE}=${collapsed ? "1" : "0"}; path=/; max-age=31536000; samesite=lax`
+}
+
+function SidebarNav({
+  project,
+  searchItems,
+  pathname,
+  onToggle,
+  toggleLabel,
+  renderCommandPalette = true,
+}: {
+  project: SerializedProject
+  searchItems: SearchItem[]
+  pathname: string
+  onToggle: () => void
+  toggleLabel: string
+  renderCommandPalette?: boolean
+}) {
+  return (
+    <>
+      <div className="flex items-center justify-between px-3 pt-3">
+        <Link
+          href="/dashboard"
+          className="inline-flex w-fit items-center gap-1 text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground"
+        >
+          <ArrowLeftIcon className="size-3" />
+          All projects
+        </Link>
+        <button
+          type="button"
+          onClick={onToggle}
+          className="rounded-md p-1 text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+          aria-label={toggleLabel}
+          title={toggleLabel}
+        >
+          <SidebarSimpleIcon className="size-4" />
+        </button>
+      </div>
+
+      <div className="flex flex-col gap-1 px-4 pt-2 pb-3">
+        <h2
+          className="truncate font-heading text-sm font-semibold text-sidebar-foreground"
+          title={project.title}
+        >
+          {project.title}
+        </h2>
+        <span className="text-xs text-sidebar-foreground/60">{projectTypeLabel(project.type)}</span>
+      </div>
+
+      {renderCommandPalette ? (
+        <CommandPalette
+          projectId={project.id}
+          projectType={project.type}
+          sections={project.sections}
+          items={searchItems}
+        />
+      ) : null}
+
+      <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-4">
+        {project.sections.map((sectionId) => {
+          const { icon: IconComponent } = SECTION_DEFS[sectionId]
+          const href = `/projects/${project.id}/${sectionId}`
+          const isActive = pathname === href
+
+          return (
+            <Link
+              key={sectionId}
+              href={href}
+              className={cn(
+                "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors",
+                isActive
+                  ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
+                  : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+              )}
+            >
+              <IconComponent
+                className="size-4 shrink-0"
+                weight={isActive || project.type === "novel" ? "fill" : "regular"}
+              />
+              {sectionLabel(sectionId, project.type)}
+            </Link>
+          )
+        })}
+      </nav>
+    </>
+  )
 }
 
 export function ProjectShell({
@@ -30,6 +118,8 @@ export function ProjectShell({
 }) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(defaultCollapsed)
+  const [peeking, setPeeking] = useState(false)
+  const peekTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     // Set on <html> (not just this subtree) so the accent reaches Base
@@ -41,6 +131,13 @@ export function ProjectShell({
     }
   }, [project.type])
 
+  // Don't leave a pending close timer running past unmount.
+  useEffect(() => {
+    return () => {
+      if (peekTimeoutRef.current) clearTimeout(peekTimeoutRef.current)
+    }
+  }, [])
+
   function toggle() {
     setCollapsed((prev) => {
       const next = !prev
@@ -49,76 +146,69 @@ export function ProjectShell({
     })
   }
 
+  function openPeek() {
+    if (peekTimeoutRef.current) {
+      clearTimeout(peekTimeoutRef.current)
+      peekTimeoutRef.current = null
+    }
+    setPeeking(true)
+  }
+
+  function scheduleClosePeek() {
+    peekTimeoutRef.current = setTimeout(() => setPeeking(false), PEEK_CLOSE_DELAY_MS)
+  }
+
+  function pinOpen() {
+    if (peekTimeoutRef.current) {
+      clearTimeout(peekTimeoutRef.current)
+      peekTimeoutRef.current = null
+    }
+    setPeeking(false)
+    setCollapsed(false)
+    setCollapseCookie(false)
+  }
+
   return (
     <div className="flex flex-1">
       {!collapsed ? (
         <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
-          <div className="flex items-center justify-between px-3 pt-3">
-            <Link
-              href="/dashboard"
-              className="inline-flex w-fit items-center gap-1 text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground"
-            >
-              <ArrowLeftIcon className="size-3" />
-              All projects
-            </Link>
-            <button
-              type="button"
-              onClick={toggle}
-              className="rounded-md p-1 text-sidebar-foreground/60 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
-              aria-label="Collapse sidebar"
-              title="Collapse sidebar"
-            >
-              <SidebarSimpleIcon className="size-4" />
-            </button>
-          </div>
-
-          <div className="flex flex-col gap-1 px-4 pt-2 pb-3">
-            <h2
-              className="truncate font-heading text-sm font-semibold text-sidebar-foreground"
-              title={project.title}
-            >
-              {project.title}
-            </h2>
-            <span className="text-xs text-sidebar-foreground/60">
-              {projectTypeLabel(project.type)}
-            </span>
-          </div>
-
-          <CommandPalette
-            projectId={project.id}
-            projectType={project.type}
-            sections={project.sections}
-            items={searchItems}
+          <SidebarNav
+            project={project}
+            searchItems={searchItems}
+            pathname={pathname}
+            onToggle={toggle}
+            toggleLabel="Collapse sidebar"
+          />
+        </aside>
+      ) : (
+        <>
+          {/* Invisible strip at the extreme left edge — hovering or
+              touching it peeks the sidebar open without pinning it. */}
+          <div
+            className="fixed top-0 left-0 z-30 h-screen w-3"
+            onMouseEnter={openPeek}
+            onTouchStart={openPeek}
+            aria-hidden
           />
 
-          <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-4">
-            {project.sections.map((sectionId) => {
-              const { icon: IconComponent } = SECTION_DEFS[sectionId]
-              const href = `/projects/${project.id}/${sectionId}`
-              const isActive = pathname === href
-
-              return (
-                <Link
-                  key={sectionId}
-                  href={href}
-                  className={cn(
-                    "flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors",
-                    isActive
-                      ? "bg-sidebar-accent font-medium text-sidebar-accent-foreground"
-                      : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
-                  )}
-                >
-                  <IconComponent
-                    className="size-4 shrink-0"
-                    weight={isActive || project.type === "novel" ? "fill" : "regular"}
-                  />
-                  {sectionLabel(sectionId, project.type)}
-                </Link>
-              )
-            })}
-          </nav>
-        </aside>
-      ) : null}
+          {peeking ? (
+            <aside
+              onMouseEnter={openPeek}
+              onMouseLeave={scheduleClosePeek}
+              className="animate-in slide-in-from-left-4 fade-in fixed top-0 left-0 z-40 flex h-screen w-64 flex-col border-r border-sidebar-border bg-sidebar shadow-lg duration-150"
+            >
+              <SidebarNav
+                project={project}
+                searchItems={searchItems}
+                pathname={pathname}
+                onToggle={pinOpen}
+                toggleLabel="Pin sidebar open"
+                renderCommandPalette={false}
+              />
+            </aside>
+          ) : null}
+        </>
+      )}
 
       <div className="flex min-w-0 flex-1 flex-col">
         {collapsed ? (

@@ -53,7 +53,7 @@ export default async function OverviewPage({
       <div className="flex flex-col gap-6">
         <ProgressCard progress={progress} />
 
-        <OverviewForm project={project} />
+        <OverviewForm key={project.updatedAt} project={project} />
 
         <Card>
           <CardContent className="flex flex-col gap-3">

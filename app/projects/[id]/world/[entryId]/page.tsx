@@ -57,7 +57,7 @@ export default async function WorldEntryDetailPage({
         <DeleteWorldEntryButton projectId={id} entryId={entryId} name={entry.name} />
       </PageShellHeader>
 
-      <WorldEntryForm entry={entry} />
+      <WorldEntryForm key={entry.updatedAt} entry={entry} />
 
       <Card className="mt-6">
         <CardHeader>

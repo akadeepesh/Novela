@@ -57,7 +57,7 @@ export default async function PlotThreadDetailPage({
         <DeletePlotThreadButton projectId={id} threadId={threadId} title={thread.title} />
       </PageShellHeader>
 
-      <PlotThreadForm thread={thread} />
+      <PlotThreadForm key={thread.updatedAt} thread={thread} />
 
       <Card className="mt-6">
         <CardHeader>

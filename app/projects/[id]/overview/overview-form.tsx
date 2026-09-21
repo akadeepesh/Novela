@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
-import { GENRES } from "@/lib/project-config"
+import { genreFieldLabel, genreOptions } from "@/lib/project-config"
 import type { SerializedProject } from "@/lib/projects"
 import { updateOverviewAction, type UpdateOverviewState } from "./actions"
 
@@ -56,15 +56,15 @@ export function OverviewForm({ project }: { project: SerializedProject }) {
 
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="genre">Genre</Label>
+              <Label htmlFor="genre">{genreFieldLabel(project.type)}</Label>
               <Select name="genre" defaultValue={project.genre}>
                 <SelectTrigger id="genre">
-                  <SelectValue placeholder="Select a genre" />
+                  <SelectValue placeholder={`Select a ${genreFieldLabel(project.type).toLowerCase()}`} />
                 </SelectTrigger>
                 <SelectContent>
-                  {GENRES.map((genre) => (
-                    <SelectItem key={genre} value={genre}>
-                      {genre}
+                  {genreOptions(project.type).map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
                     </SelectItem>
                   ))}
                 </SelectContent>

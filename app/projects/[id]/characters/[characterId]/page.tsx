@@ -57,7 +57,7 @@ export default async function CharacterDetailPage({
         <DeleteCharacterButton projectId={id} characterId={characterId} name={character.name} />
       </PageShellHeader>
 
-      <CharacterForm character={character} />
+      <CharacterForm key={character.updatedAt} character={character} />
 
       <Card className="mt-6">
         <CardHeader>
