@@ -1,61 +1,52 @@
 "use server";
 
-import { redirect } from "next/navigation";
-import { z } from "zod";
 import { connectDB } from "@/lib/db";
 import { Project } from "@/lib/models/project";
+import { Chapter } from "@/lib/models/chapter";
 import { requireUserId } from "@/lib/projects";
-import { PROJECT_TYPES, getDefaultSections, type ProjectType } from "@/lib/project-config";
+import {
+  PROJECT_TYPES,
+  defaultProjectTitle,
+  getDefaultSections,
+  sectionLabelSingular,
+  type ProjectType,
+} from "@/lib/project-config";
+import { initialChapterContent } from "@/lib/script-scaffold";
 
-const typeValues = PROJECT_TYPES.map((t) => t.value) as [ProjectType, ...ProjectType[]];
+const TYPE_VALUES = PROJECT_TYPES.map((t) => t.value) as ProjectType[];
 
-const schema = z.object({
-  title: z.string().trim().min(1, "Give your project a title").max(200),
-  type: z.enum(typeValues),
-  genre: z.string().trim().max(60).optional(),
-  blurb: z.string().trim().max(2000).optional(),
-  includeStoryBible: z.boolean().optional(),
-});
+function isProjectType(value: unknown): value is ProjectType {
+  return typeof value === "string" && (TYPE_VALUES as string[]).includes(value);
+}
 
-export type NewProjectState = {
-  fieldErrors?: Partial<Record<"title" | "type", string>>;
-};
-
-export async function createProjectAction(
-  _prevState: NewProjectState,
-  formData: FormData
-): Promise<NewProjectState> {
+/**
+ * Deliberately minimal: two inputs, no validation errors surfaced to the
+ * user (a blank title just becomes "Untitled X" — there's no wrong answer
+ * here). Genre and synopsis are edited later on the overview page; extra
+ * sections (Characters/World/Plot…) are added from the sidebar. Returns
+ * ids rather than redirecting so the client can animate before navigating.
+ */
+export async function createProjectAction(input: {
+  title: string;
+  type: string;
+}): Promise<{ projectId: string; chapterId: string }> {
   const userId = await requireUserId();
 
-  const parsed = schema.safeParse({
-    title: formData.get("title"),
-    type: formData.get("type"),
-    genre: (formData.get("genre") as string) || undefined,
-    blurb: (formData.get("blurb") as string) || undefined,
-    includeStoryBible: formData.get("includeStoryBible") === "on",
-  });
-
-  if (!parsed.success) {
-    const fieldErrors: NewProjectState["fieldErrors"] = {};
-    for (const issue of parsed.error.issues) {
-      const key = issue.path[0] as "title" | "type";
-      if (!fieldErrors[key]) fieldErrors[key] = issue.message;
-    }
-    return { fieldErrors };
-  }
-
-  const { title, type, genre, blurb, includeStoryBible } = parsed.data;
-  const sections = getDefaultSections(type, !!includeStoryBible);
+  const type = isProjectType(input.type) ? input.type : "novel";
+  const title = input.title.trim().slice(0, 200) || defaultProjectTitle(type);
+  const sections = getDefaultSections(type);
 
   await connectDB();
-  const project = await Project.create({
+  const project = await Project.create({ ownerId: userId, title, type, sections });
+
+  const chapterLabel = sectionLabelSingular("chapters", type);
+  const chapter = await Chapter.create({
+    projectId: project._id,
     ownerId: userId,
-    title,
-    type,
-    genre,
-    blurb,
-    sections,
+    title: `${chapterLabel} 1`,
+    order: 0,
+    content: initialChapterContent(type),
   });
 
-  redirect(`/projects/${project._id}`);
+  return { projectId: String(project._id), chapterId: String(chapter._id) };
 }
