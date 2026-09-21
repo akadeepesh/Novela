@@ -6,7 +6,6 @@ import { connectDB } from "@/lib/db";
 import { Chapter } from "@/lib/models/chapter";
 import { requireProject, requireUserId } from "@/lib/projects";
 import { sectionLabelSingular } from "@/lib/project-config";
-import { SCRIPT_SCAFFOLD } from "@/lib/script-scaffold";
 
 export async function createChapterAction(projectId: string) {
   const project = await requireProject(projectId);
@@ -21,7 +20,6 @@ export async function createChapterAction(projectId: string) {
     ownerId: userId,
     title: `${label} ${count + 1}`,
     order: count,
-    content: project.type === "script-writing" ? SCRIPT_SCAFFOLD : undefined,
   });
 
   revalidatePath(`/projects/${projectId}/chapters`);

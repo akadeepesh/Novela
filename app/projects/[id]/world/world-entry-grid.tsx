@@ -2,12 +2,11 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState, useTransition } from "react"
+import { useTransition } from "react"
 import { PlusIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { worldEntryTypeLabel, worldEntryTypeIcon } from "@/lib/world-config"
 import type { SerializedWorldEntrySummary } from "@/lib/world-entries"
 import { createWorldEntryAction, deleteWorldEntryAction } from "./actions"
@@ -21,13 +20,11 @@ export function WorldEntryGrid({
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
 
-  function handleConfirmDelete() {
-    if (!deleteTarget) return
+  function handleDelete(entryId: string, name: string) {
+    if (!window.confirm(`Delete "${name}"? This can't be undone.`)) return
     startTransition(async () => {
-      await deleteWorldEntryAction(projectId, deleteTarget.id)
-      setDeleteTarget(null)
+      await deleteWorldEntryAction(projectId, entryId)
       router.refresh()
     })
   }
@@ -54,7 +51,7 @@ export function WorldEntryGrid({
               <button
                 type="button"
                 disabled={isPending}
-                onClick={() => setDeleteTarget({ id: entry.id, name: entry.name })}
+                onClick={() => handleDelete(entry.id, entry.name)}
                 className="absolute top-4 right-4 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100 disabled:pointer-events-none"
                 aria-label={`Delete ${entry.name}`}
               >
@@ -90,15 +87,6 @@ export function WorldEntryGrid({
           )
         })}
       </div>
-
-      <DeleteConfirmDialog
-        open={deleteTarget !== null}
-        onOpenChange={(open) => !open && setDeleteTarget(null)}
-        itemName={deleteTarget?.name ?? ""}
-        itemLabel="entry"
-        onConfirm={handleConfirmDelete}
-        pending={isPending}
-      />
     </div>
   )
 }

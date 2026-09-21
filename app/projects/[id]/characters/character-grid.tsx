@@ -2,12 +2,11 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState, useTransition } from "react"
+import { useTransition } from "react"
 import { PlusIcon, TrashIcon, UserCircleIcon } from "@phosphor-icons/react/dist/ssr"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { characterRoleLabel } from "@/lib/character-config"
 import type { SerializedCharacterSummary } from "@/lib/characters"
 import { createCharacterAction, deleteCharacterAction } from "./actions"
@@ -21,13 +20,11 @@ export function CharacterGrid({
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
 
-  function handleConfirmDelete() {
-    if (!deleteTarget) return
+  function handleDelete(characterId: string, name: string) {
+    if (!window.confirm(`Delete "${name}"? This can't be undone.`)) return
     startTransition(async () => {
-      await deleteCharacterAction(projectId, deleteTarget.id)
-      setDeleteTarget(null)
+      await deleteCharacterAction(projectId, characterId)
       router.refresh()
     })
   }
@@ -52,7 +49,7 @@ export function CharacterGrid({
             <button
               type="button"
               disabled={isPending}
-              onClick={() => setDeleteTarget({ id: character.id, name: character.name })}
+              onClick={() => handleDelete(character.id, character.name)}
               className="absolute top-4 right-4 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100 disabled:pointer-events-none"
               aria-label={`Delete ${character.name}`}
             >
@@ -87,15 +84,6 @@ export function CharacterGrid({
           </Card>
         ))}
       </div>
-
-      <DeleteConfirmDialog
-        open={deleteTarget !== null}
-        onOpenChange={(open) => !open && setDeleteTarget(null)}
-        itemName={deleteTarget?.name ?? ""}
-        itemLabel="character"
-        onConfirm={handleConfirmDelete}
-        pending={isPending}
-      />
     </div>
   )
 }

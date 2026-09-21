@@ -12,7 +12,6 @@ import { SECTION_DEFS, projectTypeLabel, sectionLabel } from "@/lib/project-conf
 import { requireProjectSection } from "@/lib/require-project-section"
 import { getProjectProgress } from "@/lib/analytics"
 import { OverviewForm } from "./overview-form"
-import { DeleteProjectSection } from "./delete-project-section"
 
 export async function generateMetadata({
   params,
@@ -53,7 +52,7 @@ export default async function OverviewPage({
       <div className="flex flex-col gap-6">
         <ProgressCard progress={progress} />
 
-        <OverviewForm key={project.updatedAt} project={project} />
+        <OverviewForm project={project} />
 
         <Card>
           <CardContent className="flex flex-col gap-3">
@@ -78,8 +77,6 @@ export default async function OverviewPage({
             </div>
           </CardContent>
         </Card>
-
-        <DeleteProjectSection projectId={id} projectTitle={project.title} />
       </div>
     </PageShell>
   )

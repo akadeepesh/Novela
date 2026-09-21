@@ -23,7 +23,6 @@ import type { ProjectType } from "@/lib/project-config"
 import { FocusMode } from "@/components/editor/focus-mode-extension"
 import { MentionExtension } from "@/components/editor/mention-extension"
 import type { Mentionable } from "@/lib/mentions"
-import { estimateScriptRuntime } from "@/lib/script-scaffold"
 import { saveChapterAction } from "./actions"
 import { ManuscriptSettingsPanel } from "./manuscript-settings-panel"
 import { VersionHistoryPanel } from "./version-history-panel"
@@ -231,10 +230,7 @@ export function ManuscriptEditor({
       </div>
 
       <div className="flex items-center justify-between border-t border-border px-4 py-1.5 text-xs text-muted-foreground">
-        <span>
-          {wordCount.toLocaleString()} words
-          {projectType === "script-writing" ? ` · ${estimateScriptRuntime(wordCount)}` : ""}
-        </span>
+        <span>{wordCount.toLocaleString()} words</span>
         <span className="italic">
           {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : ""}
         </span>

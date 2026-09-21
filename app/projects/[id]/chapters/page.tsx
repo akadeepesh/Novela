@@ -53,13 +53,7 @@ export default async function ChaptersPage({ params }: { params: Promise<{ id: s
           }
         />
       ) : (
-        <ChapterList
-          projectId={id}
-          chapters={chapters}
-          label={label}
-          singular={singular}
-          projectType={project.type}
-        />
+        <ChapterList projectId={id} chapters={chapters} label={label} singular={singular} />
       )}
     </PageShell>
   )

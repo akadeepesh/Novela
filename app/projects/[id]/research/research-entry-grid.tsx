@@ -2,12 +2,11 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState, useTransition } from "react"
+import { useTransition } from "react"
 import { ArrowSquareOutIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
-import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { researchEntryTypeLabel, researchEntryTypeIcon } from "@/lib/research-config"
 import type { SerializedResearchEntrySummary } from "@/lib/research-entries"
 import { createResearchEntryAction, deleteResearchEntryAction } from "./actions"
@@ -21,13 +20,11 @@ export function ResearchEntryGrid({
 }) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null)
 
-  function handleConfirmDelete() {
-    if (!deleteTarget) return
+  function handleDelete(entryId: string, title: string) {
+    if (!window.confirm(`Delete "${title}"? This can't be undone.`)) return
     startTransition(async () => {
-      await deleteResearchEntryAction(projectId, deleteTarget.id)
-      setDeleteTarget(null)
+      await deleteResearchEntryAction(projectId, entryId)
       router.refresh()
     })
   }
@@ -68,7 +65,7 @@ export function ResearchEntryGrid({
                 <button
                   type="button"
                   disabled={isPending}
-                  onClick={() => setDeleteTarget({ id: entry.id, title: entry.title })}
+                  onClick={() => handleDelete(entry.id, entry.title)}
                   className="text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100 disabled:pointer-events-none"
                   aria-label={`Delete ${entry.title}`}
                 >
@@ -103,15 +100,6 @@ export function ResearchEntryGrid({
           )
         })}
       </div>
-
-      <DeleteConfirmDialog
-        open={deleteTarget !== null}
-        onOpenChange={(open) => !open && setDeleteTarget(null)}
-        itemName={deleteTarget?.title ?? ""}
-        itemLabel="entry"
-        onConfirm={handleConfirmDelete}
-        pending={isPending}
-      />
     </div>
   )
 }
