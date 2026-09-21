@@ -36,11 +36,15 @@ export function CreationCanvas() {
     try {
       // The write and the exit animation run together, so the "commit"
       // moment costs no extra wait beyond the animation itself.
-      const [{ projectId, chapterId }] = await Promise.all([
-        createProjectAction({ title, type }),
+      const formData = new FormData()
+      formData.set("title", title)
+      formData.set("type", type)
+      const [state] = await Promise.all([
+        createProjectAction({}, formData),
         new Promise((resolve) => setTimeout(resolve, 220)),
       ])
-      router.push(`/projects/${projectId}/chapters/${chapterId}`)
+      if (!state.result) throw new Error("Failed to create project")
+      router.push(`/projects/${state.result.projectId}/chapters/${state.result.chapterId}`)
     } catch {
       setCommitting(false)
     }
