@@ -1,3 +1,5 @@
+import type { ProjectType } from "@/lib/project-config";
+
 // A new script starts with this structure instead of a blank page —
 // mirrors how poetry gets its own rhythm rules in the editor: different
 // project types get a genuinely different starting shape, not just a
@@ -82,3 +84,8 @@ export const SCRIPT_SCAFFOLD = {
     },
   ],
 };
+
+/** Starting content for a brand-new chapter: scripts get the scaffold, everything else starts blank. */
+export function initialChapterContent(type: ProjectType) {
+  return type === "script-writing" ? SCRIPT_SCAFFOLD : undefined;
+}

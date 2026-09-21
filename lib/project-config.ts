@@ -3,41 +3,52 @@ import {
   BookOpenIcon,
   CompassIcon,
   ExportIcon,
+  FeatherIcon,
+  FilmSlateIcon,
   GlobeHemisphereWestIcon,
   MagnifyingGlassIcon,
+  NotebookIcon,
   NotePencilIcon,
   PuzzlePieceIcon,
+  SlidersHorizontalIcon,
+  StackIcon,
   UsersThreeIcon,
 } from "@phosphor-icons/react/dist/ssr"
 
 export const PROJECT_TYPES = [
   {
     value: "novel",
+    shortLabel: "Novel",
     label: "Novel",
     description: "A single long-form story, told in chapters.",
   },
   {
     value: "poetry",
+    shortLabel: "Poetry",
     label: "Poetry collection",
     description: "A collection of poems, grouped however you like.",
   },
   {
     value: "short-stories",
+    shortLabel: "Short Stories",
     label: "Short story collection",
     description: "Several standalone stories under one cover.",
   },
   {
     value: "nonfiction",
+    shortLabel: "Non-fiction",
     label: "Non-fiction / memoir",
     description: "Structured sections rather than a fictional plot.",
   },
   {
     value: "script-writing",
+    shortLabel: "Script",
     label: "Script writing",
     description: "Scripts for YouTube, podcasts, or other spoken content — one script per episode.",
   },
   {
     value: "custom",
+    shortLabel: "Custom",
     label: "Custom",
     description: "Start minimal and add sections as you need them.",
   },
@@ -131,30 +142,20 @@ const BASE_SECTIONS: Record<ProjectType, SectionId[]> = {
   custom: ["overview", "chapters", "notes", "export"],
 }
 
-// Types where the story bible (characters/world/plot) is optional rather
-// than automatic — the creation form surfaces a checkbox for these.
-export const STORY_BIBLE_OPTIONAL_TYPES: ProjectType[] = [
-  "poetry",
-  "short-stories",
-  "script-writing",
-  "custom",
-]
+/**
+ * Sections a project can bolt on after creation (via the sidebar's "Add
+ * section"). Overview, chapters and export are structural — every
+ * project has them from the start.
+ */
+export const ADDABLE_SECTIONS: SectionId[] = ["characters", "world", "plot", "notes", "research"]
 
 /**
- * Computes the ordered section list for a new project. Result is stored
- * on the project itself (`sections`) rather than recomputed on every
- * render, so a project's structure stays stable even if these presets
- * change later.
+ * The ordered section list for a new project. Stored on the project
+ * itself (`sections`) rather than recomputed on every render, so a
+ * project's structure stays stable even if these presets change later.
  */
-export function getDefaultSections(type: ProjectType, includeStoryBible: boolean): SectionId[] {
-  const base = BASE_SECTIONS[type]
-  if (!includeStoryBible || !STORY_BIBLE_OPTIONAL_TYPES.includes(type)) return base
-
-  const withBible = [...base]
-  const exportIndex = withBible.indexOf("export")
-  const insertAt = exportIndex === -1 ? withBible.length : exportIndex
-  withBible.splice(insertAt, 0, "characters", "world", "plot")
-  return withBible
+export function getDefaultSections(type: ProjectType): SectionId[] {
+  return [...BASE_SECTIONS[type]]
 }
 
 export function sectionLabel(id: SectionId, type: ProjectType): string {
@@ -171,4 +172,24 @@ export function sectionLabelSingular(id: SectionId, type: ProjectType): string {
 
 export function projectTypeLabel(type: ProjectType): string {
   return PROJECT_TYPES.find((t) => t.value === type)?.label ?? type
+}
+
+export function projectTypeShortLabel(type: ProjectType): string {
+  return PROJECT_TYPES.find((t) => t.value === type)?.shortLabel ?? type
+}
+
+/** "Untitled Novel", "Untitled Script" — used as the placeholder and as the fallback title. */
+export function defaultProjectTitle(type: ProjectType): string {
+  return type === "custom" ? "Untitled Project" : `Untitled ${projectTypeShortLabel(type)}`
+}
+
+// A small icon for the project type itself — used on the dashboard and the
+// creation canvas, where the section icons above don't apply.
+export const PROJECT_TYPE_ICON: Record<ProjectType, Icon> = {
+  novel: BookOpenIcon,
+  poetry: FeatherIcon,
+  "short-stories": StackIcon,
+  nonfiction: NotebookIcon,
+  "script-writing": FilmSlateIcon,
+  custom: SlidersHorizontalIcon,
 }

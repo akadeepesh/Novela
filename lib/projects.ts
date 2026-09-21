@@ -50,15 +50,6 @@ export async function requireUserId(): Promise<string> {
   return session.user.id;
 }
 
-export async function listProjectsForCurrentUser(): Promise<SerializedProject[]> {
-  const userId = await requireUserId();
-  await connectDB();
-  const docs = await Project.find({ ownerId: userId })
-    .sort({ updatedAt: -1 })
-    .lean<Record<string, unknown>[]>();
-  return docs.map(serializeProject);
-}
-
 /** Loads a project by id, 404s if missing/invalid, redirects to /login if not the owner's. */
 export const requireProject = cache(async (id: string): Promise<SerializedProject> => {
   const userId = await requireUserId();

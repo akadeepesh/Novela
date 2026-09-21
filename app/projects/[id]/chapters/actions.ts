@@ -6,7 +6,7 @@ import { connectDB } from "@/lib/db";
 import { Chapter } from "@/lib/models/chapter";
 import { requireProject, requireUserId } from "@/lib/projects";
 import { sectionLabelSingular } from "@/lib/project-config";
-import { SCRIPT_SCAFFOLD } from "@/lib/script-scaffold";
+import { initialChapterContent } from "@/lib/script-scaffold";
 
 export async function createChapterAction(projectId: string) {
   const project = await requireProject(projectId);
@@ -21,7 +21,7 @@ export async function createChapterAction(projectId: string) {
     ownerId: userId,
     title: `${label} ${count + 1}`,
     order: count,
-    content: project.type === "script-writing" ? SCRIPT_SCAFFOLD : undefined,
+    content: initialChapterContent(project.type),
   });
 
   revalidatePath(`/projects/${projectId}/chapters`);
@@ -56,8 +56,10 @@ export async function moveChapterAction(
   const current = chapters[index];
   const swapWith = chapters[swapIndex];
 
-  await Chapter.updateOne({ _id: current._id }, { order: swapWith.order });
-  await Chapter.updateOne({ _id: swapWith._id }, { order: current.order });
+  // timestamps: false — reordering isn't writing, so it shouldn't move a
+  // chapter to the top of the dashboard's "Last worked on".
+  await Chapter.updateOne({ _id: current._id }, { order: swapWith.order }, { timestamps: false });
+  await Chapter.updateOne({ _id: swapWith._id }, { order: current.order }, { timestamps: false });
 
   revalidatePath(`/projects/${projectId}/chapters`);
 }
