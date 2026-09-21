@@ -15,6 +15,7 @@ import { Card, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import type { SerializedChapterSummary } from "@/lib/chapters"
 import type { ProjectType } from "@/lib/project-config"
+import { estimateScriptRuntime } from "@/lib/script-scaffold"
 import { createChapterAction, deleteChapterAction, moveChapterAction } from "./actions"
 
 const STATUS_VARIANT: Record<SerializedChapterSummary["status"], { label: string }> = {
@@ -164,6 +165,9 @@ export function ChapterList({
                 </Badge>
                 <span className="shrink-0 text-xs text-muted-foreground">
                   {chapter.wordCount.toLocaleString()} words
+                  {projectType === "script-writing"
+                    ? ` · ${estimateScriptRuntime(chapter.wordCount)}`
+                    : ""}
                 </span>
               </Link>
 
