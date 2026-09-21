@@ -179,6 +179,15 @@
   --radius: 0.55rem;
 }
 
+.dark[data-genre="script-writing"] {
+  /* Without this, the light-mode coral (higher specificity than plain .dark)
+     would carry over into dark mode with too little contrast. */
+  --primary: oklch(0.72 0.15 30);
+  --sidebar-primary: oklch(0.72 0.15 30);
+  --ring: oklch(0.72 0.15 30 / 40%);
+  --sidebar-ring: oklch(0.72 0.15 30 / 40%);
+}
+
 .dark {
   /* Warm charcoal, not black — easier on the eyes for long writing sessions */
   --background: oklch(0.22 0.011 55);
