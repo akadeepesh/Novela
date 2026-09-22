@@ -20,36 +20,36 @@ export function HeroCard({ hero }: { hero: DashboardHero }) {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      whileHover={{ y: -2 }}
     >
-      <Card className="items-center gap-4 py-10 text-center sm:py-14">
-        <div className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
-          <TypeIcon className="size-4" />
-        </div>
+      <Link href={`/projects/${hero.id}/overview`} className="block">
+        <Card className="glass-card items-center gap-4 py-10 text-center transition-colors hover:border-foreground/20 sm:py-14 dark:hover:border-foreground/30">
+          <div className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
+            <TypeIcon className="size-4" />
+          </div>
 
-        <h1 className="max-w-lg font-serif text-3xl font-medium text-foreground sm:text-4xl">
-          {hero.title}
-        </h1>
+          <h1 className="max-w-lg font-serif text-3xl font-medium text-foreground sm:text-4xl">
+            {hero.title}
+          </h1>
 
-        <p className="text-sm text-muted-foreground">
-          {hero.chapter
-            ? `Last worked on: ${hero.chapter.title} · ${relativeTime(hero.chapter.updatedAt)}`
-            : projectTypeLabel(hero.type)}
-        </p>
+          <p className="text-sm text-muted-foreground">
+            {hero.chapter
+              ? `Last worked on: ${hero.chapter.title} · ${relativeTime(hero.chapter.updatedAt)}`
+              : projectTypeLabel(hero.type)}
+          </p>
 
-        <div className="mt-2 flex items-center gap-4">
-          <Button size="lg" render={<Link href={continueHref} />} nativeButton={false}>
-            Continue writing
-            <ArrowRightIcon />
-          </Button>
-          <Link
-            href={`/projects/${hero.id}/overview`}
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            Project overview
-          </Link>
-        </div>
-      </Card>
+          <div className="mt-2 flex items-center gap-4">
+            <Button
+              size="lg"
+              render={<Link href={continueHref} />}
+              nativeButton={false}
+              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+            >
+              Continue writing
+              <ArrowRightIcon />
+            </Button>
+          </div>
+        </Card>
+      </Link>
     </motion.div>
   )
 }
