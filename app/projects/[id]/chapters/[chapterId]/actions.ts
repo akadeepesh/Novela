@@ -8,7 +8,6 @@ import { Project } from "@/lib/models/project";
 import { requireUserId } from "@/lib/projects";
 import { BACKGROUND_IDS, LINE_WIDTHS } from "@/lib/manuscript-config";
 import { maybeCreateAutoSnapshot, createManualSnapshot, restoreVersion, listVersionsForChapter, requireVersionContent } from "@/lib/versions";
-import { recordDailyProgress } from "@/lib/analytics";
 import { tiptapToBlocks, runsText } from "@/lib/export/document-model";
 import { diffWords } from "@/lib/text-diff";
 
@@ -60,8 +59,8 @@ export async function saveChapterAction(
     return { ok: false };
   }
 
-  // Version snapshots and daily progress only matter for actual content
-  // changes — a title-only save shouldn't churn either.
+  // Version snapshots only matter for actual content changes — a
+  // title-only save shouldn't churn it.
   if (result.matchedCount > 0 && "content" in update) {
     const chapter = await Chapter.findOne({ _id: chapterId, projectId, ownerId: userId }).lean<{
       title: string;
@@ -69,17 +68,14 @@ export async function saveChapterAction(
       wordCount: number;
     }>();
     if (chapter) {
-      await Promise.all([
-        maybeCreateAutoSnapshot({
-          userId,
-          projectId,
-          chapterId,
-          title: chapter.title,
-          content: chapter.content,
-          wordCount: chapter.wordCount ?? 0,
-        }),
-        recordDailyProgress(userId, projectId),
-      ]);
+      await maybeCreateAutoSnapshot({
+        userId,
+        projectId,
+        chapterId,
+        title: chapter.title,
+        content: chapter.content,
+        wordCount: chapter.wordCount ?? 0,
+      });
     }
   }
 
