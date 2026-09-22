@@ -6,7 +6,7 @@ import { useTheme } from "next-themes"
 import Link from "next/link"
 import { GearSixIcon, ChatCircleTextIcon, SignOutIcon, MoonIcon } from "@phosphor-icons/react/dist/ssr"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
-import { Menu, MenuTrigger, MenuContent, MenuItem, MenuSeparator, MenuLabel } from "@/components/ui/menu"
+import { Menu, MenuTrigger, MenuContent, MenuItem, MenuCheckboxItem, MenuSeparator, MenuLabel } from "@/components/ui/menu"
 import { Switch } from "@/components/ui/switch"
 import { FeedbackDialog } from "./feedback-dialog"
 import { avatarColor, avatarInitials } from "@/lib/avatar"
@@ -44,16 +44,17 @@ export function AvatarMenu() {
           </MenuLabel>
           <MenuSeparator />
 
-          <MenuItem className="justify-between" onClick={(e) => e.preventDefault()}>
+          <MenuCheckboxItem
+            className="justify-between"
+            checked={resolvedTheme === "dark"}
+            onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+          >
             <span className="flex items-center gap-2">
               <MoonIcon className="size-4" />
               Dark theme
             </span>
-            <Switch
-              checked={resolvedTheme === "dark"}
-              onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
-            />
-          </MenuItem>
+            <Switch checked={resolvedTheme === "dark"} />
+          </MenuCheckboxItem>
 
           <MenuItem render={<Link href="/settings" />}>
             <GearSixIcon className="size-4" />

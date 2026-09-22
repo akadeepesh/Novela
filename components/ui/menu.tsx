@@ -44,6 +44,20 @@ function MenuItem({ className, ...props }: MenuPrimitive.Item.Props) {
   )
 }
 
+function MenuCheckboxItem({ className, ...props }: MenuPrimitive.CheckboxItem.Props) {
+  return (
+    <MenuPrimitive.CheckboxItem
+      data-slot="menu-checkbox-item"
+      className={cn(
+        "flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none",
+        "data-[highlighted]:bg-muted data-[highlighted]:text-foreground",
+        className
+      )}
+      {...props}
+    />
+  )
+}
+
 function MenuSeparator({ className, ...props }: MenuPrimitive.Separator.Props) {
   return (
     <MenuPrimitive.Separator
@@ -64,4 +78,4 @@ function MenuLabel({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-export { Menu, MenuTrigger, MenuContent, MenuItem, MenuSeparator, MenuLabel }
+export { Menu, MenuTrigger, MenuContent, MenuItem, MenuCheckboxItem, MenuSeparator, MenuLabel }
