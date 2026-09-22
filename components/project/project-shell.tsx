@@ -10,6 +10,7 @@ import type { SerializedProject } from "@/lib/projects"
 import type { SearchItem } from "@/lib/search"
 import { CommandPalette } from "./command-palette"
 import { AddSectionControl } from "./add-section-control"
+import { titleTargetStyle, useTitleTarget } from "./title-flight"
 
 const COLLAPSE_COOKIE = "sidebar-collapsed"
 // How long the peek stays open after the pointer leaves, so moving the
@@ -28,6 +29,7 @@ function SidebarNav({
   onToggle,
   toggleLabel,
   renderCommandPalette = true,
+  isTitleTarget = true,
 }: {
   project: SerializedProject
   searchItems: SearchItem[]
@@ -35,7 +37,10 @@ function SidebarNav({
   onToggle: () => void
   toggleLabel: string
   renderCommandPalette?: boolean
+  isTitleTarget?: boolean
 }) {
+  const [attachTitle, titleHidden] = useTitleTarget(isTitleTarget)
+
   return (
     <>
       <div className="flex items-center justify-between px-3 pt-3">
@@ -59,7 +64,9 @@ function SidebarNav({
 
       <div className="flex flex-col gap-1 px-4 pt-2 pb-3">
         <h2
-          className="truncate font-heading text-sm font-semibold text-sidebar-foreground"
+          ref={attachTitle}
+          style={titleTargetStyle(titleHidden)}
+          className="truncate font-serif text-[15px] leading-5 font-medium text-sidebar-foreground"
           title={project.title}
         >
           {project.title}
@@ -124,6 +131,7 @@ export function ProjectShell({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
+  const [attachCollapsedTitle, collapsedTitleHidden] = useTitleTarget(defaultCollapsed)
   const [collapsed, setCollapsed] = useState(defaultCollapsed)
   const [peeking, setPeeking] = useState(false)
   const peekTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -211,6 +219,7 @@ export function ProjectShell({
                 onToggle={pinOpen}
                 toggleLabel="Pin sidebar open"
                 renderCommandPalette={false}
+                isTitleTarget={false}
               />
             </aside>
           ) : null}
@@ -230,7 +239,9 @@ export function ProjectShell({
               <SidebarSimpleIcon className="size-4" />
             </button>
             <span
-              className="truncate font-heading text-sm font-semibold text-sidebar-foreground"
+              ref={attachCollapsedTitle}
+              style={titleTargetStyle(collapsedTitleHidden)}
+              className="truncate font-serif text-[15px] leading-5 font-medium text-sidebar-foreground"
               title={project.title}
             >
               {project.title}
