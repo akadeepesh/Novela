@@ -57,7 +57,7 @@ export function ChapterList({
     })
   }
 
-  const asCards = projectType === "short-stories"
+  const asCards = false
 
   return (
     <div className="flex flex-col gap-4">

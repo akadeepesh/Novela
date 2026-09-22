@@ -18,8 +18,6 @@ import { createProjectAction } from "./actions"
 const TAGLINE: Record<ProjectType, string> = {
   novel: "A novel",
   poetry: "A poetry collection",
-  "short-stories": "A short story collection",
-  nonfiction: "Non-fiction or memoir",
   "script-writing": "A script — one per episode",
   custom: "A custom project",
 }
