@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
+import type { ActionQueue } from "@/lib/action-queue"
 import { BACKGROUND_PRESETS, LINE_WIDTHS, type ManuscriptSettings } from "@/lib/manuscript-config"
 import { updateManuscriptSettingsAction, type ManuscriptSettingsInput } from "./actions"
 
@@ -14,16 +15,25 @@ export function ManuscriptSettingsPanel({
   settings,
   onChange,
   onClose,
+  enqueue,
 }: {
   projectId: string
   settings: ManuscriptSettings
   onChange: (settings: ManuscriptSettings) => void
   onClose: () => void
+  // Shared with the editor's own title/content saves so a settings change
+  // and an in-progress autosave are never both in flight at once.
+  enqueue: ActionQueue
 }) {
   function patch(update: Partial<ManuscriptSettings>) {
     const next = { ...settings, ...update }
     onChange(next)
-    void updateManuscriptSettingsAction(projectId, update as ManuscriptSettingsInput)
+    enqueue(() => updateManuscriptSettingsAction(projectId, update as ManuscriptSettingsInput)).catch(
+      () => {
+        // Best-effort: the setting still applies locally for this session;
+        // it'll be retried the next time anything here changes.
+      }
+    )
   }
 
   return (

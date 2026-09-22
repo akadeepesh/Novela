@@ -29,15 +29,40 @@ export async function saveChapterAction(
   const parsed = saveSchema.safeParse(input);
   if (!parsed.success) return { ok: false };
 
+  // Rebuilt as a fresh plain object rather than passed straight through:
+  // this is the exact value the Mongo driver's BSON layer will walk to
+  // build the write command, so it's worth being explicit about what's in
+  // it rather than trusting the reference all the way from the client.
+  const update: Record<string, unknown> = {};
+  if (parsed.data.title !== undefined) update.title = parsed.data.title;
+  if (parsed.data.wordCount !== undefined) update.wordCount = parsed.data.wordCount;
+  if (parsed.data.content !== undefined) {
+    try {
+      // A plain JSON round-trip guarantees only JSON-safe data reaches
+      // Mongo — anything that isn't (a class instance, a stray function,
+      // anything non-plain) fails here, loudly and by itself, instead of
+      // surfacing as a confusing crash from inside the database driver.
+      update.content = JSON.parse(JSON.stringify(parsed.data.content));
+    } catch {
+      return { ok: false };
+    }
+  }
+
   await connectDB();
-  const result = await Chapter.updateOne(
-    { _id: chapterId, projectId, ownerId: userId },
-    { $set: parsed.data }
-  );
+  let result: { matchedCount: number };
+  try {
+    result = await Chapter.updateOne(
+      { _id: chapterId, projectId, ownerId: userId },
+      { $set: update }
+    );
+  } catch (err) {
+    console.error("saveChapterAction: Chapter.updateOne failed", err);
+    return { ok: false };
+  }
 
   // Version snapshots and daily progress only matter for actual content
   // changes — a title-only save shouldn't churn either.
-  if (result.matchedCount > 0 && "content" in parsed.data) {
+  if (result.matchedCount > 0 && "content" in update) {
     const chapter = await Chapter.findOne({ _id: chapterId, projectId, ownerId: userId }).lean<{
       title: string;
       content: unknown;

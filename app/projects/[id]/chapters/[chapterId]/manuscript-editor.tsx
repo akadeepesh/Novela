@@ -4,7 +4,7 @@ import { useEditor, EditorContent, type Editor } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import Placeholder from "@tiptap/extension-placeholder"
 import { CharacterCount } from "@tiptap/extension-character-count"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import {
   ArrowLeftIcon,
@@ -24,6 +24,7 @@ import { FocusMode } from "@/components/editor/focus-mode-extension"
 import { MentionExtension } from "@/components/editor/mention-extension"
 import type { Mentionable } from "@/lib/mentions"
 import { estimateScriptRuntime } from "@/lib/script-scaffold"
+import { createActionQueue } from "@/lib/action-queue"
 import { saveChapterAction } from "./actions"
 import { ManuscriptSettingsPanel } from "./manuscript-settings-panel"
 import { VersionHistoryPanel } from "./version-history-panel"
@@ -52,9 +53,14 @@ export function ManuscriptEditor({
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [settings, setSettings] = useState(manuscriptSettings)
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle")
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle")
   const [wordCount, setWordCount] = useState(chapter.wordCount)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Shared by every mutation this page makes (content/title saves here, and
+  // manuscript-settings changes below) so two of them are never genuinely
+  // in flight at once — see lib/action-queue.ts for why that matters.
+  const enqueue = useMemo(() => createActionQueue(), [])
 
   const scheduleContentSave = useCallback(
     (editor: Editor) => {
@@ -63,13 +69,17 @@ export function ManuscriptEditor({
       saveTimer.current = setTimeout(() => {
         const words = editor.storage.characterCount.words()
         setWordCount(words)
-        void saveChapterAction(projectId, chapter.id, {
-          content: editor.getJSON(),
-          wordCount: words,
-        }).then(() => setSaveState("saved"))
+        enqueue(() =>
+          saveChapterAction(projectId, chapter.id, {
+            content: editor.getJSON(),
+            wordCount: words,
+          })
+        )
+          .then((result) => setSaveState(result.ok ? "saved" : "error"))
+          .catch(() => setSaveState("error"))
       }, SAVE_DEBOUNCE_MS)
     },
-    [projectId, chapter.id]
+    [projectId, chapter.id, enqueue]
   )
 
   const editor = useEditor({
@@ -92,9 +102,13 @@ export function ManuscriptEditor({
     if (saveTimer.current) clearTimeout(saveTimer.current)
     setSaveState("saving")
     saveTimer.current = setTimeout(() => {
-      void saveChapterAction(projectId, chapter.id, {
-        title: value.trim() || "Untitled",
-      }).then(() => setSaveState("saved"))
+      enqueue(() =>
+        saveChapterAction(projectId, chapter.id, {
+          title: value.trim() || "Untitled",
+        })
+      )
+        .then((result) => setSaveState(result.ok ? "saved" : "error"))
+        .catch(() => setSaveState("error"))
     }, SAVE_DEBOUNCE_MS)
   }
 
@@ -182,6 +196,7 @@ export function ManuscriptEditor({
           settings={settings}
           onChange={setSettings}
           onClose={() => setSettingsOpen(false)}
+          enqueue={enqueue}
         />
       ) : null}
 
@@ -235,8 +250,14 @@ export function ManuscriptEditor({
           {wordCount.toLocaleString()} words
           {projectType === "script-writing" ? ` · ${estimateScriptRuntime(wordCount)}` : ""}
         </span>
-        <span className="italic">
-          {saveState === "saving" ? "Saving…" : saveState === "saved" ? "Saved" : ""}
+        <span className={cn("italic", saveState === "error" && "text-destructive not-italic")}>
+          {saveState === "saving"
+            ? "Saving…"
+            : saveState === "saved"
+              ? "Saved"
+              : saveState === "error"
+                ? "Couldn't save — will retry on your next change"
+                : ""}
         </span>
       </div>
     </div>
