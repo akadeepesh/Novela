@@ -123,23 +123,6 @@
   --sidebar-ring: oklch(0.58 0.07 150 / 40%);
 }
 
-:root[data-genre="short-stories"] {
-  /* Warm amber — brisk and a little brighter, episodic rather than epic */
-  --primary: oklch(0.64 0.13 70);
-  --sidebar-primary: oklch(0.64 0.13 70);
-  --ring: oklch(0.64 0.13 70 / 40%);
-  --sidebar-ring: oklch(0.64 0.13 70 / 40%);
-}
-
-:root[data-genre="nonfiction"] {
-  /* Cool blue-grey + slightly sharper corners — a more reference-like feel */
-  --primary: oklch(0.46 0.05 250);
-  --sidebar-primary: oklch(0.46 0.05 250);
-  --ring: oklch(0.46 0.05 250 / 40%);
-  --sidebar-ring: oklch(0.46 0.05 250 / 40%);
-  --radius: 0.55rem;
-}
-
 :root[data-genre="script-writing"] {
   /* Punchy coral — matches the energy of talking-to-camera content,
      still warm enough to belong next to the rest of the palette */
@@ -164,21 +147,6 @@
   --sidebar-ring: oklch(0.72 0.07 150 / 40%);
 }
 
-.dark[data-genre="short-stories"] {
-  --primary: oklch(0.74 0.12 70);
-  --sidebar-primary: oklch(0.74 0.12 70);
-  --ring: oklch(0.74 0.12 70 / 40%);
-  --sidebar-ring: oklch(0.74 0.12 70 / 40%);
-}
-
-.dark[data-genre="nonfiction"] {
-  --primary: oklch(0.72 0.05 250);
-  --sidebar-primary: oklch(0.72 0.05 250);
-  --ring: oklch(0.72 0.05 250 / 40%);
-  --sidebar-ring: oklch(0.72 0.05 250 / 40%);
-  --radius: 0.55rem;
-}
-
 .dark[data-genre="script-writing"] {
   /* Without this, the light-mode coral (higher specificity than plain .dark)
      would carry over into dark mode with too little contrast. */
@@ -189,21 +157,21 @@
 }
 
 .dark {
-  /* Warm charcoal, not black — easier on the eyes for long writing sessions */
-  --background: oklch(0.22 0.011 55);
-  --foreground: oklch(0.93 0.006 75);
-  --card: oklch(0.26 0.012 55);
-  --card-foreground: oklch(0.93 0.006 75);
-  --popover: oklch(0.26 0.012 55);
-  --popover-foreground: oklch(0.93 0.006 75);
+  /* Neutral charcoal with cool undertone — true dark, not warm brown */
+  --background: oklch(0.236 0.0057 286);
+  --foreground: oklch(0.93 0.006 286);
+  --card: oklch(0.27 0.006 286);
+  --card-foreground: oklch(0.93 0.006 286);
+  --popover: oklch(0.27 0.006 286);
+  --popover-foreground: oklch(0.93 0.006 286);
 
   --primary: oklch(0.72 0.1 45);
-  --primary-foreground: oklch(0.2 0.012 55);
+  --primary-foreground: oklch(0.2 0.006 286);
 
-  --secondary: oklch(0.31 0.012 55);
-  --secondary-foreground: oklch(0.9 0.006 75);
-  --muted: oklch(0.3 0.012 55);
-  --muted-foreground: oklch(0.68 0.012 65);
+  --secondary: oklch(0.32 0.006 286);
+  --secondary-foreground: oklch(0.9 0.006 286);
+  --muted: oklch(0.31 0.006 286);
+  --muted-foreground: oklch(0.68 0.008 286);
 
   --accent: oklch(0.32 0.03 145);
   --accent-foreground: oklch(0.88 0.03 145);
@@ -217,19 +185,19 @@
   --chart-2: oklch(0.68 0.08 145);
   --chart-3: oklch(0.66 0.07 250);
   --chart-4: oklch(0.75 0.1 80);
-  --chart-5: oklch(0.68 0.02 55);
+  --chart-5: oklch(0.68 0.02 286);
 
-  --sidebar: oklch(0.19 0.011 55);
-  --sidebar-foreground: oklch(0.88 0.006 75);
+  --sidebar: oklch(0.2 0.006 286);
+  --sidebar-foreground: oklch(0.88 0.006 286);
   --sidebar-primary: oklch(0.72 0.1 45);
-  --sidebar-primary-foreground: oklch(0.2 0.012 55);
-  --sidebar-accent: oklch(0.28 0.012 55);
-  --sidebar-accent-foreground: oklch(0.88 0.006 75);
+  --sidebar-primary-foreground: oklch(0.2 0.006 286);
+  --sidebar-accent: oklch(0.29 0.006 286);
+  --sidebar-accent-foreground: oklch(0.88 0.006 286);
   --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: oklch(0.72 0.1 45 / 45%);
 
-  --manuscript-bg: oklch(0.24 0.012 55);
-  --manuscript-fg: oklch(0.92 0.006 75);
+  --manuscript-bg: oklch(0.25 0.006 286);
+  --manuscript-fg: oklch(0.92 0.006 286);
 }
 
 @layer base {
@@ -323,4 +291,28 @@
 
 [data-genre="poetry"] .manuscript-prose .ProseMirror {
   padding-top: 1.5em;
+}
+
+/* ---- Glassmorphism card (dashboard hero) ---- */
+
+.glass-card {
+  background: oklch(from var(--card) l c h / 0.6);
+  backdrop-filter: blur(18px);
+  border: 1px solid;
+  border-image: linear-gradient(
+    180deg,
+    oklch(from var(--foreground) l c h / 0.1) 0%,
+    oklch(from var(--foreground) l c h / 0.03) 100%
+  ) 1;
+}
+
+/* Subtle radial gradient behind the glass card for depth */
+@layer base {
+  body {
+    background: radial-gradient(
+      ellipse 120% 80% at 50% 20%,
+      oklch(from var(--background) calc(l + 0.01) c h),
+      var(--background)
+    );
+  }
 }
