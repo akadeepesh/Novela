@@ -20,25 +20,13 @@ export const PROJECT_TYPES = [
     value: "novel",
     shortLabel: "Novel",
     label: "Novel",
-    description: "A single long-form story, told in chapters.",
+    description: "Long-form narrative with chapters — fiction, memoir, or non-fiction.",
   },
   {
     value: "poetry",
     shortLabel: "Poetry",
     label: "Poetry collection",
     description: "A collection of poems, grouped however you like.",
-  },
-  {
-    value: "short-stories",
-    shortLabel: "Short Stories",
-    label: "Short story collection",
-    description: "Several standalone stories under one cover.",
-  },
-  {
-    value: "nonfiction",
-    shortLabel: "Non-fiction",
-    label: "Non-fiction / memoir",
-    description: "Structured sections rather than a fictional plot.",
   },
   {
     value: "script-writing",
@@ -115,8 +103,6 @@ export type SectionId = keyof typeof SECTION_DEFS
 export const CHAPTER_LABEL: Record<ProjectType, string> = {
   novel: "Chapters",
   poetry: "Poems",
-  "short-stories": "Stories",
-  nonfiction: "Chapters",
   "script-writing": "Scripts",
   custom: "Chapters",
 }
@@ -126,8 +112,6 @@ export const CHAPTER_LABEL: Record<ProjectType, string> = {
 export const CHAPTER_LABEL_SINGULAR: Record<ProjectType, string> = {
   novel: "Chapter",
   poetry: "Poem",
-  "short-stories": "Story",
-  nonfiction: "Chapter",
   "script-writing": "Script",
   custom: "Chapter",
 }
@@ -136,8 +120,6 @@ export const CHAPTER_LABEL_SINGULAR: Record<ProjectType, string> = {
 const BASE_SECTIONS: Record<ProjectType, SectionId[]> = {
   novel: ["overview", "chapters", "characters", "world", "plot", "notes", "research", "export"],
   poetry: ["overview", "chapters", "notes", "export"],
-  "short-stories": ["overview", "chapters", "notes", "research", "export"],
-  nonfiction: ["overview", "chapters", "research", "notes", "export"],
   "script-writing": ["overview", "chapters", "notes", "research", "export"],
   custom: ["overview", "chapters", "notes", "export"],
 }
@@ -188,8 +170,19 @@ export function defaultProjectTitle(type: ProjectType): string {
 export const PROJECT_TYPE_ICON: Record<ProjectType, Icon> = {
   novel: BookOpenIcon,
   poetry: FeatherIcon,
-  "short-stories": StackIcon,
-  nonfiction: NotebookIcon,
   "script-writing": FilmSlateIcon,
   custom: SlidersHorizontalIcon,
+}
+
+/**
+ * Normalizes legacy project types to the current four-type system.
+ * Short Stories and Non-fiction used the identical structure to Novel
+ * (chapters, optional story-bible sections) — the only difference was
+ * a label, not a type. This remaps them to "novel" on read.
+ */
+export function normalizeProjectType(type: string): ProjectType {
+  if (type === "short-stories" || type === "nonfiction") {
+    return "novel"
+  }
+  return type as ProjectType
 }
