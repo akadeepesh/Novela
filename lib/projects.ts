@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { connectDB } from "@/lib/db";
 import { Project } from "@/lib/models/project";
 import type { ProjectType, SectionId } from "@/lib/project-config";
+import { normalizeProjectType } from "@/lib/project-config";
 import {
   DEFAULT_MANUSCRIPT_SETTINGS,
   type ManuscriptSettings,
@@ -30,7 +31,7 @@ function serializeProject(doc: Record<string, unknown>): SerializedProject {
   return {
     id: String(doc._id),
     title: doc.title as string,
-    type: doc.type as ProjectType,
+    type: normalizeProjectType(doc.type as string),
     genre: (doc.genre as string) || undefined,
     blurb: (doc.blurb as string) || undefined,
     authorName: (doc.authorName as string) || undefined,

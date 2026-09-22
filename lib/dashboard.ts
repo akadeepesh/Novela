@@ -4,6 +4,7 @@ import { Project } from "@/lib/models/project";
 import { Chapter } from "@/lib/models/chapter";
 import { requireUserId } from "@/lib/projects";
 import type { ProjectType } from "@/lib/project-config";
+import { normalizeProjectType } from "@/lib/project-config";
 
 export type DashboardHero = {
   id: string;
@@ -30,7 +31,7 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   const projects = await Project.find({ ownerId: userId })
     .select("title type updatedAt")
-    .lean<{ _id: unknown; title: string; type: ProjectType; updatedAt: Date }[]>();
+    .lean<{ _id: unknown; title: string; type: string; updatedAt: Date }[]>();
 
   if (projects.length === 0) return { hero: null, others: [] };
 
@@ -59,7 +60,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   const hero: DashboardHero = {
     id: String(heroProject._id),
     title: heroProject.title,
-    type: heroProject.type,
+    type: normalizeProjectType(heroProject.type),
     chapter:
       latestChapter && String(latestChapter.projectId) === String(heroProject._id)
         ? {
@@ -76,7 +77,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     .map((p) => ({
       id: String(p._id),
       title: p.title,
-      type: p.type,
+      type: normalizeProjectType(p.type),
       updatedAt: p.updatedAt.toISOString(),
     }));
 
