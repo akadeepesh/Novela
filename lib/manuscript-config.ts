@@ -1,15 +1,24 @@
+// Every preset sets its OWN ink color alongside its background — the page
+// is meant to look like a physical sheet, so its contrast can't depend on
+// whether the app chrome around it happens to be in light or dark mode.
+// (Previously only "midnight" did this; every light preset silently
+// inherited the ambient theme foreground, which turned near-invisible —
+// light ink on a light sheet — whenever the app itself was in dark mode.)
+const INK_LIGHT = "oklch(0.24 0.014 55)" // matches :root --foreground
+const INK_DARK = "oklch(0.92 0.006 75)" // matches .dark --foreground
+
 export const BACKGROUND_PRESETS = [
   {
     id: "paper",
     label: "Paper",
     swatch: "oklch(0.995 0.003 75)",
-    style: { background: "var(--manuscript-bg)" },
+    style: { background: "oklch(0.995 0.003 75)", color: INK_LIGHT },
   },
   {
     id: "cream",
     label: "Cream",
     swatch: "oklch(0.97 0.015 85)",
-    style: { background: "oklch(0.97 0.015 85)" },
+    style: { background: "oklch(0.97 0.015 85)", color: INK_LIGHT },
   },
   {
     id: "linen",
@@ -19,19 +28,20 @@ export const BACKGROUND_PRESETS = [
       backgroundColor: "oklch(0.95 0.012 75)",
       backgroundImage:
         "repeating-linear-gradient(45deg, oklch(0.93 0.012 75) 0px, oklch(0.93 0.012 75) 1px, transparent 1px, transparent 10px)",
+      color: INK_LIGHT,
     },
   },
   {
     id: "sage",
     label: "Sage tint",
     swatch: "oklch(0.95 0.02 145)",
-    style: { background: "oklch(0.95 0.02 145)" },
+    style: { background: "oklch(0.95 0.02 145)", color: INK_LIGHT },
   },
   {
     id: "midnight",
     label: "Midnight",
     swatch: "oklch(0.22 0.015 260)",
-    style: { background: "oklch(0.22 0.015 260)", color: "oklch(0.92 0.006 75)" },
+    style: { background: "oklch(0.22 0.015 260)", color: INK_DARK },
   },
 ] as const
 
