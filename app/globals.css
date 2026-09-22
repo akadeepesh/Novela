@@ -316,3 +316,19 @@
     );
   }
 }
+
+/* ---- Auth pages manuscript panel ---- */
+
+.manuscript-auth-panel {
+  background: var(--manuscript-bg);
+  color: var(--manuscript-fg);
+  /* Subtle paper texture */
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 1.75rem,
+      oklch(from var(--manuscript-fg) l c h / 0.02) 1.75rem,
+      oklch(from var(--manuscript-fg) l c h / 0.02) calc(1.75rem + 1px)
+    );
+}
