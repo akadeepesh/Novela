@@ -18,6 +18,8 @@ export type SerializedProject = {
   genre?: string;
   blurb?: string;
   authorName?: string;
+  coverFrontUrl?: string;
+  coverBackUrl?: string;
   targetWordCount?: number;
   dailyWordGoal: number;
   sections: SectionId[];
@@ -35,6 +37,8 @@ function serializeProject(doc: Record<string, unknown>): SerializedProject {
     genre: (doc.genre as string) || undefined,
     blurb: (doc.blurb as string) || undefined,
     authorName: (doc.authorName as string) || undefined,
+    coverFrontUrl: (doc.coverFrontUrl as string) || undefined,
+    coverBackUrl: (doc.coverBackUrl as string) || undefined,
     targetWordCount: (doc.targetWordCount as number) || undefined,
     dailyWordGoal: (doc.dailyWordGoal as number) ?? 300,
     sections: (doc.sections as SectionId[]) ?? [],

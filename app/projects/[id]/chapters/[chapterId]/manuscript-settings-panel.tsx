@@ -7,7 +7,12 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import type { ActionQueue } from "@/lib/action-queue"
-import { BACKGROUND_PRESETS, LINE_WIDTHS, type ManuscriptSettings } from "@/lib/manuscript-config"
+import {
+  BACKGROUND_PRESETS,
+  CUSTOM_BACKGROUND_ID,
+  LINE_WIDTHS,
+  type ManuscriptSettings,
+} from "@/lib/manuscript-config"
 import { updateManuscriptSettingsAction, type ManuscriptSettingsInput } from "./actions"
 
 export function ManuscriptSettingsPanel({
@@ -73,6 +78,28 @@ export function ManuscriptSettingsPanel({
                 {preset.label}
               </button>
             ))}
+
+            {/* Uploading a custom image only happens in Book Settings (the
+                single source of truth for this) — here it's just selectable
+                once it exists, same as any other preset. */}
+            {settings.backgroundImageUrl ? (
+              <button
+                type="button"
+                onClick={() => patch({ background: CUSTOM_BACKGROUND_ID })}
+                className={cn(
+                  "flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs transition-colors",
+                  settings.background === CUSTOM_BACKGROUND_ID
+                    ? "border-primary text-foreground"
+                    : "border-border text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <span
+                  className="size-3 rounded-full border border-black/10 bg-cover bg-center"
+                  style={{ backgroundImage: `url(${settings.backgroundImageUrl})` }}
+                />
+                Custom
+              </button>
+            ) : null}
           </div>
         </div>
 

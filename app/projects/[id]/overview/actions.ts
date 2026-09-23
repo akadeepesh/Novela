@@ -14,6 +14,7 @@ import { Note } from "@/lib/models/note";
 import { ResearchEntry } from "@/lib/models/research-entry";
 import { DailyStat } from "@/lib/models/daily-stat";
 import { requireUserId } from "@/lib/projects";
+import { uploadProjectImage, deleteProjectImage } from "@/lib/blob";
 
 const schema = z.object({
   title: z.string().trim().min(1, "Give your project a title").max(200),
@@ -56,6 +57,64 @@ export async function updateOverviewAction(
   return { success: true };
 }
 
+export type CoverSide = "front" | "back";
+export type UploadCoverState = { error?: string; url?: string };
+
+/** Uploads a front or back cover image, replacing (and cleaning up) any previous one. */
+export async function uploadCoverAction(
+  projectId: string,
+  side: CoverSide,
+  _prevState: UploadCoverState,
+  formData: FormData
+): Promise<UploadCoverState> {
+  const userId = await requireUserId();
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Choose an image first." };
+  }
+
+  const result = await uploadProjectImage({
+    projectId,
+    kind: side === "front" ? "cover-front" : "cover-back",
+    file,
+  });
+  if (!result.ok) return { error: result.error };
+
+  const field = side === "front" ? "coverFrontUrl" : "coverBackUrl";
+  await connectDB();
+  const existing = await Project.findOne({ _id: projectId, ownerId: userId }).lean<
+    Record<string, string | undefined>
+  >();
+  if (!existing) return { error: "Couldn't find this project." };
+
+  await Project.updateOne({ _id: projectId, ownerId: userId }, { $set: { [field]: result.url } });
+  await deleteProjectImage(existing[field]);
+
+  revalidatePath(`/projects/${projectId}/overview`);
+  return { url: result.url };
+}
+
+/** Clears a cover slot — Read View and export fall back to the generated typographic cover. */
+export async function removeCoverAction(
+  projectId: string,
+  side: CoverSide
+): Promise<{ ok: boolean }> {
+  const userId = await requireUserId();
+  const field = side === "front" ? "coverFrontUrl" : "coverBackUrl";
+
+  await connectDB();
+  const existing = await Project.findOne({ _id: projectId, ownerId: userId }).lean<
+    Record<string, string | undefined>
+  >();
+  if (!existing) return { ok: false };
+
+  await Project.updateOne({ _id: projectId, ownerId: userId }, { $set: { [field]: "" } });
+  await deleteProjectImage(existing[field]);
+
+  revalidatePath(`/projects/${projectId}/overview`);
+  return { ok: true };
+}
+
 export type DeleteProjectState = {
   error?: string;
 };
@@ -86,6 +145,12 @@ export async function deleteProjectAction(
     Note.deleteMany({ projectId, ownerId: userId }),
     ResearchEntry.deleteMany({ projectId, ownerId: userId }),
     DailyStat.deleteMany({ projectId, ownerId: userId }),
+    deleteProjectImage(deleted.coverFrontUrl as string | undefined),
+    deleteProjectImage(deleted.coverBackUrl as string | undefined),
+    deleteProjectImage(
+      (deleted.manuscriptSettings as { backgroundImageUrl?: string } | undefined)
+        ?.backgroundImageUrl
+    ),
   ]);
 
   revalidatePath("/dashboard");

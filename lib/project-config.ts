@@ -87,7 +87,7 @@ export function genreOptions(type: ProjectType): readonly string[] {
  * project) via CHAPTER_LABEL below.
  */
 export const SECTION_DEFS = {
-  overview: { label: "Overview", icon: CompassIcon },
+  overview: { label: "Book Settings", icon: CompassIcon },
   chapters: { label: "Chapters", icon: BookOpenIcon },
   characters: { label: "Characters", icon: UsersThreeIcon },
   world: { label: "World", icon: GlobeHemisphereWestIcon },
@@ -126,8 +126,8 @@ const BASE_SECTIONS: Record<ProjectType, SectionId[]> = {
 
 /**
  * Sections a project can bolt on after creation (via the sidebar's "Add
- * section"). Overview, chapters and export are structural — every
- * project has them from the start.
+ * section"). Overview (Book Settings), chapters and export are structural —
+ * every project has them from the start.
  */
 export const ADDABLE_SECTIONS: SectionId[] = ["characters", "world", "plot", "notes", "research"]
 
