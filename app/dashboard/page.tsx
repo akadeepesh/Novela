@@ -16,7 +16,7 @@ export default async function DashboardPage() {
   const firstName = session?.user?.name?.split(" ")[0]
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="dashboard-glow flex min-h-screen flex-col">
       <header className="flex items-center justify-between px-6 py-5 sm:px-10">
         <Link href="/dashboard" className="flex items-center gap-2 text-foreground">
           <FeatherIcon className="size-4 text-primary" weight="duotone" />
