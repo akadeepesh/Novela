@@ -6,7 +6,8 @@ import { connectDB } from "@/lib/db";
 import { Chapter } from "@/lib/models/chapter";
 import { Project } from "@/lib/models/project";
 import { requireUserId } from "@/lib/projects";
-import { BACKGROUND_IDS, LINE_WIDTHS } from "@/lib/manuscript-config";
+import { BACKGROUND_IDS, CUSTOM_BACKGROUND_ID, LINE_WIDTHS } from "@/lib/manuscript-config";
+import { uploadProjectImage, deleteProjectImage } from "@/lib/blob";
 import { maybeCreateAutoSnapshot, createManualSnapshot, restoreVersion, listVersionsForChapter, requireVersionContent } from "@/lib/versions";
 import { tiptapToBlocks, runsText } from "@/lib/export/document-model";
 import { diffWords } from "@/lib/text-diff";
@@ -170,4 +171,78 @@ export async function updateManuscriptSettingsAction(
 
   const result = await Project.updateOne({ _id: projectId, ownerId: userId }, { $set: set });
   return { ok: result.matchedCount > 0 };
+}
+
+export type UploadBackgroundState = { error?: string; url?: string };
+
+/**
+ * Uploads a custom manuscript background image and switches the project
+ * over to it in one step — the "custom" swatch only ever appears once an
+ * image exists, so selecting it and uploading are the same action.
+ */
+export async function uploadManuscriptBackgroundAction(
+  projectId: string,
+  _prevState: UploadBackgroundState,
+  formData: FormData
+): Promise<UploadBackgroundState> {
+  const userId = await requireUserId();
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Choose an image first." };
+  }
+
+  const result = await uploadProjectImage({ projectId, kind: "background", file });
+  if (!result.ok) return { error: result.error };
+
+  await connectDB();
+  const existing = await Project.findOne({ _id: projectId, ownerId: userId }).lean<{
+    manuscriptSettings?: { backgroundImageUrl?: string };
+  }>();
+  if (!existing) return { error: "Couldn't find this project." };
+
+  await Project.updateOne(
+    { _id: projectId, ownerId: userId },
+    {
+      $set: {
+        "manuscriptSettings.backgroundImageUrl": result.url,
+        "manuscriptSettings.background": CUSTOM_BACKGROUND_ID,
+      },
+    }
+  );
+  // Fire-and-forget-ish: only after the new URL is safely saved do we
+  // remove the old blob, so a mid-upload failure never leaves the project
+  // pointing at a deleted image.
+  await deleteProjectImage(existing.manuscriptSettings?.backgroundImageUrl);
+
+  revalidatePath(`/projects/${projectId}/overview`);
+  revalidatePath(`/projects/${projectId}/chapters`);
+  return { url: result.url };
+}
+
+/** Clears the custom background and drops back to the "paper" preset. */
+export async function removeManuscriptBackgroundAction(
+  projectId: string
+): Promise<{ ok: boolean }> {
+  const userId = await requireUserId();
+  await connectDB();
+
+  const existing = await Project.findOne({ _id: projectId, ownerId: userId }).lean<{
+    manuscriptSettings?: { backgroundImageUrl?: string };
+  }>();
+  if (!existing) return { ok: false };
+
+  await Project.updateOne(
+    { _id: projectId, ownerId: userId },
+    {
+      $set: {
+        "manuscriptSettings.backgroundImageUrl": "",
+        "manuscriptSettings.background": "paper",
+      },
+    }
+  );
+  await deleteProjectImage(existing.manuscriptSettings?.backgroundImageUrl);
+
+  revalidatePath(`/projects/${projectId}/overview`);
+  revalidatePath(`/projects/${projectId}/chapters`);
+  return { ok: true };
 }

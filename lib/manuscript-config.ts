@@ -45,10 +45,39 @@ export const BACKGROUND_PRESETS = [
   },
 ] as const
 
-export const BACKGROUND_IDS = BACKGROUND_PRESETS.map((b) => b.id)
-export type BackgroundId = (typeof BACKGROUND_PRESETS)[number]["id"]
+// "custom" isn't in BACKGROUND_PRESETS — it has no fixed style, since its
+// look comes from whatever image the writer uploads in Book Settings — but
+// it's still a real, selectable background id, so schemas/enums need it too.
+export const CUSTOM_BACKGROUND_ID = "custom"
 
-export function getBackgroundPreset(id: string) {
+// Intentionally not `as const` — this needs to stay a mutable array so it
+// can be cast to zod's `[string, ...string[]]` enum tuple shape where it's
+// consumed (chapters/[chapterId]/actions.ts).
+export const BACKGROUND_IDS = [...BACKGROUND_PRESETS.map((b) => b.id), CUSTOM_BACKGROUND_ID]
+export type BackgroundId = (typeof BACKGROUND_IDS)[number]
+
+/**
+ * Resolves a background id to its style. For "custom", `customImageUrl`
+ * (the project's uploaded manuscript background) is required to produce a
+ * real style — a light scrim sits between the photo and the text so body
+ * copy stays legible regardless of what's in the image, echoing the same
+ * "text needs a solid-enough backing, never floated directly on the blur"
+ * rule used for the dashboard's glass card.
+ */
+export function getBackgroundPreset(id: string, customImageUrl?: string) {
+  if (id === CUSTOM_BACKGROUND_ID && customImageUrl) {
+    return {
+      id: CUSTOM_BACKGROUND_ID,
+      label: "Custom",
+      swatch: customImageUrl,
+      style: {
+        backgroundImage: `linear-gradient(oklch(0.98 0.003 75 / 0.6), oklch(0.98 0.003 75 / 0.6)), url(${customImageUrl})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        color: INK_LIGHT,
+      },
+    }
+  }
   return BACKGROUND_PRESETS.find((b) => b.id === id) ?? BACKGROUND_PRESETS[0]
 }
 
@@ -63,6 +92,7 @@ export const LINE_WIDTH_PX: Record<LineWidth, string> = {
 
 export type ManuscriptSettings = {
   background: BackgroundId
+  backgroundImageUrl: string
   showHeader: boolean
   headerText: string
   showFooter: boolean
@@ -74,6 +104,7 @@ export type ManuscriptSettings = {
 
 export const DEFAULT_MANUSCRIPT_SETTINGS: ManuscriptSettings = {
   background: "paper",
+  backgroundImageUrl: "",
   showHeader: false,
   headerText: "",
   showFooter: false,
