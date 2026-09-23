@@ -2,26 +2,45 @@ import "server-only";
 import { Fragment } from "react";
 import { Document, Page, Text, View, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
 import type { ExportBlock, ExportDocument, ExportRun, ExportSection } from "./document-model";
+import { trimSizePagePoints, trimSizeMarginPoints } from "@/lib/export-config";
 
-// Trade-paperback trim size (6in x 9in) in points.
-const PAGE_SIZE: [number, number] = [432, 648];
+function buildStyles(trimSize: string) {
+  const margin = trimSizeMarginPoints(trimSize);
+  return StyleSheet.create({
+    page: {
+      paddingTop: margin.top,
+      paddingBottom: margin.bottom,
+      paddingHorizontal: margin.horizontal,
+      fontFamily: "Times-Roman",
+      fontSize: 11.5,
+    },
+    titlePage: { flex: 1, alignItems: "center", justifyContent: "center" },
+    title: { fontFamily: "Times-Bold", fontSize: 26, textAlign: "center", marginBottom: 16 },
+    author: { fontSize: 14, textAlign: "center", marginBottom: 40 },
+    dedication: { fontFamily: "Times-Italic", fontSize: 12, textAlign: "center" },
+    sectionNumber: {
+      fontSize: 11,
+      textAlign: "center",
+      color: "#666",
+      letterSpacing: 1,
+      marginBottom: 4,
+    },
+    h1: { fontFamily: "Times-Bold", fontSize: 18, marginBottom: 18, marginTop: 4 },
+    sectionTitle: { fontFamily: "Times-Bold", fontSize: 18, marginBottom: 18, marginTop: 4, textAlign: "center" },
+    h2: { fontFamily: "Times-Bold", fontSize: 14, marginTop: 16, marginBottom: 8 },
+    h3: { fontFamily: "Times-Bold", fontSize: 12, marginTop: 12, marginBottom: 6 },
+    paragraph: { marginBottom: 10, lineHeight: 1.5 },
+    blockquote: { marginVertical: 8, marginHorizontal: 18 },
+    blockquoteText: { fontFamily: "Times-Italic", lineHeight: 1.5 },
+    tocEntry: { marginBottom: 6 },
+    header: { position: "absolute", top: 28, left: margin.horizontal, right: margin.horizontal, fontSize: 9, textAlign: "center", color: "#666" },
+    footer: { position: "absolute", bottom: 24, left: margin.horizontal, right: margin.horizontal, fontSize: 9, textAlign: "center", color: "#666" },
+    backCover: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 24 },
+    backCoverText: { fontSize: 12.5, lineHeight: 1.6, textAlign: "center" },
+  });
+}
 
-const styles = StyleSheet.create({
-  page: { paddingTop: 64, paddingBottom: 56, paddingHorizontal: 56, fontFamily: "Times-Roman", fontSize: 11.5 },
-  titlePage: { flex: 1, alignItems: "center", justifyContent: "center" },
-  title: { fontFamily: "Times-Bold", fontSize: 26, textAlign: "center", marginBottom: 16 },
-  author: { fontSize: 14, textAlign: "center", marginBottom: 40 },
-  dedication: { fontFamily: "Times-Italic", fontSize: 12, textAlign: "center" },
-  h1: { fontFamily: "Times-Bold", fontSize: 18, marginBottom: 18, marginTop: 4 },
-  h2: { fontFamily: "Times-Bold", fontSize: 14, marginTop: 16, marginBottom: 8 },
-  h3: { fontFamily: "Times-Bold", fontSize: 12, marginTop: 12, marginBottom: 6 },
-  paragraph: { marginBottom: 10, lineHeight: 1.5 },
-  blockquote: { marginVertical: 8, marginHorizontal: 18 },
-  blockquoteText: { fontFamily: "Times-Italic", lineHeight: 1.5 },
-  tocEntry: { marginBottom: 6 },
-  header: { position: "absolute", top: 28, left: 56, right: 56, fontSize: 9, textAlign: "center", color: "#666" },
-  footer: { position: "absolute", bottom: 24, left: 56, right: 56, fontSize: 9, textAlign: "center", color: "#666" },
-});
+type Styles = ReturnType<typeof buildStyles>;
 
 function fontFor(marks: ("bold" | "italic")[]): string {
   const bold = marks.includes("bold");
@@ -48,7 +67,7 @@ function Runs({ runs }: { runs: ExportRun[] }) {
   );
 }
 
-function Block({ block }: { block: ExportBlock }) {
+function Block({ block, styles }: { block: ExportBlock; styles: Styles }) {
   if (block.kind === "heading") {
     const style = block.level === 1 ? styles.h1 : block.level === 2 ? styles.h2 : styles.h3;
     return (
@@ -73,7 +92,15 @@ function Block({ block }: { block: ExportBlock }) {
   );
 }
 
-function HeaderFooter({ headerText, footerText }: { headerText?: string; footerText?: string }) {
+function HeaderFooter({
+  headerText,
+  footerText,
+  styles,
+}: {
+  headerText?: string;
+  footerText?: string;
+  styles: Styles;
+}) {
   return (
     <>
       {headerText ? (
@@ -90,23 +117,37 @@ function HeaderFooter({ headerText, footerText }: { headerText?: string; footerT
   );
 }
 
-function SectionPage({ section, doc }: { section: ExportSection; doc: ExportDocument }) {
+function SectionPage({
+  section,
+  doc,
+  pageSize,
+  styles,
+}: {
+  section: ExportSection;
+  doc: ExportDocument;
+  pageSize: [number, number];
+  styles: Styles;
+}) {
   return (
-    <Page size={PAGE_SIZE} style={styles.page} wrap>
-      <HeaderFooter headerText={doc.headerText} footerText={doc.footerText} />
-      <Text style={styles.h1}>{section.title}</Text>
+    <Page size={pageSize} style={styles.page} wrap>
+      <HeaderFooter headerText={doc.headerText} footerText={doc.footerText} styles={styles} />
+      {section.numberLabel ? <Text style={styles.sectionNumber}>{section.numberLabel.toUpperCase()}</Text> : null}
+      <Text style={styles.sectionTitle}>{section.title}</Text>
       {section.blocks.map((block, i) => (
-        <Block key={i} block={block} />
+        <Block key={i} block={block} styles={styles} />
       ))}
     </Page>
   );
 }
 
 function ExportPdfDocument({ doc }: { doc: ExportDocument }) {
+  const pageSize = trimSizePagePoints(doc.trimSize);
+  const styles = buildStyles(doc.trimSize);
+
   return (
     <Document title={doc.title} author={doc.authorName}>
       {doc.includeTitlePage ? (
-        <Page size={PAGE_SIZE} style={styles.page}>
+        <Page size={pageSize} style={styles.page}>
           <View style={styles.titlePage}>
             <Text style={styles.title}>{doc.title}</Text>
             {doc.authorName ? <Text style={styles.author}>{doc.authorName}</Text> : null}
@@ -116,10 +157,11 @@ function ExportPdfDocument({ doc }: { doc: ExportDocument }) {
       ) : null}
 
       {doc.includeTOC && doc.manuscript.length > 0 ? (
-        <Page size={PAGE_SIZE} style={styles.page}>
+        <Page size={pageSize} style={styles.page}>
           <Text style={styles.h1}>Contents</Text>
           {doc.manuscript.map((section) => (
             <Text key={section.id} style={styles.tocEntry}>
+              {section.numberLabel ? `${section.numberLabel}   ·   ` : ""}
               {section.title}
             </Text>
           ))}
@@ -127,23 +169,31 @@ function ExportPdfDocument({ doc }: { doc: ExportDocument }) {
       ) : null}
 
       {doc.manuscript.map((section) => (
-        <SectionPage key={section.id} section={section} doc={doc} />
+        <SectionPage key={section.id} section={section} doc={doc} pageSize={pageSize} styles={styles} />
       ))}
 
       {doc.appendices.map((appendix) => (
-        <Page key={appendix.heading} size={PAGE_SIZE} style={styles.page} wrap>
-          <HeaderFooter headerText={doc.headerText} footerText={doc.footerText} />
+        <Page key={appendix.heading} size={pageSize} style={styles.page} wrap>
+          <HeaderFooter headerText={doc.headerText} footerText={doc.footerText} styles={styles} />
           <Text style={styles.h1}>{appendix.heading}</Text>
           {appendix.sections.map((section) => (
             <Fragment key={section.id}>
               <Text style={styles.h2}>{section.title}</Text>
               {section.blocks.map((block, i) => (
-                <Block key={i} block={block} />
+                <Block key={i} block={block} styles={styles} />
               ))}
             </Fragment>
           ))}
         </Page>
       ))}
+
+      {doc.backCoverBlurb ? (
+        <Page size={pageSize} style={styles.page}>
+          <View style={styles.backCover}>
+            <Text style={styles.backCoverText}>{doc.backCoverBlurb}</Text>
+          </View>
+        </Page>
+      ) : null}
     </Document>
   );
 }

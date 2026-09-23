@@ -17,6 +17,8 @@ export type ExportBlock =
 export type ExportSection = {
   id: string;
   title: string;
+  /** "Chapter One" / "1" / "Part 3" — undefined means don't show a number at all. Only set on manuscript sections, never appendices. */
+  numberLabel?: string;
   blocks: ExportBlock[];
 };
 
@@ -37,6 +39,10 @@ export type ExportDocument = {
   /** Carried over from the manuscript's on-screen page-appearance settings (Part 2). */
   headerText?: string;
   footerText?: string;
+  /** PDF-only page size (Part 4.2 export defaults) — see lib/export-config.ts. */
+  trimSize: string;
+  /** Back-cover blurb (Part 4.2), optional — rendered as its own page after the manuscript/appendices, never shown as an empty box when absent. */
+  backCoverBlurb?: string;
   /** Chapters/Poems/Stories, in order — the actual manuscript. */
   manuscript: ExportSection[];
   appendices: ExportAppendix[];

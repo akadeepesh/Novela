@@ -41,6 +41,7 @@ export default async function ExportPage({ params }: { params: Promise<{ id: str
         projectTitle={project.title}
         defaultAuthorName={project.authorName}
         availableSections={availableSections}
+        trimSize={project.exportTrimSize}
       />
     </PageShell>
   )

@@ -1,7 +1,8 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { FilePdfIcon, FileDocIcon, BookIcon, DownloadSimpleIcon } from "@phosphor-icons/react/dist/ssr"
+import Link from "next/link"
+import { FilePdfIcon, FileDocIcon, BookIcon, DownloadSimpleIcon, GearSixIcon } from "@phosphor-icons/react/dist/ssr"
 import { cn } from "cn"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -9,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
+import { getTrimSize } from "@/lib/export-config"
 import type { SectionId } from "@/lib/project-config"
 
 type Format = "pdf" | "epub" | "docx"
@@ -24,11 +26,13 @@ export function ExportForm({
   projectTitle,
   defaultAuthorName,
   availableSections,
+  trimSize,
 }: {
   projectId: string
   projectTitle: string
   defaultAuthorName?: string
   availableSections: { id: SectionId; label: string }[]
+  trimSize: string
 }) {
   const [format, setFormat] = useState<Format>("pdf")
   const [includeTitlePage, setIncludeTitlePage] = useState(true)
@@ -82,6 +86,22 @@ export function ExportForm({
             ))}
           </div>
         </div>
+
+        {format === "pdf" ? (
+          <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2.5">
+            <GearSixIcon className="size-4 shrink-0 text-muted-foreground" />
+            <p className="min-w-0 flex-1 text-xs text-muted-foreground">
+              Page size: <span className="font-medium text-foreground">{getTrimSize(trimSize).label}</span>{" "}
+              ({getTrimSize(trimSize).sublabel.toLowerCase()})
+            </p>
+            <Link
+              href={`/projects/${projectId}/overview`}
+              className="shrink-0 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            >
+              Change
+            </Link>
+          </div>
+        ) : null}
 
         <div className="flex flex-col gap-3">
           <Label>Front matter</Label>

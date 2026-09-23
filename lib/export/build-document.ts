@@ -9,6 +9,8 @@ import { ResearchEntry } from "@/lib/models/research-entry";
 import { characterRoleLabel, type CharacterRole } from "@/lib/character-config";
 import { worldEntryTypeLabel, type WorldEntryType } from "@/lib/world-config";
 import { plotStatusLabel, type PlotStatus } from "@/lib/plot-config";
+import { CHAPTER_LABEL_SINGULAR } from "@/lib/project-config";
+import { chapterNumberLabel } from "@/lib/chapter-numbering";
 import type { SectionId } from "@/lib/project-config";
 import type { SerializedProject } from "@/lib/projects";
 import {
@@ -44,9 +46,15 @@ export async function buildExportDocument(
     .sort({ order: 1 })
     .lean<Record<string, unknown>[]>();
 
-  const manuscript: ExportSection[] = chapters.map((c) => ({
+  const manuscript: ExportSection[] = chapters.map((c, index) => ({
     id: String(c._id),
     title: (c.title as string) || "Untitled",
+    numberLabel: chapterNumberLabel({
+      style: project.chapterNumberingStyle,
+      prefix: project.chapterNumberingPrefix,
+      index,
+      singular: CHAPTER_LABEL_SINGULAR[project.type],
+    }),
     blocks: tiptapToBlocks(c.content),
   }));
 
@@ -178,6 +186,8 @@ export async function buildExportDocument(
     footerText: project.manuscriptSettings.showFooter
       ? project.manuscriptSettings.footerText || undefined
       : undefined,
+    trimSize: project.exportTrimSize,
+    backCoverBlurb: project.blurb,
     manuscript,
     appendices,
   };

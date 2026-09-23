@@ -54,14 +54,26 @@ function sectionToParagraphs(
   section: ExportSection,
   headingLevel: (typeof HeadingLevel)[keyof typeof HeadingLevel]
 ): Paragraph[] {
-  return [
+  const paragraphs: Paragraph[] = [];
+  if (section.numberLabel) {
+    paragraphs.push(
+      new Paragraph({
+        alignment: AlignmentType.CENTER,
+        spacing: { before: 400, after: 40 },
+        children: [new TextRun({ text: section.numberLabel.toUpperCase(), size: 18, color: "666666" })],
+      })
+    );
+  }
+  paragraphs.push(
     new Paragraph({
       heading: headingLevel,
-      spacing: { before: 400, after: 200 },
+      alignment: section.numberLabel ? AlignmentType.CENTER : undefined,
+      spacing: { before: section.numberLabel ? 0 : 400, after: 200 },
       children: [new TextRun({ text: section.title, bold: true })],
-    }),
-    ...section.blocks.map(blockToParagraph),
-  ];
+    })
+  );
+  paragraphs.push(...section.blocks.map(blockToParagraph));
+  return paragraphs;
 }
 
 export async function renderDocx(doc: ExportDocument): Promise<Buffer> {
@@ -107,8 +119,9 @@ export async function renderDocx(doc: ExportDocument): Promise<Buffer> {
       })
     );
     doc.manuscript.forEach((section) => {
+      const text = section.numberLabel ? `${section.numberLabel} — ${section.title}` : section.title;
       children.push(
-        new Paragraph({ spacing: { after: 80 }, children: [new TextRun({ text: section.title })] })
+        new Paragraph({ spacing: { after: 80 }, children: [new TextRun({ text })] })
       );
     });
     children.push(new Paragraph({ children: [new PageBreak()] }));
@@ -131,6 +144,17 @@ export async function renderDocx(doc: ExportDocument): Promise<Buffer> {
     appendix.sections.forEach((section) => {
       children.push(...sectionToParagraphs(section, HeadingLevel.HEADING_2));
     });
+  }
+
+  if (doc.backCoverBlurb) {
+    children.push(new Paragraph({ children: [new PageBreak()] }));
+    children.push(
+      new Paragraph({
+        spacing: { before: 2000 },
+        alignment: AlignmentType.CENTER,
+        children: [new TextRun({ text: doc.backCoverBlurb, italics: true })],
+      })
+    );
   }
 
   const document = new Document({

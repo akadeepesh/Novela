@@ -39,13 +39,21 @@ function blockToHtml(block: ExportBlock): string {
   return `<p>${runsToHtml(block.runs)}</p>`;
 }
 
-function sectionToXhtml(id: string, title: string, blocks: ExportBlock[], isPoetry: boolean): string {
+function sectionToXhtml(
+  id: string,
+  title: string,
+  blocks: ExportBlock[],
+  isPoetry: boolean,
+  numberLabel?: string
+): string {
   const bodyClass = isPoetry ? ' class="poem"' : "";
+  const numberHtml = numberLabel ? `<p class="chapter-number">${escapeXml(numberLabel.toUpperCase())}</p>` : "";
   return `<?xml version="1.0" encoding="UTF-8"?>
 <html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
 <head><title>${escapeXml(title)}</title><link rel="stylesheet" type="text/css" href="styles.css"/></head>
 <body${bodyClass}>
 <section epub:type="chapter" id="${id}">
+${numberHtml}
 <h1>${escapeXml(title)}</h1>
 ${blocks.map(blockToHtml).join("\n")}
 </section>
@@ -65,6 +73,8 @@ body.poem p { white-space: pre-wrap; margin: 0 0 0.4em 0; }
 .title-page h1 { font-size: 2em; }
 .title-page .author { font-size: 1.1em; margin-top: 1em; }
 .title-page .dedication { font-style: italic; margin-top: 3em; }
+.chapter-number { text-align: center; letter-spacing: 0.1em; color: #666; font-size: 0.85em; margin-bottom: 0.25em; }
+.back-cover { text-align: center; margin-top: 25%; font-style: italic; }
 nav ol { list-style: none; padding-left: 0; }
 nav li { margin-bottom: 0.5em; }
 `;
@@ -112,11 +122,11 @@ ${doc.dedication ? `<p class="dedication">${escapeXml(doc.dedication)}</p>` : ""
   function addSection(idPrefix: string, section: ExportSection, index: number) {
     const id = `${idPrefix}-${index}`;
     const href = `${id}.xhtml`;
-    const html = sectionToXhtml(section.id, section.title, section.blocks, doc.isPoetry);
+    const html = sectionToXhtml(section.id, section.title, section.blocks, doc.isPoetry, section.numberLabel);
     zip.file(`OEBPS/${href}`, html);
     manifest.push({ id, href, mediaType: "application/xhtml+xml" });
     spineIds.push(id);
-    return { id, title: section.title };
+    return { id, title: section.numberLabel ? `${section.numberLabel} — ${section.title}` : section.title };
   }
 
   const manuscriptNav = doc.manuscript.map((section, i) => addSection("chapter", section, i));
@@ -164,6 +174,19 @@ ${manuscriptNav.map((c) => `<li><a href="${c.id}.xhtml">${escapeXml(c.title)}</a
     zip.file("OEBPS/contents.xhtml", contentsHtml);
     manifest.push({ id: "contents", href: "contents.xhtml", mediaType: "application/xhtml+xml" });
     spineIds.splice(doc.includeTitlePage ? 1 : 0, 0, "contents");
+  }
+
+  if (doc.backCoverBlurb) {
+    const backCoverHtml = `<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head><title>${escapeXml(doc.title)}</title><link rel="stylesheet" type="text/css" href="styles.css"/></head>
+<body>
+<p class="back-cover">${escapeXml(doc.backCoverBlurb)}</p>
+</body>
+</html>`;
+    zip.file("OEBPS/back-cover.xhtml", backCoverHtml);
+    manifest.push({ id: "back-cover", href: "back-cover.xhtml", mediaType: "application/xhtml+xml" });
+    spineIds.push("back-cover");
   }
 
   const manifestXml = manifest
