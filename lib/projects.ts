@@ -10,6 +10,8 @@ import {
   DEFAULT_MANUSCRIPT_SETTINGS,
   type ManuscriptSettings,
 } from "@/lib/manuscript-config";
+import type { ChapterNumberingStyle } from "@/lib/chapter-numbering";
+import type { TrimSizeId } from "@/lib/export-config";
 
 export type SerializedProject = {
   id: string;
@@ -20,6 +22,9 @@ export type SerializedProject = {
   authorName?: string;
   coverFrontUrl?: string;
   coverBackUrl?: string;
+  chapterNumberingStyle: ChapterNumberingStyle;
+  chapterNumberingPrefix?: string;
+  exportTrimSize: TrimSizeId;
   targetWordCount?: number;
   dailyWordGoal: number;
   sections: SectionId[];
@@ -39,6 +44,9 @@ function serializeProject(doc: Record<string, unknown>): SerializedProject {
     authorName: (doc.authorName as string) || undefined,
     coverFrontUrl: (doc.coverFrontUrl as string) || undefined,
     coverBackUrl: (doc.coverBackUrl as string) || undefined,
+    chapterNumberingStyle: ((doc.chapterNumberingStyle as string) || "numeral") as ChapterNumberingStyle,
+    chapterNumberingPrefix: (doc.chapterNumberingPrefix as string) || undefined,
+    exportTrimSize: ((doc.exportTrimSize as string) || "6x9") as TrimSizeId,
     targetWordCount: (doc.targetWordCount as number) || undefined,
     dailyWordGoal: (doc.dailyWordGoal as number) ?? 300,
     sections: (doc.sections as SectionId[]) ?? [],

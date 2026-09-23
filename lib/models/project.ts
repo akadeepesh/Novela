@@ -1,6 +1,8 @@
 import { Schema, model, models, type InferSchemaType } from "mongoose";
 import { PROJECT_TYPES, SECTION_DEFS } from "@/lib/project-config";
 import { BACKGROUND_IDS, LINE_WIDTHS } from "@/lib/manuscript-config";
+import { CHAPTER_NUMBERING_STYLE_IDS } from "@/lib/chapter-numbering";
+import { TRIM_SIZE_IDS } from "@/lib/export-config";
 
 const PROJECT_TYPE_VALUES = PROJECT_TYPES.map((t) => t.value);
 const SECTION_ID_VALUES = Object.keys(SECTION_DEFS);
@@ -33,6 +35,18 @@ const projectSchema = new Schema(
     // that case, so they only need to check for a truthy URL.
     coverFrontUrl: { type: String, trim: true, default: "" },
     coverBackUrl: { type: String, trim: true, default: "" },
+    // Back-cover blurb (Part 4.2) — reuses the pre-existing `blurb` field
+    // (originally a decorative "synopsis" field, removed from the UI in
+    // Part 1.2) rather than adding a new one; it's already in the schema
+    // and already carried through export, just never surfaced or written
+    // to from anywhere since that removal.
+    // Chapter numbering (Part 4.2) — "Chapter One" / "1" / a custom prefix
+    // / none, applied to every chapter/poem/script title on export.
+    chapterNumberingStyle: { type: String, enum: CHAPTER_NUMBERING_STYLE_IDS, default: "numeral" },
+    chapterNumberingPrefix: { type: String, trim: true, maxlength: 40, default: "" },
+    // Export default (Part 4.2) — PDF-only; EPUB reflows and DOCX exports
+    // at standard US Letter regardless.
+    exportTrimSize: { type: String, enum: TRIM_SIZE_IDS, default: "6x9" },
     targetWordCount: { type: Number, min: 0 },
     dailyWordGoal: { type: Number, min: 0, max: 100_000, default: 300 },
     // Ordered snapshot of enabled sidebar sections for this project —
