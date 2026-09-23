@@ -15,6 +15,8 @@ import { ResearchEntry } from "@/lib/models/research-entry";
 import { DailyStat } from "@/lib/models/daily-stat";
 import { requireUserId } from "@/lib/projects";
 import { uploadProjectImage, deleteProjectImage } from "@/lib/blob";
+import { CHAPTER_NUMBERING_STYLE_IDS } from "@/lib/chapter-numbering";
+import { TRIM_SIZE_IDS } from "@/lib/export-config";
 
 const schema = z.object({
   title: z.string().trim().min(1, "Give your project a title").max(200),
@@ -113,6 +115,65 @@ export async function removeCoverAction(
 
   revalidatePath(`/projects/${projectId}/overview`);
   return { ok: true };
+}
+
+const structureSchema = z.object({
+  chapterNumberingStyle: z.enum(CHAPTER_NUMBERING_STYLE_IDS as [string, ...string[]]).optional(),
+  chapterNumberingPrefix: z.string().trim().max(40).optional(),
+  exportTrimSize: z.enum(TRIM_SIZE_IDS as [string, ...string[]]).optional(),
+});
+export type StructureInput = z.infer<typeof structureSchema>;
+
+/** Chapter numbering style + export trim size (Part 4.2) — both simple, instantly-saved project-level defaults. */
+export async function updateStructureSettingsAction(
+  projectId: string,
+  input: StructureInput
+): Promise<{ ok: boolean }> {
+  const userId = await requireUserId();
+  const parsed = structureSchema.safeParse(input);
+  if (!parsed.success) return { ok: false };
+
+  await connectDB();
+  const result = await Project.updateOne({ _id: projectId, ownerId: userId }, { $set: parsed.data });
+
+  revalidatePath(`/projects/${projectId}/overview`);
+  revalidatePath(`/projects/${projectId}/export`);
+  revalidatePath(`/projects/${projectId}/chapters`);
+
+  return { ok: result.matchedCount > 0 };
+}
+
+const blurbSchema = z.object({
+  blurb: z.string().trim().max(600).optional(),
+});
+export type UpdateBackCoverBlurbState = { error?: string; success?: boolean };
+
+/**
+ * The back-cover blurb (Part 4.2) — reuses the pre-existing `blurb` field
+ * (see the model comment for why), edited only here, never shown anywhere
+ * in the app as an empty box when unset.
+ */
+export async function updateBackCoverBlurbAction(
+  projectId: string,
+  _prevState: UpdateBackCoverBlurbState,
+  formData: FormData
+): Promise<UpdateBackCoverBlurbState> {
+  const userId = await requireUserId();
+  const parsed = blurbSchema.safeParse({ blurb: formData.get("blurb") ?? undefined });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Check the field and try again." };
+  }
+
+  await connectDB();
+  const result = await Project.updateOne(
+    { _id: projectId, ownerId: userId },
+    { $set: { blurb: parsed.data.blurb ?? "" } }
+  );
+  if (result.matchedCount === 0) return { error: "Couldn't find this project." };
+
+  revalidatePath(`/projects/${projectId}/overview`);
+  revalidatePath(`/projects/${projectId}/export`);
+  return { success: true };
 }
 
 export type DeleteProjectState = {

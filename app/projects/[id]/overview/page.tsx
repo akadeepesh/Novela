@@ -11,6 +11,7 @@ import { requireProjectSection } from "@/lib/require-project-section"
 import { OverviewForm } from "./overview-form"
 import { ManuscriptSettingsCard } from "./manuscript-settings-card"
 import { CoverSettingsCard } from "./cover-settings-card"
+import { StructureSettingsCard } from "./structure-settings-card"
 import { DeleteProjectSection } from "./delete-project-section"
 
 export async function generateMetadata({
@@ -36,7 +37,7 @@ export default async function OverviewPage({
       <PageShellHeader>
         <PageShellTitle>Book Settings</PageShellTitle>
         <PageShellDescription>
-          Shape what the book is and how it looks — header, footer, background, and typography.
+          Shape what the book is and how it looks — cover, background, typography, and numbering.
         </PageShellDescription>
       </PageShellHeader>
 
@@ -47,13 +48,16 @@ export default async function OverviewPage({
           projectId={id}
           coverFrontUrl={project.coverFrontUrl}
           coverBackUrl={project.coverBackUrl}
+          backCoverBlurb={project.blurb}
         />
 
         <ManuscriptSettingsCard projectId={id} settings={project.manuscriptSettings} />
 
+        <StructureSettingsCard project={project} />
+
         <Card>
           <CardContent className="flex flex-col gap-3">
-            <p className="text-sm font-medium text-foreground">Structure</p>
+            <p className="text-sm font-medium text-foreground">Sections</p>
             <p className="text-sm text-muted-foreground">
               The sections in your sidebar. Need Characters, World, Plot, Notes or Research?
               Use “Add section” at the bottom of the sidebar.

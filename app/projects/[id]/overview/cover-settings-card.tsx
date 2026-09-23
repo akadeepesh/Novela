@@ -4,15 +4,20 @@ import { useActionState, useRef, useTransition } from "react"
 import { ImageIcon, TrashIcon, UploadSimpleIcon } from "@phosphor-icons/react/dist/ssr"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import { cn } from "cn"
 import {
   uploadCoverAction,
   removeCoverAction,
+  updateBackCoverBlurbAction,
   type CoverSide,
   type UploadCoverState,
+  type UpdateBackCoverBlurbState,
 } from "./actions"
 
 const initialState: UploadCoverState = {}
+const blurbInitialState: UpdateBackCoverBlurbState = {}
 
 function CoverSlot({
   projectId,
@@ -106,14 +111,47 @@ function CoverSlot({
   )
 }
 
+function BackCoverBlurb({ projectId, blurb }: { projectId: string; blurb?: string }) {
+  const boundAction = updateBackCoverBlurbAction.bind(null, projectId)
+  const [state, formAction, pending] = useActionState(boundAction, blurbInitialState)
+
+  return (
+    <div className="flex w-full max-w-md flex-col gap-2">
+      <Label htmlFor="blurb">Back-cover blurb</Label>
+      <p className="text-xs text-muted-foreground">
+        Optional. Shown on the back cover in Export — never displayed anywhere else if left blank.
+      </p>
+      <form action={formAction} className="flex flex-col gap-2">
+        {state.error ? <p className="text-xs text-destructive">{state.error}</p> : null}
+        <Textarea
+          id="blurb"
+          name="blurb"
+          rows={4}
+          maxLength={600}
+          placeholder="A line or two that would make someone want to read this."
+          defaultValue={blurb}
+        />
+        <div className="flex items-center gap-3">
+          <Button type="submit" size="sm" variant="outline" disabled={pending}>
+            {pending ? "Saving…" : "Save"}
+          </Button>
+          {state.success ? <span className="text-xs text-muted-foreground">Saved.</span> : null}
+        </div>
+      </form>
+    </div>
+  )
+}
+
 export function CoverSettingsCard({
   projectId,
   coverFrontUrl,
   coverBackUrl,
+  backCoverBlurb,
 }: {
   projectId: string
   coverFrontUrl?: string
   coverBackUrl?: string
+  backCoverBlurb?: string
 }) {
   return (
     <Card>
@@ -125,21 +163,25 @@ export function CoverSettingsCard({
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="flex flex-wrap gap-8">
-        <CoverSlot
-          projectId={projectId}
-          side="front"
-          label="Front cover"
-          hint="PNG, JPEG, WEBP, or GIF, up to 5MB."
-          url={coverFrontUrl}
-        />
-        <CoverSlot
-          projectId={projectId}
-          side="back"
-          label="Back cover"
-          hint="Optional. Shown as the final page in Read View."
-          url={coverBackUrl}
-        />
+      <CardContent className="flex flex-col gap-8">
+        <div className="flex flex-wrap gap-8">
+          <CoverSlot
+            projectId={projectId}
+            side="front"
+            label="Front cover"
+            hint="PNG, JPEG, WEBP, or GIF, up to 5MB."
+            url={coverFrontUrl}
+          />
+          <CoverSlot
+            projectId={projectId}
+            side="back"
+            label="Back cover"
+            hint="Optional. Shown as the final page in Read View."
+            url={coverBackUrl}
+          />
+        </div>
+
+        <BackCoverBlurb projectId={projectId} blurb={backCoverBlurb} />
       </CardContent>
     </Card>
   )
