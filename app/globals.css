@@ -306,15 +306,20 @@
   ) 1;
 }
 
-/* Subtle radial gradient behind the glass card for depth */
-@layer base {
-  body {
-    background: radial-gradient(
-      ellipse 120% 80% at 50% 20%,
-      oklch(from var(--background) calc(l + 0.01) c h),
-      var(--background)
-    );
-  }
+/* Subtle radial gradient behind the dashboard's glass hero card, for
+   depth — deliberately NOT on `body` globally: `body`'s height is the
+   whole scrollable document, so on a short page (the dashboard) this
+   looks like a soft glow, but on a longer page (Book Settings, chapters)
+   the same gradient finishes its transition long before the page ends,
+   showing up as a visible seam partway down instead of a glow. Scoped to
+   the dashboard's own min-h-screen wrapper so its size always tracks one
+   screen, never the document. */
+.dashboard-glow {
+  background: radial-gradient(
+    ellipse 120% 80% at 50% 20%,
+    oklch(from var(--background) calc(l + 0.01) c h),
+    var(--background)
+  );
 }
 
 /* ---- Auth pages manuscript panel ---- */
