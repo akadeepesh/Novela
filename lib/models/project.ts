@@ -8,6 +8,7 @@ const SECTION_ID_VALUES = Object.keys(SECTION_DEFS);
 const manuscriptSettingsSchema = new Schema(
   {
     background: { type: String, enum: BACKGROUND_IDS, default: "paper" },
+    backgroundImageUrl: { type: String, trim: true, default: "" },
     showHeader: { type: Boolean, default: false },
     headerText: { type: String, trim: true, maxlength: 120, default: "" },
     showFooter: { type: Boolean, default: false },
@@ -27,6 +28,11 @@ const projectSchema = new Schema(
     genre: { type: String, trim: true, maxlength: 60 },
     blurb: { type: String, trim: true, maxlength: 2000 },
     authorName: { type: String, trim: true, maxlength: 120, default: "" },
+    // Cover art (Part 4.1). Empty string, not undefined, when unset — Read
+    // View and export both fall back to a generated typographic cover in
+    // that case, so they only need to check for a truthy URL.
+    coverFrontUrl: { type: String, trim: true, default: "" },
+    coverBackUrl: { type: String, trim: true, default: "" },
     targetWordCount: { type: Number, min: 0 },
     dailyWordGoal: { type: Number, min: 0, max: 100_000, default: 300 },
     // Ordered snapshot of enabled sidebar sections for this project —
