@@ -170,6 +170,17 @@ export async function updateManuscriptSettingsAction(
   }
 
   const result = await Project.updateOne({ _id: projectId, ownerId: userId }, { $set: set });
+
+  // ManuscriptSettingsCard (Book Settings) drives its swatches/inputs with
+  // useOptimistic on top of the `settings` prop from this page's server
+  // component. Once its transition resolves, React drops the pending
+  // optimistic value and falls back to that prop — without revalidating
+  // it here, the prop is still the pre-update value, so the UI visibly
+  // snaps back to the old setting for a moment even though the DB write
+  // above already succeeded.
+  revalidatePath(`/projects/${projectId}/overview`);
+  revalidatePath(`/projects/${projectId}/chapters`);
+
   return { ok: result.matchedCount > 0 };
 }
 
