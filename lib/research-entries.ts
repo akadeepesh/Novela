@@ -12,6 +12,11 @@ export type SerializedResearchEntrySummary = {
   type: ResearchEntryType;
   url?: string;
   content?: string;
+  // Auto-fetched preview metadata for "link" entries (Part 7.2's source
+  // board) — captured once at save time, not re-fetched on every render.
+  imageUrl?: string;
+  faviconUrl?: string;
+  siteName?: string;
   updatedAt: string;
 };
 
@@ -20,20 +25,28 @@ export type SerializedResearchEntry = SerializedResearchEntrySummary & {
   createdAt: string;
 };
 
-function serializeSummary(doc: Record<string, unknown>): SerializedResearchEntrySummary {
+// Exported so the URL-paste/quick-note actions (Part 7.2) can return a
+// freshly-created or freshly-saved entry without a second round-trip
+// through listResearchEntriesForProject.
+export function serializeResearchEntrySummary(
+  doc: Record<string, unknown>
+): SerializedResearchEntrySummary {
   return {
     id: String(doc._id),
     title: doc.title as string,
     type: (doc.type as ResearchEntryType) ?? "note",
     url: (doc.url as string) || undefined,
     content: (doc.content as string) || undefined,
+    imageUrl: (doc.imageUrl as string) || undefined,
+    faviconUrl: (doc.faviconUrl as string) || undefined,
+    siteName: (doc.siteName as string) || undefined,
     updatedAt: new Date(doc.updatedAt as string).toISOString(),
   };
 }
 
 function serializeResearchEntry(doc: Record<string, unknown>): SerializedResearchEntry {
   return {
-    ...serializeSummary(doc),
+    ...serializeResearchEntrySummary(doc),
     projectId: String(doc.projectId),
     createdAt: new Date(doc.createdAt as string).toISOString(),
   };
@@ -47,7 +60,7 @@ export async function listResearchEntriesForProject(
   const docs = await ResearchEntry.find({ projectId, ownerId: userId })
     .sort({ updatedAt: -1 })
     .lean<Record<string, unknown>[]>();
-  return docs.map(serializeSummary);
+  return docs.map(serializeResearchEntrySummary);
 }
 
 export const requireResearchEntry = cache(async (

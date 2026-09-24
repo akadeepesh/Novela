@@ -15,6 +15,12 @@ const researchEntrySchema = new Schema(
     // The note body for a "note" entry, or a caption/why-this-matters for
     // a "link"/"image" entry.
     content: { type: String, trim: true, maxlength: 8000, default: "" },
+    // Auto-fetched preview metadata for a "link" entry (Part 7.2's source
+    // board) — captured once when the URL is pasted in, not re-fetched on
+    // every render. Unused for "note"/"image" entries.
+    imageUrl: { type: String, trim: true, maxlength: 2000, default: "" },
+    faviconUrl: { type: String, trim: true, maxlength: 2000, default: "" },
+    siteName: { type: String, trim: true, maxlength: 120, default: "" },
   },
   { timestamps: true }
 );
