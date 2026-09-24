@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { ArrowSquareOutIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr"
+import { ArrowSquareOutIcon, NotePencilIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { cn } from "cn"
 import type { SerializedResearchEntrySummary } from "@/lib/research-entries"
@@ -163,10 +163,19 @@ export function ResearchEntryCard({
         </>
       )}
 
-      <div className={cn("px-4 pb-4 pt-1.5", isLink && "pt-0")} onClick={() => setEditing(true)}>
+      {isLink ? (
+        <div className="flex items-center gap-1.5 px-4 pt-3">
+          <NotePencilIcon className="size-3 text-muted-foreground" />
+          <span className="text-[10px] font-medium tracking-wide text-muted-foreground uppercase">
+            Your note
+          </span>
+        </div>
+      ) : null}
+
+      <div className="px-4 pb-4 pt-1.5" onClick={() => setEditing(true)}>
         {editing ? (
           <textarea
-            className="w-full resize-none bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+            className="w-full resize-none bg-transparent text-[15px] text-foreground outline-none placeholder:text-muted-foreground"
             rows={isLink ? 2 : 4}
             value={content}
             onChange={(e) => {
@@ -179,12 +188,14 @@ export function ResearchEntryCard({
         ) : (
           <p
             className={cn(
-              "cursor-text whitespace-pre-line text-sm text-muted-foreground",
+              "cursor-text whitespace-pre-line text-[15px] leading-snug text-foreground",
               isLink ? "line-clamp-2" : "line-clamp-4"
             )}
           >
             {content || (
-              <span className="italic">{isLink ? "Add a note on why this matters" : "Empty"}</span>
+              <span className="text-sm text-muted-foreground italic">
+                {isLink ? "Add a note on why this matters" : "Empty"}
+              </span>
             )}
           </p>
         )}
