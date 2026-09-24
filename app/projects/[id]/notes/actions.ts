@@ -1,24 +1,84 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { connectDB } from "@/lib/db";
 import { Note } from "@/lib/models/note";
 import { requireProject, requireUserId } from "@/lib/projects";
+import { serializeNoteSummary, type SerializedNoteSummary } from "@/lib/notes";
 
-export async function createNoteAction(projectId: string) {
+const createSchema = z.object({
+  title: z.string().trim().max(160).optional(),
+  content: z.string().trim().max(20000).optional(),
+});
+
+/**
+ * Creates a note straight from the "Take a note…" composer — no dialog,
+ * no separate page, no redirect (Part 7.1). Returns the created note so
+ * the grid can drop it straight into local state.
+ */
+export async function createNoteInlineAction(
+  projectId: string,
+  input: { title?: string; content?: string }
+): Promise<{ ok: boolean; note?: SerializedNoteSummary }> {
   await requireProject(projectId);
   const userId = await requireUserId();
-  await connectDB();
 
+  const parsed = createSchema.safeParse(input);
+  if (!parsed.success) return { ok: false };
+
+  // Matches Keep: clicking away from a blank composer creates nothing.
+  if (!parsed.data.title?.trim() && !parsed.data.content?.trim()) {
+    return { ok: false };
+  }
+
+  await connectDB();
   const note = await Note.create({
     projectId,
     ownerId: userId,
-    title: "Untitled Note",
+    title: parsed.data.title?.trim() || "Untitled Note",
+    content: parsed.data.content?.trim() || "",
   });
 
   revalidatePath(`/projects/${projectId}/notes`);
-  redirect(`/projects/${projectId}/notes/${note._id}`);
+  return { ok: true, note: serializeNoteSummary(note.toObject()) };
+}
+
+const saveSchema = z.object({
+  title: z.string().trim().max(160).optional(),
+  content: z.string().trim().max(20000).optional(),
+  tags: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
+});
+
+export type SaveNoteInput = z.infer<typeof saveSchema>;
+
+/**
+ * Typed, direct-call save used by a note card's debounced autosave — the
+ * inline-editing counterpart to the old form-based update action. Only
+ * touches the fields it's actually given.
+ */
+export async function saveNoteAction(
+  projectId: string,
+  noteId: string,
+  input: SaveNoteInput
+): Promise<{ ok: boolean }> {
+  const userId = await requireUserId();
+  const parsed = saveSchema.safeParse(input);
+  if (!parsed.success) return { ok: false };
+
+  const update: Record<string, unknown> = {};
+  if (parsed.data.title !== undefined) update.title = parsed.data.title.trim() || "Untitled Note";
+  if (parsed.data.content !== undefined) update.content = parsed.data.content;
+  if (parsed.data.tags !== undefined) update.tags = parsed.data.tags;
+
+  await connectDB();
+  const result = await Note.updateOne(
+    { _id: noteId, projectId, ownerId: userId },
+    { $set: update }
+  );
+
+  revalidatePath(`/projects/${projectId}/notes`);
+  return { ok: result.matchedCount > 0 };
 }
 
 export async function deleteNoteAction(projectId: string, noteId: string) {

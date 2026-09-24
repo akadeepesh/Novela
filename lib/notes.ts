@@ -19,7 +19,10 @@ export type SerializedNote = SerializedNoteSummary & {
   createdAt: string;
 };
 
-function serializeSummary(doc: Record<string, unknown>): SerializedNoteSummary {
+// Exported so the inline-composer/card actions (Part 7.1) can return a
+// freshly-created or freshly-saved note without a second round-trip
+// through listNotesForProject.
+export function serializeNoteSummary(doc: Record<string, unknown>): SerializedNoteSummary {
   return {
     id: String(doc._id),
     title: doc.title as string,
@@ -32,7 +35,7 @@ function serializeSummary(doc: Record<string, unknown>): SerializedNoteSummary {
 
 function serializeNote(doc: Record<string, unknown>): SerializedNote {
   return {
-    ...serializeSummary(doc),
+    ...serializeNoteSummary(doc),
     projectId: String(doc.projectId),
     createdAt: new Date(doc.createdAt as string).toISOString(),
   };
@@ -44,7 +47,7 @@ export async function listNotesForProject(projectId: string): Promise<Serialized
   const docs = await Note.find({ projectId, ownerId: userId })
     .sort({ pinned: -1, updatedAt: -1 })
     .lean<Record<string, unknown>[]>();
-  return docs.map(serializeSummary);
+  return docs.map(serializeNoteSummary);
 }
 
 export const requireNote = cache(async (
