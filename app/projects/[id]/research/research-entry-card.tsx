@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { ArrowSquareOutIcon, NotePencilIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { cn } from "cn"
@@ -48,12 +48,16 @@ export function ResearchEntryCard({
   const containerRef = useRef<HTMLDivElement>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  useEffect(() => {
-    if (!editing) {
-      setTitle(entry.title)
-      setContent(entry.content ?? "")
-    }
-  }, [entry, editing])
+  // Stay in sync with the server copy while not actively being edited.
+  // Adjusting state directly during render (rather than in a useEffect)
+  // avoids an extra render pass — see
+  // https://react.dev/learn/you-might-not-need-an-effect
+  const [prevEntry, setPrevEntry] = useState(entry)
+  if (!editing && entry !== prevEntry) {
+    setPrevEntry(entry)
+    setTitle(entry.title)
+    setContent(entry.content ?? "")
+  }
 
   function persist(next: { title?: string; content?: string }) {
     saveResearchEntryFieldsAction(projectId, entry.id, next).then((result) => {
