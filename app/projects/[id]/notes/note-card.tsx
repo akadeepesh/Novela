@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { PushPinIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { ChipInput } from "@/components/ui/chip-input"
@@ -43,14 +43,16 @@ export function NoteCard({
   const enqueue = useMemo(() => createActionQueue(), [])
 
   // Stay in sync with the server copy while not actively being edited —
-  // e.g. after the grid re-sorts on a pin toggle.
-  useEffect(() => {
-    if (!editing) {
-      setTitle(note.title)
-      setContent(note.content ?? "")
-      setTags(note.tags)
-    }
-  }, [note, editing])
+  // e.g. after the grid re-sorts on a pin toggle. Adjusting state directly
+  // during render (rather than in a useEffect) avoids an extra render
+  // pass — see https://react.dev/learn/you-might-not-need-an-effect
+  const [prevNote, setPrevNote] = useState(note)
+  if (!editing && note !== prevNote) {
+    setPrevNote(note)
+    setTitle(note.title)
+    setContent(note.content ?? "")
+    setTags(note.tags)
+  }
 
   function persist(next: { title?: string; content?: string; tags?: string[] }) {
     return enqueue(() => saveNoteAction(projectId, note.id, next)).then((result) => {
