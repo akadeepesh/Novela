@@ -29,10 +29,6 @@ export default function Home() {
             Sign in
           </Button>
         </div>
-
-        <p className="mt-8 text-xs text-muted-foreground">
-          Part 1 — projects, story types, and the dynamic sidebar are live.
-        </p>
       </div>
     </div>
   )
