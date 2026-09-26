@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Public_Sans, Manrope, Literata } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
@@ -20,12 +20,33 @@ const literataSerif = Literata({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
   title: {
     default: "KoraKagaj — a calmer place to write your book",
     template: "%s — KoraKagaj",
   },
   description:
     "A focused writing workspace for novelists, poets, and storytellers — manuscript, characters, world, and plot, all in one place.",
+  openGraph: {
+    title: "KoraKagaj — a calmer place to write your book",
+    description:
+      "A focused writing workspace for novelists, poets, and storytellers — manuscript, characters, world, and plot, all in one place.",
+    siteName: "KoraKagaj",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "KoraKagaj — a calmer place to write your book",
+    description:
+      "A focused writing workspace for novelists, poets, and storytellers — manuscript, characters, world, and plot, all in one place.",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fcfaf7" },
+    { media: "(prefers-color-scheme: dark)", color: "#1e1e21" },
+  ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
