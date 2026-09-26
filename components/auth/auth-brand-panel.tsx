@@ -31,7 +31,7 @@ export function AuthBrandPanel() {
       </div>
 
       <blockquote className="relative font-serif text-xl leading-relaxed text-manuscript-fg/90 transition-opacity duration-500 sm:text-2xl">
-        <span className="absolute -left-3 -top-2 text-4xl text-manuscript-fg/20">"</span>
+        <span className="absolute -left-3 -top-2 text-4xl text-manuscript-fg/20">&ldquo;</span>
         {QUOTES[quoteIndex]}
       </blockquote>
 

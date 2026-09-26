@@ -7,11 +7,9 @@ import {
   FilmSlateIcon,
   GlobeHemisphereWestIcon,
   MagnifyingGlassIcon,
-  NotebookIcon,
   NotePencilIcon,
   PuzzlePieceIcon,
   SlidersHorizontalIcon,
-  StackIcon,
   UsersThreeIcon,
 } from "@phosphor-icons/react/dist/ssr"
 
