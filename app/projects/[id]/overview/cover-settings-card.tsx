@@ -119,13 +119,21 @@ function CoverSlot({
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
         className={cn(
-          "group relative aspect-4/3 w-full cursor-pointer overflow-hidden rounded-xl border border-dashed border-border bg-muted/40 bg-cover bg-center transition-colors",
+          "group relative h-60 w-full cursor-pointer overflow-hidden rounded-xl border border-dashed border-border bg-muted/40 bg-cover bg-center transition-colors",
           "hover:border-ring/60 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none",
           dragOver && "border-ring bg-accent/40",
           previewUrl && "border-solid",
           busy && "pointer-events-none opacity-70"
         )}
-        style={previewUrl ? { backgroundImage: `url(${previewUrl})` } : undefined}
+        style={
+          previewUrl
+            ? {
+                backgroundImage: `url(${previewUrl})`,
+                backgroundSize: "contain",
+                backgroundRepeat: "no-repeat",
+              }
+            : undefined
+        }
       >
         {!previewUrl ? (
           <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-4 text-center">
@@ -144,7 +152,7 @@ function CoverSlot({
               {label}
             </span>
 
-            <div className="absolute inset-0 flex flex-col justify-end bg-liniear-to-t from-black/75 via-black/10 to-transparent opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/75 via-black/10 to-transparent opacity-0 transition-opacity group-hover:opacity-100">
               <div className="flex items-center justify-between p-2">
                 <span className="text-[11px] font-medium text-white">Replace</span>
                 <button
