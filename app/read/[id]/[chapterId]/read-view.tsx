@@ -155,11 +155,11 @@ export function ReadView({
     // applied before measuring, and so state is set from a callback rather
     // than synchronously inside the effect.
     const frame = requestAnimationFrame(() => {
-      setPages(paginateBlocks(blocks, measureEl, contentHeight))
+      setPages(paginateBlocks(blocks, measureEl, contentHeight, { keepBlocksTogether: isPoetry }))
       setPageIndex(0)
     })
     return () => cancelAnimationFrame(frame)
-  }, [blocks, box, contentWidth, contentHeight, settings.fontSize, settings.lineHeight])
+  }, [blocks, box, contentWidth, contentHeight, isPoetry, settings.fontSize, settings.lineHeight])
 
   const proseClassName = cn("manuscript-prose", isPoetry && "is-poetry")
 
@@ -273,7 +273,7 @@ export function ReadView({
                   <div className="flex h-full flex-col">
                     {settings.showHeader ? (
                       <p
-                        className="mb-4 text-center text-[11px] tracking-widest uppercase opacity-50"
+                        className="text-center text-[11px] tracking-widest uppercase opacity-50"
                         style={{ height: HEADER_RESERVE }}
                       >
                         {settings.headerText || title}
@@ -282,7 +282,12 @@ export function ReadView({
 
                     <div
                       className={proseClassName}
-                      style={{ fontSize: settings.fontSize, lineHeight: settings.lineHeight }}
+                      style={{
+                        fontSize: settings.fontSize,
+                        lineHeight: settings.lineHeight,
+                        height: contentHeight,
+                        overflow: "hidden",
+                      }}
                     >
                       <div
                         className="ProseMirror"

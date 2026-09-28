@@ -14,10 +14,26 @@ import { blockToHtml, countWords, splitParagraphAtWord } from "./blocks-html"
  * and typography classes the real page will render with — see
  * read-view.tsx, which builds one off-screen and reuses it across calls.
  */
+export type PaginateOptions = {
+  /**
+   * Keep each paragraph whole rather than letting it flow across a page
+   * break — right for poetry, where a paragraph is a stanza and splitting
+   * one mid-way would misread the poem. A stanza taller than a full page
+   * still gets split, since there's no alternative.
+   */
+  keepBlocksTogether?: boolean
+}
+
+// Never leave (or carry over) fewer than this many words at a page
+// break — avoids a lone word stranded at the foot of a page or the top of
+// the next one.
+const MIN_WORDS_AT_BREAK = 4
+
 export function paginateBlocks(
   blocks: ExportBlock[],
   measureEl: HTMLElement,
-  pageHeightPx: number
+  pageHeightPx: number,
+  options: PaginateOptions = {}
 ): ExportBlock[][] {
   if (blocks.length === 0) return [[]]
 
@@ -88,8 +104,23 @@ export function paginateBlocks(
 
     // Doesn't fit as-is.
     if (currentPage.length > 0) {
-      // Page has content already — close it out and retry this same
-      // block against a fresh, empty page.
+      // Let a prose paragraph flow across the break so the page fills up
+      // like a printed book, instead of leaving the bottom empty and
+      // pushing the whole paragraph over.
+      if (block.kind === "paragraph" && !options.keepBlocksTogether) {
+        const total = countWords(block)
+        const words = maxWordsThatFit(block)
+        if (words >= MIN_WORDS_AT_BREAK && total - words >= MIN_WORDS_AT_BREAK) {
+          const { fit, rest } = splitParagraphAtWord(block, words)
+          currentPage.push(fit)
+          queue.shift()
+          if (rest) queue.unshift(rest)
+          finalizePage()
+          continue
+        }
+      }
+      // Otherwise close the page out and retry this same block against a
+      // fresh, empty page.
       finalizePage()
       continue
     }
