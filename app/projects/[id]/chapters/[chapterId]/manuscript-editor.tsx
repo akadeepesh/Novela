@@ -12,6 +12,7 @@ import {
   TextItalicIcon,
   QuotesIcon,
   GearSixIcon,
+  BookOpenIcon,
   BookOpenTextIcon,
   ClockCounterClockwiseIcon,
 } from "@phosphor-icons/react/dist/ssr"
@@ -160,6 +161,15 @@ export function ManuscriptEditor({
 
           <div className="mx-1 h-5 w-px bg-border" />
 
+          <Button
+            size="sm"
+            variant="ghost"
+            render={<Link href={`/read/${projectId}/${chapter.id}`} />}
+            nativeButton={false}
+          >
+            <BookOpenIcon />
+            Read
+          </Button>
           <Button
             type="button"
             size="sm"

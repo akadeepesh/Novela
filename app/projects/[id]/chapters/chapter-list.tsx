@@ -8,6 +8,7 @@ import {
   CaretUpIcon,
   CaretDownIcon,
   TrashIcon,
+  BookOpenIcon,
 } from "@phosphor-icons/react/dist/ssr"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -169,6 +170,14 @@ export function ChapterList({
                     ? ` · ${estimateScriptRuntime(chapter.wordCount)}`
                     : ""}
                 </span>
+              </Link>
+
+              <Link
+                href={`/read/${projectId}/${chapter.id}`}
+                className="text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
+                aria-label={`Read ${chapter.title}`}
+              >
+                <BookOpenIcon className="size-4" />
               </Link>
 
               <button
