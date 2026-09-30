@@ -6,6 +6,7 @@ import { AvatarMenu } from "@/components/account/avatar-menu"
 import { Greeting } from "@/components/dashboard/greeting"
 import { HeroCard } from "@/components/dashboard/hero-card"
 import { OtherWritings } from "@/components/dashboard/other-writings"
+import { ImportLink } from "@/components/dashboard/import-link"
 import { auth } from "@/auth"
 import { getDashboardData } from "@/lib/dashboard"
 
@@ -44,6 +45,9 @@ export default async function DashboardPage() {
             <>
               <HeroCard hero={hero} />
               <OtherWritings others={others} />
+              <div className="mt-14 flex justify-center">
+                <ImportLink />
+              </div>
             </>
           ) : (
             <div className="flex flex-col items-center gap-4 py-16 text-center">
@@ -52,6 +56,7 @@ export default async function DashboardPage() {
                 <PlusIcon />
                 Start writing
               </Button>
+              <ImportLink />
             </div>
           )}
         </div>

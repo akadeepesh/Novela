@@ -197,6 +197,12 @@ export function CreationCanvas() {
                 Couldn’t create it just now — try again.
               </p>
             ) : null}
+            <Link
+              href="/projects/import"
+              className="mt-5 text-xs opacity-45 underline-offset-4 transition-opacity outline-none hover:underline hover:opacity-100 focus-visible:underline focus-visible:opacity-100"
+            >
+              Or continue a book you’ve already written
+            </Link>
           </motion.div>
         </motion.form>
       </div>
