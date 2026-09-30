@@ -66,12 +66,25 @@ export function ChapterList({
         <p className="text-sm text-muted-foreground">
           {chapters.length} {chapters.length === 1 ? singular.toLowerCase() : label.toLowerCase()}
         </p>
-        <form action={createChapterAction.bind(null, projectId)}>
-          <Button type="submit" size="sm" disabled={isPending}>
-            <PlusIcon />
-            New {singular.toLowerCase()}
-          </Button>
-        </form>
+        <div className="flex items-center gap-2">
+          {chapters.length > 0 ? (
+            <Button
+              size="sm"
+              variant="outline"
+              render={<Link href={`/read/${projectId}`} />}
+              nativeButton={false}
+            >
+              <BookOpenIcon />
+              Read book
+            </Button>
+          ) : null}
+          <form action={createChapterAction.bind(null, projectId)}>
+            <Button type="submit" size="sm" disabled={isPending}>
+              <PlusIcon />
+              New {singular.toLowerCase()}
+            </Button>
+          </form>
+        </div>
       </div>
 
       {asCards ? (
@@ -170,14 +183,6 @@ export function ChapterList({
                     ? ` · ${estimateScriptRuntime(chapter.wordCount)}`
                     : ""}
                 </span>
-              </Link>
-
-              <Link
-                href={`/read/${projectId}/${chapter.id}`}
-                className="text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
-                aria-label={`Read ${chapter.title}`}
-              >
-                <BookOpenIcon className="size-4" />
               </Link>
 
               <button

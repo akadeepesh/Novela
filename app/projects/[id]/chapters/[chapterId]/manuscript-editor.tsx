@@ -164,7 +164,7 @@ export function ManuscriptEditor({
           <Button
             size="sm"
             variant="ghost"
-            render={<Link href={`/read/${projectId}/${chapter.id}`} />}
+            render={<Link href={`/read/${projectId}?chapter=${chapter.id}`} />}
             nativeButton={false}
           >
             <BookOpenIcon />
