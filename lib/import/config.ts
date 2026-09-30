@@ -21,6 +21,31 @@ export const IMPORT_MULTIPART_THRESHOLD_BYTES = 15 * 1024 * 1024;
 /** Non-whitespace characters a page needs before it counts as "has text". A lone "— 12 —" page marker doesn't. */
 export const IMPORT_MIN_CHARS_FOR_TEXT_PAGE = 20;
 
+/** How long an untouched import survives before its scratch record expires. Each step the person completes resets it. */
+export const IMPORT_JOB_TTL_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Plain-language promise of how each book type gets split into
+ * chapters/poems, shown on the type question. Kept to what the plan
+ * actually commits to (separator glyphs for poetry, headings for prose,
+ * and an honest "you tell me" fallback) — Step 4 has to live up to these.
+ */
+export const IMPORT_SPLIT_HINT: Record<"novel" | "poetry" | "script-writing" | "custom", string> = {
+  novel: "We look for chapter headings — “Chapter One”, “1.”, or a line set larger than the text around it.",
+  poetry: "We look for a mark that repeats between poems, like a “— 12 —” or a row of asterisks.",
+  "script-writing": "We look for episode titles and scene headings, like “INT. KITCHEN — DAY”.",
+  custom: "We look for repeating separators and headings both, and you check the split before anything is saved.",
+};
+
+/**
+ * Access mode for scratch PDFs in Vercel Blob. "private" means there is no
+ * public URL at all — the file can only be read back server-side, with the
+ * store token — which is what you want for someone's unpublished manuscript.
+ * It must match how the Blob store was created (Vercel → Storage → the
+ * store's settings); a mismatch is refused by Blob's API with a 400.
+ */
+export const IMPORT_BLOB_ACCESS = "private" as const;
+
 /** Scratch PDFs live under this per-user prefix; the upload route and the intake action both enforce it. */
 export function importBlobPrefix(userId: string): string {
   return `imports/${userId}/`;

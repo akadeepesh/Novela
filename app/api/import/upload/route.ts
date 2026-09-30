@@ -8,9 +8,13 @@ import { IMPORT_MAX_BYTES, importBlobPrefix } from "@/lib/import/config";
  * Blob. The file never passes through a serverless function, whose request
  * body limit (a few MB) is smaller than a real book interior can be.
  *
- * Auth lives inside onBeforeGenerateToken rather than at the top of the
- * handler on purpose: this same route also receives Blob's server-to-server
- * "upload completed" callback, which carries no session cookie.
+ * There is deliberately no `onUploadCompleted`. With it, Vercel calls this
+ * app back when an upload finishes — which can't work on localhost — and
+ * this flow has no use for it: intake runs from the client's follow-up
+ * action. Without it, the token carries no callback at all.
+ *
+ * Auth lives inside onBeforeGenerateToken so the session is checked exactly
+ * when a token is about to be minted.
  */
 export async function POST(request: Request) {
   let body: HandleUploadBody;
@@ -29,24 +33,22 @@ export async function POST(request: Request) {
         const userId = session?.user?.id;
         if (!userId) throw new Error("Unauthorized");
         // Scratch uploads only ever land under this user's own prefix.
-        if (!pathname.startsWith(importBlobPrefix(userId))) {
+        if (!pathname.startsWith(importBlobPrefix(userId)) || pathname.includes("..")) {
           throw new Error("Invalid upload path");
         }
         return {
           allowedContentTypes: ["application/pdf"],
           maximumSizeInBytes: IMPORT_MAX_BYTES,
-          // Random suffix: the URL is the only thing gating read access to
-          // someone's unpublished manuscript, so it must not be guessable.
+          // The random suffix keeps pathnames unguessable on top of the
+          // blob being private.
           addRandomSuffix: true,
         };
       },
-      // Intake runs from the client's follow-up action (which also works on
-      // localhost, where Blob's callback can't reach), so nothing to do here.
-      onUploadCompleted: async () => {},
     });
     return NextResponse.json(json);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Upload failed";
+    console.error("import upload token failed:", message);
     const status = message === "Unauthorized" ? 401 : 400;
     return NextResponse.json({ error: message }, { status });
   }
