@@ -14,6 +14,10 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // pdf.js loads its worker and font/cmap data relative to its own files, so
+  // it has to run from node_modules as-is rather than being bundled (PDF
+  // import — lib/import/inspect-pdf.ts).
+  serverExternalPackages: ["pdfjs-dist"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
