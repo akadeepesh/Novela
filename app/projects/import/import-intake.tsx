@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { upload } from "@vercel/blob/client"
 import {
   ArrowLeftIcon,
+  ArrowRightIcon,
   CheckIcon,
   FilePdfIcon,
   LockSimpleIcon,
@@ -14,6 +16,7 @@ import {
 import { cn } from "cn"
 import { Button } from "@/components/ui/button"
 import {
+  IMPORT_BLOB_ACCESS,
   IMPORT_MAX_BYTES,
   IMPORT_MAX_PAGES,
   IMPORT_MULTIPART_THRESHOLD_BYTES,
@@ -22,6 +25,7 @@ import {
   type IntakeReport,
 } from "@/lib/import/config"
 import { discardImportAction, runIntakeAction } from "./actions"
+import { ImportSteps } from "./import-steps"
 
 type FileMeta = { name: string; size: number }
 
@@ -33,7 +37,7 @@ type Phase =
   | { kind: "rejected"; file?: FileMeta; code: string; title: string; message: string }
   // A transient failure (network, expired session) — the file is kept so
   // "Try again" doesn't make the person pick it again.
-  | { kind: "failed"; file: File; title: string; message: string }
+  | { kind: "failed"; file: File; title: string; message: string; detail?: string }
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
@@ -47,6 +51,11 @@ function safeBlobName(name: string): string {
 }
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many)
+
+// No progress event and no answer for this long = something is wrong. The
+// percentage only counts bytes handed to the network, so the final stretch
+// (waiting on Blob's reply) emits nothing — this covers that gap too.
+const STALL_MS = 45_000
 
 export function ImportIntake({ userId }: { userId: string }) {
   const reduceMotion = useReducedMotion()
@@ -92,22 +101,35 @@ export function ImportIntake({ userId }: { userId: string }) {
     abortRef.current = controller
     const current = () => run === runRef.current
 
+    let stalled = false
+    let watchdog: ReturnType<typeof setTimeout> | undefined
+    const arm = () => {
+      clearTimeout(watchdog)
+      watchdog = setTimeout(() => {
+        stalled = true
+        controller.abort()
+      }, STALL_MS)
+    }
+
     setPhase({ kind: "uploading", file: meta, percent: 0 })
+    arm()
 
     try {
       const blob = await upload(`${importBlobPrefix(userId)}${safeBlobName(file.name)}`, file, {
-        access: "public",
+        access: IMPORT_BLOB_ACCESS,
         handleUploadUrl: "/api/import/upload",
         multipart: file.size > IMPORT_MULTIPART_THRESHOLD_BYTES,
         abortSignal: controller.signal,
         onUploadProgress: ({ percentage }) => {
+          arm()
           if (current()) setPhase({ kind: "uploading", file: meta, percent: Math.round(percentage) })
         },
       })
+      clearTimeout(watchdog)
       if (!current()) return
 
       setPhase({ kind: "checking", file: meta })
-      const result = await runIntakeAction({ url: blob.url, fileName: file.name })
+      const result = await runIntakeAction({ pathname: blob.pathname, fileName: file.name })
       if (!current()) return
 
       if (result.ok) {
@@ -116,13 +138,29 @@ export function ImportIntake({ userId }: { userId: string }) {
         setPhase({ kind: "rejected", file: meta, code: result.code, title: result.title, message: result.message })
       }
     } catch (err) {
-      if (!current() || controller.signal.aborted) return
+      clearTimeout(watchdog)
+      // Aborted by the person (Cancel / a newer attempt): say nothing.
+      if (!current() || (controller.signal.aborted && !stalled)) return
       console.error("PDF import upload failed", err)
+      // fetch() rejects with a TypeError when the request never got an
+      // answer (offline, dropped connection). Anything else is the server
+      // actively refusing — and blaming the connection for that would send
+      // the person off debugging the wrong thing.
+      const refused = !stalled && err instanceof Error && !(err instanceof TypeError)
       setPhase({
         kind: "failed",
         file,
-        title: "That didn’t go through",
-        message: "The upload was interrupted — check your connection and try again. Nothing was saved.",
+        title: stalled
+          ? "That’s taking too long"
+          : refused
+            ? "The upload was turned away"
+            : "That didn’t go through",
+        message: stalled
+          ? "The upload stopped responding. Nothing was saved — try again, and if it keeps happening, check your connection."
+          : refused
+            ? "The file storage service refused it, so this isn’t a connection problem. Nothing was saved."
+            : "The upload was interrupted — check your connection and try again. Nothing was saved.",
+        detail: refused ? err.message.slice(0, 300) : undefined,
       })
     }
   }
@@ -177,7 +215,9 @@ export function ImportIntake({ userId }: { userId: string }) {
           transition={{ duration: 0.4, ease: "easeOut" }}
           className="flex w-full max-w-xl flex-col items-center gap-9 text-center"
         >
-          <header className="flex flex-col items-center gap-3">
+          <ImportSteps current={0} />
+
+          <header className="-mt-3 flex flex-col items-center gap-3">
             <h1 className="font-serif text-3xl font-medium sm:text-4xl">
               Bring in a book you’ve already written
             </h1>
@@ -236,6 +276,7 @@ export function ImportIntake({ userId }: { userId: string }) {
                       code={phase.kind === "failed" ? "failed" : phase.code}
                       title={phase.title}
                       message={phase.message}
+                      detail={phase.kind === "failed" ? phase.detail : undefined}
                       primary={
                         phase.kind === "failed"
                           ? { label: "Try again", onClick: () => void begin(phase.file) }
@@ -345,7 +386,7 @@ function WorkingView({
         <Stage
           state={uploading ? "active" : "done"}
           label="Sending your PDF"
-          detail={uploading ? `${phase.percent}%` : "Sent"}
+          detail={uploading ? (phase.percent >= 98 ? "Finishing…" : `${phase.percent}%`) : "Sent"}
         >
           {uploading ? (
             <div className="h-1 w-full overflow-hidden rounded-full bg-current/10">
@@ -442,6 +483,8 @@ function PassedView({
   headingRef: React.RefObject<HTMLHeadingElement | null>
   onReset: () => void
 }) {
+  const router = useRouter()
+  const [navigating, setNavigating] = useState(false)
   const { report, file } = phase
   const about = report.imageOnlyApproximate ? "about " : ""
 
@@ -497,9 +540,19 @@ function PassedView({
         ) : null}
       </div>
 
-      <div className="mt-1 flex flex-col items-center gap-3">
-        <p className="text-xs opacity-45">Next, you’ll tell us what kind of book this is.</p>
-        <Button variant="ghost" size="sm" onClick={onReset}>
+      <div className="mt-1 flex flex-col items-center gap-2">
+        <Button
+          size="lg"
+          disabled={navigating}
+          onClick={() => {
+            setNavigating(true)
+            router.push(`/projects/import/${phase.jobId}`)
+          }}
+        >
+          {navigating ? "One moment…" : "Continue"}
+          {navigating ? null : <ArrowRightIcon />}
+        </Button>
+        <Button variant="ghost" size="sm" disabled={navigating} onClick={onReset}>
           Choose a different file
         </Button>
       </div>
@@ -515,6 +568,7 @@ function RejectedView({
   code,
   title,
   message,
+  detail,
   primary,
   secondary,
 }: {
@@ -523,6 +577,7 @@ function RejectedView({
   code: string
   title: string
   message: string
+  detail?: string
   primary: { label: string; onClick: () => void }
   secondary?: { label: string; onClick: () => void }
 }) {
@@ -544,6 +599,11 @@ function RejectedView({
           </p>
         ) : null}
         <p className="max-w-sm text-sm leading-relaxed opacity-70">{message}</p>
+        {detail ? (
+          <p className="mt-1 max-w-sm rounded-md bg-muted px-3 py-2 text-left font-mono text-[11px] leading-relaxed break-words text-muted-foreground">
+            {detail}
+          </p>
+        ) : null}
       </div>
 
       <div className="mt-1 flex items-center gap-2">
