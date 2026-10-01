@@ -1,12 +1,5 @@
 import "server-only";
-// Importing the worker module first registers it on `globalThis.pdfjsWorker`,
-// which pdf.js picks up and runs in-process. That avoids its default
-// behaviour of dynamically importing a worker file by a computed path —
-// which bundlers and serverless file-tracing can't see, and which is the
-// classic "Setting up fake worker failed" deploy-only failure.
-import "pdfjs-dist/legacy/build/pdf.worker.mjs";
-import { getDocument, OPS, PermissionFlag } from "pdfjs-dist/legacy/build/pdf.mjs";
-import type { PDFDocumentProxy } from "pdfjs-dist/types/src/display/api";
+import { OPS, PermissionFlag, openPdf, type PDFDocumentProxy } from "@/lib/import/pdfjs";
 import {
   IMPORT_MAX_BYTES,
   IMPORT_MAX_PAGES,
@@ -107,13 +100,7 @@ export async function inspectPdf(bytes: Uint8Array): Promise<InspectResult> {
   if (bytes.length > IMPORT_MAX_BYTES) return { ok: false, ...rejection("too-large") };
   if (!hasPdfHeader(bytes)) return { ok: false, ...rejection("not-pdf") };
 
-  const task = getDocument({
-    data: bytes,
-    // Only reading text and page structure here — nothing is rendered.
-    useSystemFonts: false,
-    disableFontFace: true,
-    verbosity: 0,
-  });
+  const task = openPdf(bytes);
 
   try {
     let doc: PDFDocumentProxy;
