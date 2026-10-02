@@ -44,6 +44,14 @@ export function parsePageList(spec: string | null | undefined, pageCount: number
  * checking a real upload against its PDF; the review screen a person sees
  * in step 10 is a separate, designed surface.
  */
+/** True when no single size describes the book — text is sized per page (typical of poems fitted to their page). */
+export function sizesVaryByPage(result: ExtractedText): boolean {
+  const { pageSizes } = result.profile;
+  if (result.pageCount < 10) return false;
+  const common = pageSizes.filter((s) => s.pages / result.profile.pagesWithText >= 0.1);
+  return common.length >= 3;
+}
+
 export function formatExtractionReport(
   result: ExtractedText,
   opts: { fileName?: string; pages?: number[] } = {}
@@ -61,7 +69,8 @@ export function formatExtractionReport(
   out.push("HOW THE BOOK IS SET");
   out.push(
     `  body text     ${p.bodySize !== null ? n1(p.bodySize) + "pt" : "—"}  ${p.bodyFont ?? "—"}` +
-      (p.lineSpacing ? `  · line spacing ${n1(p.lineSpacing)}pt` : "")
+      (p.lineSpacing ? `  · line spacing ${n1(p.lineSpacing)}pt` : "") +
+      (sizesVaryByPage(result) ? "  (varies by page — see NOTES)" : "")
   );
   const pageW = result.pages[0]?.width;
   out.push(
@@ -92,6 +101,10 @@ export function formatExtractionReport(
   out.push("");
 
   const warnings: string[] = [];
+  if (sizesVaryByPage(result)) {
+    const top = p.pageSizes.slice(0, 4).map((s) => `${n1(s.size)}pt on ${s.pages} pages`).join(", ");
+    warnings.push(`Text size changes from page to page (${top}) — typical of poems sized to fit their page. Size alone can't identify headings in this book`);
+  }
   if (p.emptyPages.length) warnings.push(`${p.emptyPages.length} page(s) with no text: ${p.emptyPages.slice(0, 15).join(", ")}${p.emptyPages.length > 15 ? "…" : ""}`);
   if (p.offAxisRuns) warnings.push(`${p.offAxisRuns} piece(s) of sideways/upside-down text were left out`);
   if (p.offPageRuns) warnings.push(`${p.offPageRuns} piece(s) of text lying outside the page were left out`);
