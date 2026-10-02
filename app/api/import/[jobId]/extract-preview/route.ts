@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/auth";
-import { connectDB } from "@/lib/db";
-import { ImportJob } from "@/lib/models/import-job";
-import { readImportBlob } from "@/lib/import/storage";
+import { loadPreviewJob } from "@/lib/import/dev-preview";
 import { extractText } from "@/lib/import/extract/extract-text";
 import { formatExtractionReport, parsePageList } from "@/lib/import/extract/report";
 
@@ -23,31 +20,14 @@ export const maxDuration = 60;
  * <jobId> is the last segment of the "About your book" page's URL.
  */
 export async function GET(request: Request, { params }: { params: Promise<{ jobId: string }> }) {
-  // Hard stop outside `next dev`: nothing here should ever be reachable in a deployed build.
-  if (process.env.NODE_ENV === "production") {
-    return new NextResponse("Not found", { status: 404 });
-  }
-
-  const session = await auth();
-  const userId = session?.user?.id;
-  if (!userId) return new NextResponse("Unauthorized", { status: 401 });
-
   const { jobId } = await params;
-  let job: Record<string, unknown> | null;
-  try {
-    await connectDB();
-    job = await ImportJob.findOne({ _id: jobId, ownerId: userId }).lean<Record<string, unknown>>();
-  } catch {
-    job = null; // malformed id
-  }
-  if (!job) return new NextResponse("No such import (it may have expired).", { status: 404 });
-
-  const read = await readImportBlob(job.sourcePathname as string);
-  if (!read.ok) return new NextResponse("The uploaded PDF is no longer available.", { status: 404 });
+  const loaded = await loadPreviewJob(jobId);
+  if (!loaded.ok) return loaded.response;
+  const { job } = loaded;
 
   const url = new URL(request.url);
   try {
-    const result = await extractText(read.bytes);
+    const result = await extractText(job.bytes);
     const requested = parsePageList(url.searchParams.get("pages"), result.pageCount);
     const pages = requested.length ? requested : [1, 2, 3].filter((p) => p <= result.pageCount);
 
@@ -57,7 +37,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ jobI
         { headers: { "Cache-Control": "no-store" } }
       );
     }
-    return new NextResponse(formatExtractionReport(result, { fileName: job.fileName as string, pages }), {
+    return new NextResponse(formatExtractionReport(result, { fileName: job.fileName, pages }), {
       headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" },
     });
   } catch (err) {
