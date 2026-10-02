@@ -86,6 +86,12 @@ export type BookProfile = {
   /** Up to 8 most-used sizes, biggest share first. Headings show up as the larger ones. */
   sizes: SizeUsage[];
   fonts: FontUsage[];
+  /**
+   * The size most of each PAGE's text is set in, and how many pages use each.
+   * Books where text is sized to fit its page (poems, mostly) have no single
+   * "body size" — this is what tells those apart from books that do.
+   */
+  pageSizes: { size: number; pages: number }[];
   /** Median baseline-to-baseline distance between consecutive body lines. */
   lineSpacing: number | null;
   /**

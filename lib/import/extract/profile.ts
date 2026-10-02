@@ -55,6 +55,22 @@ export function buildProfile(pages: PageText[], unresolvedFonts: number): BookPr
     bodySize !== null && Math.abs(l.size - bodySize) <= Math.max(0.5, bodySize * 0.04);
   const bodyLines = allLines.filter(isBody);
 
+  // ---- the dominant size on each page, and how many pages share each
+  const pageSizeCounts = new Map<number, number>();
+  for (const page of pages) {
+    const perSize = new Map<number, number>();
+    for (const line of page.lines) {
+      const key = bucket(line.size);
+      perSize.set(key, (perSize.get(key) ?? 0) + visibleLength(line.text));
+    }
+    const top = [...perSize.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (top) pageSizeCounts.set(top[0], (pageSizeCounts.get(top[0]) ?? 0) + 1);
+  }
+  const pageSizes = [...pageSizeCounts.entries()]
+    .map(([size, count]) => ({ size, pages: count }))
+    .sort((a, b) => b.pages - a.pages)
+    .slice(0, 8);
+
   // ---- fonts
   const fontAgg = new Map<string, FontUsage>();
   for (const line of allLines) {
@@ -131,6 +147,7 @@ export function buildProfile(pages: PageText[], unresolvedFonts: number): BookPr
     bodyFont,
     sizes,
     fonts,
+    pageSizes,
     lineSpacing: lineSpacing === null ? null : Math.round(lineSpacing * 10) / 10,
     blocks: {
       odd: blocks.odd && { left: Math.round(blocks.odd.left * 10) / 10, right: Math.round(blocks.odd.right * 10) / 10 },
