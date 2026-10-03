@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button"
 import { PROJECT_TYPES, PROJECT_TYPE_ICON, projectTypeLabel, type ProjectType } from "@/lib/project-config"
 import { IMPORT_SPLIT_HINT } from "@/lib/import/config"
 import type { SerializedImportJob } from "@/lib/import/jobs"
-import { discardImportAction, saveImportIntentAction } from "../actions"
+import { discardImportAction, saveImportIntentAction, startImportAction } from "../actions"
 
 type Stage = "type" | "cover" | "saved"
 
@@ -47,6 +47,7 @@ export function ImportIntent({ job, steps }: { job: SerializedImportJob; steps: 
   const [error, setError] = useState<string | null>(null)
   const [saving, startSave] = useTransition()
   const [leaving, startLeave] = useTransition()
+  const [starting, startBegin] = useTransition()
 
   // Same trick as the creation canvas: the app's accent shifts to the book's
   // type as soon as it's chosen, so the choice visibly *lands*.
@@ -78,6 +79,15 @@ export function ImportIntent({ job, steps }: { job: SerializedImportJob; steps: 
     startSave(async () => {
       const result = await saveImportIntentAction(job.id, { projectType: type, hasFrontCover: cover })
       if (result.ok) go("saved", 1)
+      else setError(result.error)
+    })
+  }
+
+  function begin() {
+    setError(null)
+    startBegin(async () => {
+      const result = await startImportAction(job.id)
+      if (result.ok) router.refresh()
       else setError(result.error)
     })
   }
@@ -313,9 +323,20 @@ export function ImportIntent({ job, steps }: { job: SerializedImportJob; steps: 
                   </Recap>
                 </dl>
 
-                <Button variant="ghost" size="sm" onClick={() => go("type", -1)}>
-                  Change answers
-                </Button>
+                <div className="flex flex-col items-center gap-3">
+                  <Button size="lg" onClick={begin} disabled={starting}>
+                    {starting ? "Starting…" : "Start importing"}
+                    {starting ? null : <ArrowRightIcon />}
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => go("type", -1)} disabled={starting}>
+                    Change answers
+                  </Button>
+                  {error ? (
+                    <p role="alert" className="text-sm text-destructive">
+                      {error}
+                    </p>
+                  ) : null}
+                </div>
               </motion.section>
             )}
           </AnimatePresence>

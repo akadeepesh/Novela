@@ -5,8 +5,12 @@ import { Button } from "@/components/ui/button"
 import { getImportJob } from "@/lib/import/jobs"
 import { ImportSteps } from "../import-steps"
 import { ImportIntent } from "./import-intent"
+import { ImportProgress } from "./import-progress"
 
-export const metadata: Metadata = { title: "About your book" }
+export const metadata: Metadata = { title: "Importing your book" }
+
+// The pipeline runs after the "Start importing" response, in this route's function — give it room.
+export const maxDuration = 300
 
 export default async function ImportJobPage({ params }: { params: Promise<{ jobId: string }> }) {
   const { jobId } = await params
@@ -38,6 +42,10 @@ export default async function ImportJobPage({ params }: { params: Promise<{ jobI
         </div>
       </div>
     )
+  }
+
+  if (job.status === "processing" || job.status === "processed") {
+    return <ImportProgress job={job} steps={<ImportSteps current={2} />} />
   }
 
   return <ImportIntent job={job} steps={<ImportSteps current={1} />} />
