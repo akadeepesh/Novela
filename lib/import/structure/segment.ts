@@ -14,6 +14,8 @@ export type SegmentInput = {
   /** Headings, in reading order, with the number each carries (if any). */
   headings?: { ref: LineRef; text: string; number: number | null }[];
   headingSignal?: HeadingSignal | null;
+  /** For method "page": pages whose text runs to the bottom, so a poem may continue past them. */
+  fullPages?: Set<number>;
   fallbackTitle: string;
   /** What to call a section whose heading is only a number: "Chapter" → "Chapter 5". */
   bareNumberLabel: string;
@@ -88,6 +90,15 @@ export function segment(input: SegmentInput): DetectedPiece[] {
       }
     }
     close();
+  } else if (input.method === "page") {
+    const byPage = new Map<number, Draft>();
+    for (const item of input.stream) {
+      if (item.kind !== "line") continue;
+      const d = byPage.get(item.ref.page) ?? { kind: "piece" as const, lines: [] };
+      d.lines.push({ ref: item.ref, text: item.text });
+      byPage.set(item.ref.page, d);
+    }
+    drafts.push(...[...byPage.entries()].sort((a, b) => a[0] - b[0]).map(([, d]) => d));
   } else {
     const lines = input.stream.filter((i) => i.kind === "line").map((i) => ({ ref: i.ref, text: i.text }));
     if (lines.length > 0) drafts.push({ kind: "piece", lines });
@@ -150,7 +161,9 @@ function assessPieces(pieces: DetectedPiece[], drafts: Draft[], input: SegmentIn
           ? input.headingSignal?.pattern === "styled"
             ? "Picked out by how it looks (larger or bolder) alone, with no “Chapter”-style wording to confirm it."
             : "The headings in this book were only partly consistent."
-          : "The repeating marker was only partly consistent across the book."
+          : input.method === "page"
+            ? "Taken as one page, one piece — nothing in the book marks where pieces begin and end."
+            : "The repeating marker was only partly consistent across the book."
       );
     }
     if (p.kind === "front-matter") {
@@ -163,6 +176,11 @@ function assessPieces(pieces: DetectedPiece[], drafts: Draft[], input: SegmentIn
     }
     if (p.lines.length === 0) {
       note(p, "low", "Nothing between this heading and the next.");
+    }
+    if (input.method === "page") {
+      const page = p.startPage;
+      if (input.fullPages?.has(page)) note(p, "medium", "This page is full to the bottom — the piece may carry on onto the next page.");
+      else if (input.fullPages?.has(page - 1)) note(p, "medium", "The page before is full to the bottom, so this may be the rest of that piece.");
     }
     if (input.method === "separator" && input.separator?.role === "after" && !p.marker) {
       note(p, "low", "No closing marker after this one — it may be unfinished, or run into the next piece.");

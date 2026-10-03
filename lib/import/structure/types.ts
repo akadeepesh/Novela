@@ -20,7 +20,7 @@ export type Confidence = "high" | "medium" | "low";
 export type FurnitureKind = "folio" | "running-head" | "separator";
 export type FurnitureLine = { ref: LineRef; kind: FurnitureKind; text: string };
 
-export type StructureMethod = "separator" | "heading" | "none";
+export type StructureMethod = "separator" | "heading" | "page" | "none";
 
 export type SeparatorSignal = {
   /** The marker's text with digits as "#", e.g. "— # —" or "* * *". */
@@ -81,6 +81,8 @@ export type StructureResult = {
   pieces: DetectedPiece[];
   furniture: FurnitureLine[];
   signals: {
+    /** Set when each page was taken as one piece (no marker or heading between pieces was found). */
+    pagePerPiece?: { textPages: number; fullPages: number[] } | null;
     separator: SeparatorSignal | null;
     heading: HeadingSignal | null;
     /** Page numbers found and removed: how many, and the text shape. */

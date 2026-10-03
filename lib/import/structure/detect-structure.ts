@@ -4,6 +4,7 @@ import { detectFurniture } from "./furniture";
 import { flatten } from "./flatten";
 import { detectSeparator } from "./separators";
 import { detectHeadings } from "./headings";
+import { detectPagePerPiece } from "./pages";
 import { segment, type StreamItem } from "./segment";
 import { refKey } from "./text-shapes";
 import type { Confidence, StructureMethod, StructureResult } from "./types";
@@ -75,6 +76,11 @@ export function detectStructure(extracted: ExtractedText, opts: DetectOptions): 
     method = "heading";
   }
 
+  // 4b. Nothing marks the pieces — but a poetry book often gives each poem its own page.
+  const totalContentPages = extracted.pages.filter((p) => !excluded.has(p.page)).length;
+  const pageDet = method === "none" && usesSeparators ? detectPagePerPiece(flat, totalContentPages) : null;
+  if (pageDet) method = "page";
+
   // 5. Markers that aren't the dividers are still page decoration — but only when we're sure they are markers.
   const dropMarkers = !!sepDet;
   const markerFurniture = dropMarkers
@@ -97,11 +103,13 @@ export function detectStructure(extracted: ExtractedText, opts: DetectOptions): 
     });
   }
 
-  const baseScore = method === "separator" ? sepScore : method === "heading" ? headScore : 0;
+  const baseScore =
+    method === "separator" ? sepScore : method === "heading" ? headScore : method === "page" ? (pageDet?.score ?? 0) : 0;
   const pieces = segment({
     stream,
     method,
     baseConfidence: method === "none" ? "low" : band(baseScore),
+    fullPages: new Set(pageDet?.fullPages ?? []),
     separator: sepDet?.signal ?? null,
     headings: headDet?.headings,
     headingSignal: headDet?.signal ?? null,
@@ -118,6 +126,11 @@ export function detectStructure(extracted: ExtractedText, opts: DetectOptions): 
     notes.push(`Split at ${headDet.signal.count} headings (${headDet.signal.pattern === "styled" ? "set larger or bolder than their text" : headDet.signal.pattern.replace("-", " ")}).`);
     if (headDet.signal.ignoredStyles > 0) notes.push(`${headDet.signal.ignoredStyles} other heading-like style(s) were not used for splitting.`);
     if (sepDet) notes.push(`A repeating “${sepDet.signal.sample}” marker was removed from the text.`);
+  } else if (method === "page" && pageDet) {
+    notes.push(
+      `Nothing between the pieces marks where one ends, but ${pageDet.textPages} of ${pageDet.totalPages} pages each hold a short block of text — so each page is taken as one ${projectType === "poetry" ? "poem" : "piece"}.` +
+        (pageDet.fullPages.length ? ` ${pageDet.fullPages.length} page(s) run to the bottom and may continue onto the next.` : "")
+    );
   } else {
     notes.push("Couldn’t find a dependable way to split this book, so it’s one long piece. You can split it yourself when you review it.");
     if (!usesSeparators && foundSep && foundSep.signal.score >= 0.75) {
@@ -137,7 +150,9 @@ export function detectStructure(extracted: ExtractedText, opts: DetectOptions): 
     );
   }
 
-  const overall: Confidence = method === "none" ? "low" : band(baseScore);
+  // A page-per-piece reading is an inference from the layout, not a mark in the text: the book as a whole is never better than "medium",
+  // while each ordinary page stands as its own settled piece and only the pages that may run on are pointed out.
+  const overall: Confidence = method === "none" ? "low" : method === "page" ? "medium" : band(baseScore);
   return {
     version: 1,
     projectType,
@@ -146,6 +161,7 @@ export function detectStructure(extracted: ExtractedText, opts: DetectOptions): 
     pieces,
     furniture: [...furn.furniture, ...markerFurniture],
     signals: {
+      pagePerPiece: pageDet ? { textPages: pageDet.textPages, fullPages: pageDet.fullPages } : null,
       separator: sepDet?.signal ?? null,
       heading: headDet?.signal ?? null,
       folio: furn.folio,
