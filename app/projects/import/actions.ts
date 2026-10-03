@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { connectDB } from "@/lib/db";
 import { ImportJob } from "@/lib/models/import-job";
 import { requireUserId } from "@/lib/projects";
@@ -9,6 +10,8 @@ import { PROJECT_TYPES } from "@/lib/project-config";
 import { IMPORT_JOB_TTL_MS, rejection, type IntakeRejection, type IntakeReport } from "@/lib/import/config";
 import { inspectPdf } from "@/lib/import/inspect-pdf";
 import { deleteImportBlob, isOwnedImportPathname, readImportBlob } from "@/lib/import/storage";
+import { runImportPipeline } from "@/lib/import/pipeline/run-pipeline";
+import { RUN_STALE_AFTER_MS, type RunState } from "@/lib/import/pipeline/types";
 
 export type IntakeActionResult =
   | { ok: true; jobId: string; report: IntakeReport }
@@ -76,6 +79,10 @@ export async function discardImportAction(jobId: string): Promise<{ ok: boolean 
     >();
     if (!job) return { ok: false };
     await deleteImportBlob(job.sourcePathname as string);
+    const assets = (job.assets ?? {}) as Record<string, string | undefined>;
+    for (const key of ["textPathname", "resultPathname", "backgroundPathname", "coverPathname"]) {
+      await deleteImportBlob(assets[key]);
+    }
     return { ok: true };
   } catch {
     // Malformed id or a transient DB error — the job's TTL will reap the record regardless.
@@ -124,6 +131,58 @@ export async function saveImportIntentAction(
     return { ok: false, error: "Couldn’t save that just now — try again." };
   }
 
+  revalidatePath(`/projects/import/${jobId}`);
+  return { ok: true };
+}
+
+/**
+ * Starts (or restarts, after a failure) the import pipeline for a job whose
+ * questions are answered. Returns straight away — the work runs after the
+ * response, and the progress screen follows it by polling the job's `run`.
+ *
+ * The claim is atomic: only a job that is waiting, or whose last run failed
+ * or went quiet, can be started, so a double-click or a second tab can't run
+ * the pipeline twice over the same job.
+ */
+export async function startImportAction(jobId: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const userId = await requireUserId();
+  try {
+    await connectDB();
+    const staleBefore = Date.now() - RUN_STALE_AFTER_MS;
+    const claimed = await ImportJob.findOneAndUpdate(
+      {
+        _id: jobId,
+        ownerId: userId,
+        projectType: { $exists: true },
+        hasFrontCover: { $exists: true },
+        $or: [
+          { status: "intent-set" },
+          { status: "processing", "run.phase": "failed" },
+          // A run whose record never landed (or was lost) — see effectiveRun.
+          { status: "processed", run: { $exists: false } },
+          { status: "processing", run: { $exists: false }, updatedAt: { $lt: new Date(staleBefore) } },
+          { status: "processing", "run.updatedAt": { $lt: staleBefore } },
+        ],
+      },
+      { $set: { status: "processing", expiresAt: new Date(Date.now() + IMPORT_JOB_TTL_MS) }, $unset: { run: "", summary: "" } },
+      { new: false }
+    ).lean<Record<string, unknown>>();
+
+    if (!claimed) {
+      // Already running (or finished) — the screen will simply show where it is.
+      const existing = await ImportJob.findOne({ _id: jobId, ownerId: userId }).select("status").lean<{ status?: string }>();
+      if (!existing) return { ok: false, error: "This import has expired — upload the PDF again to start over." };
+      return { ok: true };
+    }
+
+    // Retrying: clear what the failed run left behind so nothing stale is shown.
+    const previous = (claimed.run ?? null) as RunState | null;
+    void previous;
+    after(() => runImportPipeline(jobId, userId));
+  } catch (err) {
+    console.error("startImportAction failed", err);
+    return { ok: false, error: "Couldn’t start just now — try again." };
+  }
   revalidatePath(`/projects/import/${jobId}`);
   return { ok: true };
 }
