@@ -11,6 +11,12 @@ import { IMPORT_JOB_TTL_MS, rejection, type IntakeRejection, type IntakeReport }
 import { inspectPdf } from "@/lib/import/inspect-pdf";
 import { deleteImportBlob, isOwnedImportPathname, readImportBlob } from "@/lib/import/storage";
 import { runImportPipeline } from "@/lib/import/pipeline/run-pipeline";
+import { openImportFile } from "@/lib/import/pipeline/store";
+import { sanitizeReviewState } from "@/lib/import/review/sanitize";
+import { Project } from "@/lib/models/project";
+import { Chapter } from "@/lib/models/chapter";
+import { deleteProjectImage, uploadProjectImage } from "@/lib/blob";
+import { getDefaultSections, normalizeProjectType } from "@/lib/project-config";
 import { RUN_STALE_AFTER_MS, type RunState } from "@/lib/import/pipeline/types";
 
 export type IntakeActionResult =
@@ -80,7 +86,7 @@ export async function discardImportAction(jobId: string): Promise<{ ok: boolean 
     if (!job) return { ok: false };
     await deleteImportBlob(job.sourcePathname as string);
     const assets = (job.assets ?? {}) as Record<string, string | undefined>;
-    for (const key of ["textPathname", "resultPathname", "backgroundPathname", "coverPathname"]) {
+    for (const key of ["textPathname", "resultPathname", "backgroundPathname", "backgroundEditedPathname", "coverPathname"]) {
       await deleteImportBlob(assets[key]);
     }
     return { ok: true };
@@ -185,4 +191,119 @@ export async function startImportAction(jobId: string): Promise<{ ok: true } | {
   }
   revalidatePath(`/projects/import/${jobId}`);
   return { ok: true };
+}
+
+async function scratchImage(pathname: string | undefined, mime: string, name: string): Promise<File | null> {
+  if (!pathname) return null;
+  const file = await openImportFile(pathname);
+  if (!file) return null;
+  const bytes = new Uint8Array(await new Response(file.stream).arrayBuffer());
+  return new File([bytes], name, { type: mime });
+}
+
+/**
+ * Step 11: turns the reviewed import into a real book. Builds the project and
+ * one chapter per piece, moves the chosen background and cover from scratch
+ * storage into the project's own, then clears the scratch work away.
+ *
+ * Safe to retry: the job is claimed first (so a double-click can't make two
+ * books), and if anything fails after the project exists, the half-built
+ * project is removed and the job goes back to "processed" with its review
+ * intact.
+ */
+export async function commitImportAction(jobId: string): Promise<{ ok: true; next: string } | { ok: false; error: string }> {
+  const userId = await requireUserId();
+  await connectDB();
+
+  const claimed = await ImportJob.findOneAndUpdate(
+    { _id: jobId, ownerId: userId, status: "processed" },
+    { $set: { status: "committing" } },
+    { new: false }
+  ).lean<Record<string, unknown>>();
+  if (!claimed) return { ok: false, error: "This import is already being created, or has expired." };
+
+  const release = () => ImportJob.updateOne({ _id: jobId, ownerId: userId, status: "committing" }, { $set: { status: "processed" } }).catch(() => {});
+  const state = sanitizeReviewState(claimed.review);
+  if (!state) {
+    await release();
+    return { ok: false, error: "Your review wasn’t saved yet — try again in a moment." };
+  }
+
+  const type = normalizeProjectType((claimed.projectType as string) ?? "custom");
+  const assets = (claimed.assets ?? {}) as Record<string, string | undefined>;
+  let projectId: string | null = null;
+  const uploaded: string[] = [];
+
+  try {
+    const project = await Project.create({
+      ownerId: userId,
+      title: state.bookTitle,
+      type,
+      sections: getDefaultSections(type),
+    });
+    projectId = String(project._id);
+
+    const inserted = await Chapter.insertMany(
+      state.pieces.map((p, order) => ({
+        projectId: project._id,
+        ownerId: userId,
+        title: p.title,
+        order,
+        content: p.doc,
+        wordCount: p.wordCount,
+        status: "draft",
+      }))
+    );
+
+    const update: Record<string, unknown> = {};
+
+    if (state.background.kind === "preset") {
+      update["manuscriptSettings.background"] = state.background.id;
+    } else {
+      const edited = assets.backgroundEditedPathname;
+      const file = edited
+        ? await scratchImage(edited, "image/png", "background.png")
+        : await scratchImage(assets.backgroundPathname, assets.backgroundMime ?? "image/png", "background");
+      const result = file ? await uploadProjectImage({ projectId, kind: "background", file }) : null;
+      if (result?.ok) {
+        uploaded.push(result.url);
+        update["manuscriptSettings.background"] = "custom";
+        update["manuscriptSettings.backgroundImageUrl"] = result.url;
+      } else {
+        update["manuscriptSettings.background"] = "cream"; // the design couldn't be carried over — a plain page, not a failure
+      }
+    }
+
+    if (state.useCover && assets.coverPathname) {
+      const file = await scratchImage(assets.coverPathname, assets.coverMime ?? "image/jpeg", "cover");
+      const result = file ? await uploadProjectImage({ projectId, kind: "cover-front", file }) : null;
+      if (result?.ok) {
+        uploaded.push(result.url);
+        update.coverFrontUrl = result.url;
+      }
+    }
+
+    if (Object.keys(update).length) await Project.updateOne({ _id: project._id }, { $set: update });
+
+    // Done — clear the scratch work and the job itself.
+    await ImportJob.deleteOne({ _id: jobId, ownerId: userId });
+    for (const key of ["sourcePathname"]) await deleteImportBlob(claimed[key] as string | undefined);
+    for (const key of ["textPathname", "resultPathname", "backgroundPathname", "backgroundEditedPathname", "coverPathname"]) {
+      await deleteImportBlob(assets[key]);
+    }
+
+    const first = inserted[0];
+    void first;
+    revalidatePath("/dashboard");
+    return { ok: true, next: `/projects/${projectId}/overview` };
+  } catch (err) {
+    console.error("commitImportAction failed", err);
+    if (projectId) {
+      await Chapter.deleteMany({ projectId }).catch(() => {});
+      await Project.deleteOne({ _id: projectId }).catch(() => {});
+      for (const url of uploaded) await deleteProjectImage(url);
+    }
+    await release();
+    return { ok: false, error: "Couldn’t create the book just now. Your review is saved — try again." };
+  }
 }
