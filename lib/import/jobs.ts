@@ -9,7 +9,7 @@ import { RUN_STALE_AFTER_MS, freshRun, type ImportAssets, type ImportSummary, ty
 
 export type SerializedImportJob = {
   id: string;
-  status: "intake-passed" | "intent-set" | "processing" | "processed";
+  status: "intake-passed" | "intent-set" | "processing" | "processed" | "committing";
   fileName: string;
   fileSize: number;
   intake: IntakeReport;

@@ -27,7 +27,7 @@ const importJobSchema = new Schema(
     ownerId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     status: {
       type: String,
-      enum: ["intake-passed", "intent-set", "processing", "processed"],
+      enum: ["intake-passed", "intent-set", "processing", "processed", "committing"],
       default: "intake-passed",
     },
     // Pathname of the uploaded PDF in scratch Blob storage (imports/<userId>/…).
@@ -47,6 +47,8 @@ const importJobSchema = new Schema(
     // `summary` is what the review screen opens with. Both are small, plain
     // objects — the heavy results (extracted text, formatted pieces, the
     // background and cover pictures) live in scratch Blob storage, listed here.
+    // The person's working copy from the review screen (lib/import/review).
+    review: { type: Schema.Types.Mixed },
     run: { type: Schema.Types.Mixed },
     summary: { type: Schema.Types.Mixed },
     assets: {
@@ -56,6 +58,8 @@ const importJobSchema = new Schema(
           resultPathname: { type: String },
           backgroundPathname: { type: String },
           backgroundMime: { type: String },
+          // Set when the person touches up the lifted background; the original stays so they can reset.
+          backgroundEditedPathname: { type: String },
           coverPathname: { type: String },
           coverMime: { type: String },
         },
