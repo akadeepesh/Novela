@@ -264,23 +264,24 @@ export async function commitImportAction(jobId: string): Promise<{ ok: true; nex
       const file = edited
         ? await scratchImage(edited, "image/png", "background.png")
         : await scratchImage(assets.backgroundPathname, assets.backgroundMime ?? "image/png", "background");
-      const result = file ? await uploadProjectImage({ projectId, kind: "background", file }) : null;
-      if (result?.ok) {
-        uploaded.push(result.url);
-        update["manuscriptSettings.background"] = "custom";
-        update["manuscriptSettings.backgroundImageUrl"] = result.url;
-      } else {
-        update["manuscriptSettings.background"] = "cream"; // the design couldn't be carried over — a plain page, not a failure
-      }
+      if (!file) throw new Error("commit: the lifted background could not be read back from scratch storage");
+      const result = await uploadProjectImage({ projectId, kind: "background", file });
+      // Not a quiet fallback: a book that silently loses its design is worse than one that says so and can be retried.
+      if (!result.ok) throw new Error(`commit: background upload failed — ${result.error}`);
+      uploaded.push(result.url);
+      update["manuscriptSettings.background"] = "custom";
+      update["manuscriptSettings.backgroundImageUrl"] = result.url;
+      // The lifted design is already clean — the usual cream veil would wash it out.
+      update["manuscriptSettings.backgroundVeil"] = false;
     }
 
     if (state.useCover && assets.coverPathname) {
       const file = await scratchImage(assets.coverPathname, assets.coverMime ?? "image/jpeg", "cover");
-      const result = file ? await uploadProjectImage({ projectId, kind: "cover-front", file }) : null;
-      if (result?.ok) {
-        uploaded.push(result.url);
-        update.coverFrontUrl = result.url;
-      }
+      if (!file) throw new Error("commit: the cover could not be read back from scratch storage");
+      const result = await uploadProjectImage({ projectId, kind: "cover-front", file });
+      if (!result.ok) throw new Error(`commit: cover upload failed — ${result.error}`);
+      uploaded.push(result.url);
+      update.coverFrontUrl = result.url;
     }
 
     if (Object.keys(update).length) await Project.updateOne({ _id: project._id }, { $set: update });
@@ -304,6 +305,7 @@ export async function commitImportAction(jobId: string): Promise<{ ok: true; nex
       for (const url of uploaded) await deleteProjectImage(url);
     }
     await release();
-    return { ok: false, error: "Couldn’t create the book just now. Your review is saved — try again." };
+    const reason = process.env.NODE_ENV === "production" ? "" : ` (dev: ${err instanceof Error ? err.message : String(err)})`.slice(0, 240);
+    return { ok: false, error: `Couldn’t create the book just now. Your review is saved — try again.${reason}` };
   }
 }
