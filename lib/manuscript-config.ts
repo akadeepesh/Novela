@@ -64,14 +64,16 @@ export type BackgroundId = (typeof BACKGROUND_IDS)[number]
  * "text needs a solid-enough backing, never floated directly on the blur"
  * rule used for the dashboard's glass card.
  */
-export function getBackgroundPreset(id: string, customImageUrl?: string) {
+export function getBackgroundPreset(id: string, customImageUrl?: string, veil = true) {
   if (id === CUSTOM_BACKGROUND_ID && customImageUrl) {
     return {
       id: CUSTOM_BACKGROUND_ID,
       label: "Custom",
       swatch: customImageUrl,
       style: {
-        backgroundImage: `linear-gradient(oklch(0.98 0.003 75 / 0.6), oklch(0.98 0.003 75 / 0.6)), url(${customImageUrl})`,
+        backgroundImage: veil
+          ? `linear-gradient(oklch(0.98 0.003 75 / 0.6), oklch(0.98 0.003 75 / 0.6)), url(${customImageUrl})`
+          : `url(${customImageUrl})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         color: INK_LIGHT,
@@ -93,6 +95,8 @@ export const LINE_WIDTH_PX: Record<LineWidth, string> = {
 export type ManuscriptSettings = {
   background: BackgroundId
   backgroundImageUrl: string
+  /** Lay the soft cream veil over a custom background image (default). Off for imported designs. */
+  backgroundVeil: boolean
   showHeader: boolean
   headerText: string
   showFooter: boolean
@@ -105,6 +109,7 @@ export type ManuscriptSettings = {
 export const DEFAULT_MANUSCRIPT_SETTINGS: ManuscriptSettings = {
   background: "paper",
   backgroundImageUrl: "",
+  backgroundVeil: true,
   showHeader: false,
   headerText: "",
   showFooter: false,

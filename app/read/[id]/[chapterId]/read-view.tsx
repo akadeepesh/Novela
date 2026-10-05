@@ -68,7 +68,7 @@ export function ReadView({
   projectType: ProjectType
 }) {
   const backHref = `/projects/${projectId}/chapters/${chapterId}`
-  const bg = getBackgroundPreset(settings.background, settings.backgroundImageUrl)
+  const bg = getBackgroundPreset(settings.background, settings.backgroundImageUrl, settings.backgroundVeil)
   const isPoetry = projectType === "poetry"
 
   const areaRef = useRef<HTMLDivElement>(null)

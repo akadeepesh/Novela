@@ -119,7 +119,7 @@ export function ManuscriptEditor({
     }
   }, [])
 
-  const bg = getBackgroundPreset(settings.background, settings.backgroundImageUrl)
+  const bg = getBackgroundPreset(settings.background, settings.backgroundImageUrl, settings.backgroundVeil)
 
   return (
     <div className="flex h-screen flex-col">

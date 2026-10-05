@@ -190,7 +190,7 @@ export function ReadView({
     }
   }, [trim, W0, H0])
 
-  const bg = getBackgroundPreset(settings.background, settings.backgroundImageUrl)
+  const bg = getBackgroundPreset(settings.background, settings.backgroundImageUrl, settings.backgroundVeil)
   const paperStyle = { ...bg.style, width: W0, height: H0 }
 
   const areaRef = useRef<HTMLDivElement>(null)

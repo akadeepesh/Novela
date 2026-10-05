@@ -11,6 +11,9 @@ const manuscriptSettingsSchema = new Schema(
   {
     background: { type: String, enum: BACKGROUND_IDS, default: "paper" },
     backgroundImageUrl: { type: String, trim: true, default: "" },
+    // A custom background normally sits under a soft cream veil so text stays readable.
+    // Imported books bring their own already-clean design, which the veil would wash out.
+    backgroundVeil: { type: Boolean, default: true },
     showHeader: { type: Boolean, default: false },
     headerText: { type: String, trim: true, maxlength: 120, default: "" },
     showFooter: { type: Boolean, default: false },

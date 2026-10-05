@@ -217,6 +217,7 @@ export async function uploadManuscriptBackgroundAction(
       $set: {
         "manuscriptSettings.backgroundImageUrl": result.url,
         "manuscriptSettings.background": CUSTOM_BACKGROUND_ID,
+        "manuscriptSettings.backgroundVeil": true,
       },
     }
   );
