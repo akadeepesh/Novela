@@ -186,6 +186,10 @@ export async function buildExportDocument(
     footerText: project.manuscriptSettings.showFooter
       ? project.manuscriptSettings.footerText || undefined
       : undefined,
+    backgroundImageUrl:
+      project.manuscriptSettings.background === "custom" && project.manuscriptSettings.backgroundImageUrl
+        ? project.manuscriptSettings.backgroundImageUrl
+        : undefined,
     trimSize: project.exportTrimSize,
     backCoverBlurb: project.blurb,
     manuscript,

@@ -1,6 +1,6 @@
 import "server-only";
 import { Fragment } from "react";
-import { Document, Page, Text, View, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
+import { Document, Image, Page, Text, View, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
 import type { ExportBlock, ExportDocument, ExportRun, ExportSection } from "./document-model";
 import { trimSizePagePoints, trimSizeMarginPoints } from "@/lib/export-config";
 
@@ -117,6 +117,18 @@ function HeaderFooter({
   );
 }
 
+/** The project's background picture, stretched behind the page (and repeated on every page a long section wraps onto). */
+function PageBackground({ url }: { url?: string }) {
+  if (!url) return null;
+  return (
+    <Image
+      src={url}
+      fixed
+      style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", minWidth: "100%", minHeight: "100%" }}
+    />
+  );
+}
+
 function SectionPage({
   section,
   doc,
@@ -130,6 +142,7 @@ function SectionPage({
 }) {
   return (
     <Page size={pageSize} style={styles.page} wrap>
+      <PageBackground url={doc.backgroundImageUrl} />
       <HeaderFooter headerText={doc.headerText} footerText={doc.footerText} styles={styles} />
       {section.numberLabel ? <Text style={styles.sectionNumber}>{section.numberLabel.toUpperCase()}</Text> : null}
       <Text style={styles.sectionTitle}>{section.title}</Text>
@@ -148,6 +161,7 @@ function ExportPdfDocument({ doc }: { doc: ExportDocument }) {
     <Document title={doc.title} author={doc.authorName}>
       {doc.includeTitlePage ? (
         <Page size={pageSize} style={styles.page}>
+      <PageBackground url={doc.backgroundImageUrl} />
           <View style={styles.titlePage}>
             <Text style={styles.title}>{doc.title}</Text>
             {doc.authorName ? <Text style={styles.author}>{doc.authorName}</Text> : null}
@@ -158,6 +172,7 @@ function ExportPdfDocument({ doc }: { doc: ExportDocument }) {
 
       {doc.includeTOC && doc.manuscript.length > 0 ? (
         <Page size={pageSize} style={styles.page}>
+      <PageBackground url={doc.backgroundImageUrl} />
           <Text style={styles.h1}>Contents</Text>
           {doc.manuscript.map((section) => (
             <Text key={section.id} style={styles.tocEntry}>
@@ -174,6 +189,7 @@ function ExportPdfDocument({ doc }: { doc: ExportDocument }) {
 
       {doc.appendices.map((appendix) => (
         <Page key={appendix.heading} size={pageSize} style={styles.page} wrap>
+      <PageBackground url={doc.backgroundImageUrl} />
           <HeaderFooter headerText={doc.headerText} footerText={doc.footerText} styles={styles} />
           <Text style={styles.h1}>{appendix.heading}</Text>
           {appendix.sections.map((section) => (
@@ -189,6 +205,7 @@ function ExportPdfDocument({ doc }: { doc: ExportDocument }) {
 
       {doc.backCoverBlurb ? (
         <Page size={pageSize} style={styles.page}>
+      <PageBackground url={doc.backgroundImageUrl} />
           <View style={styles.backCover}>
             <Text style={styles.backCoverText}>{doc.backCoverBlurb}</Text>
           </View>

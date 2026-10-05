@@ -39,6 +39,8 @@ export type ExportDocument = {
   /** Carried over from the manuscript's on-screen page-appearance settings (Part 2). */
   headerText?: string;
   footerText?: string;
+  /** Full-page background picture (the project's custom background), drawn behind every PDF page. */
+  backgroundImageUrl?: string;
   /** PDF-only page size (Part 4.2 export defaults) — see lib/export-config.ts. */
   trimSize: string;
   /** Back-cover blurb (Part 4.2), optional — rendered as its own page after the manuscript/appendices, never shown as an empty box when absent. */
