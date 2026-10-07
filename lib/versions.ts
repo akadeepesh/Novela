@@ -235,6 +235,8 @@ export async function restoreVersion(
   await Chapter.updateOne(
     { _id: chapterId, projectId, ownerId: userId },
     {
+      // Bump the version so another open tab sees a conflict, not a silent overwrite.
+      $inc: { version: 1 },
       $set: {
         title: version.title,
         content: version.content,

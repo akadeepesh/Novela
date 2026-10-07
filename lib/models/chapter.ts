@@ -11,6 +11,11 @@ const chapterSchema = new Schema(
     content: { type: Schema.Types.Mixed, default: null },
     order: { type: Number, required: true, default: 0 },
     wordCount: { type: Number, default: 0 },
+    // Bumped by 1 on every save. A save must say which version it was based on;
+    // if someone else saved in between (another tab or device) it is rejected
+    // as a conflict instead of silently overwriting their text. Chapters that
+    // existed before this field are treated as version 0.
+    version: { type: Number, default: 0 },
     // sha256 of the stored content JSON. Lets saves and snapshots tell "did the
     // text actually change?" without re-serialising the whole chapter.
     contentHash: { type: String },

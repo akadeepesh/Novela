@@ -17,6 +17,7 @@ export type SerializedChapterSummary = {
 export type SerializedChapter = SerializedChapterSummary & {
   projectId: string;
   content: unknown;
+  version: number;
 };
 
 function serializeSummary(doc: Record<string, unknown>): SerializedChapterSummary {
@@ -64,5 +65,6 @@ export const requireChapter = cache(async (
     ...serializeSummary(doc),
     projectId,
     content: doc.content ?? null,
+    version: (doc.version as number) ?? 0,
   };
 });
