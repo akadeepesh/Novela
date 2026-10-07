@@ -6,6 +6,7 @@ import Placeholder from "@tiptap/extension-placeholder"
 import { CharacterCount } from "@tiptap/extension-character-count"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   ArrowLeftIcon,
   TextBIcon,
@@ -26,7 +27,7 @@ import { MentionExtension } from "@/components/editor/mention-extension"
 import type { Mentionable } from "@/lib/mentions"
 import { estimateScriptRuntime } from "@/lib/script-scaffold"
 import { createActionQueue } from "@/lib/action-queue"
-import { saveChapterAction } from "./actions"
+import { saveChapterAction, type SaveChapterInput } from "./actions"
 import { ManuscriptSettingsPanel } from "./manuscript-settings-panel"
 import { VersionHistoryPanel } from "./version-history-panel"
 
@@ -63,25 +64,58 @@ export function ManuscriptEditor({
   // in flight at once — see lib/action-queue.ts for why that matters.
   const enqueue = useMemo(() => createActionQueue(), [])
 
-  const scheduleContentSave = useCallback(
-    (editor: Editor) => {
-      if (saveTimer.current) clearTimeout(saveTimer.current)
-      setSaveState("saving")
-      saveTimer.current = setTimeout(() => {
-        const words = editor.storage.characterCount.words()
-        setWordCount(words)
-        enqueue(() =>
-          saveChapterAction(projectId, chapter.id, {
-            content: editor.getJSON(),
-            wordCount: words,
-          })
-        )
-          .then((result) => setSaveState(result.ok ? "saved" : "error"))
-          .catch(() => setSaveState("error"))
-      }, SAVE_DEBOUNCE_MS)
-    },
-    [projectId, chapter.id, enqueue]
-  )
+  const router = useRouter()
+  const editorRef = useRef<Editor | null>(null)
+  const pendingTitle = useRef<string | null>(null)
+  const contentDirty = useRef(false)
+
+  // Sends whatever is pending (title and/or body) as ONE save, right now.
+  // Called by the debounce timer, before in-app navigation, and on unmount /
+  // page hide, so the last moments of typing are never thrown away.
+  const flush = useCallback((): Promise<void> => {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current)
+      saveTimer.current = null
+    }
+    const input: SaveChapterInput = {}
+    if (pendingTitle.current !== null) {
+      input.title = pendingTitle.current.trim() || "Untitled"
+      pendingTitle.current = null
+    }
+    if (contentDirty.current && editorRef.current) {
+      const words = editorRef.current.storage.characterCount.words()
+      input.content = editorRef.current.getJSON()
+      input.wordCount = words
+      contentDirty.current = false
+      setWordCount(words)
+    }
+    if (Object.keys(input).length === 0) return Promise.resolve()
+
+    setSaveState("saving")
+    const restore = () => {
+      // Keep failed changes pending so the next change (or exit) retries them.
+      if (input.content !== undefined) contentDirty.current = true
+      if (input.title !== undefined && pendingTitle.current === null) pendingTitle.current = input.title
+      setSaveState("error")
+    }
+    return enqueue(() => saveChapterAction(projectId, chapter.id, input))
+      .then((result) => (result.ok ? setSaveState("saved") : restore()))
+      .catch(restore)
+  }, [projectId, chapter.id, enqueue])
+
+  const scheduleSave = useCallback(() => {
+    setSaveState("saving")
+    if (saveTimer.current) clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => void flush(), SAVE_DEBOUNCE_MS)
+  }, [flush])
+
+  // In-app links: finish saving first, then navigate, so the next page
+  // (Read view, chapter list) always loads the latest text.
+  function leave(e: React.MouseEvent, href: string) {
+    if (!contentDirty.current && pendingTitle.current === null) return
+    e.preventDefault()
+    void flush().then(() => router.push(href))
+  }
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -95,29 +129,36 @@ export function ManuscriptEditor({
       MentionExtension.configure({ mentionables }),
     ],
     content: (chapter.content as object | string | null) ?? "",
-    onUpdate: ({ editor }) => scheduleContentSave(editor),
+    onUpdate: ({ editor }) => {
+      editorRef.current = editor
+      contentDirty.current = true
+      scheduleSave()
+    },
   })
 
   function handleTitleChange(value: string) {
     setTitle(value)
-    if (saveTimer.current) clearTimeout(saveTimer.current)
-    setSaveState("saving")
-    saveTimer.current = setTimeout(() => {
-      enqueue(() =>
-        saveChapterAction(projectId, chapter.id, {
-          title: value.trim() || "Untitled",
-        })
-      )
-        .then((result) => setSaveState(result.ok ? "saved" : "error"))
-        .catch(() => setSaveState("error"))
-    }, SAVE_DEBOUNCE_MS)
+    pendingTitle.current = value
+    scheduleSave()
   }
 
   useEffect(() => {
-    return () => {
-      if (saveTimer.current) clearTimeout(saveTimer.current)
+    const onHide = () => void flush()
+    // Warn only while something is still unsaved (or a save failed).
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (contentDirty.current || pendingTitle.current !== null) {
+        e.preventDefault()
+        e.returnValue = ""
+      }
     }
-  }, [])
+    window.addEventListener("pagehide", onHide)
+    window.addEventListener("beforeunload", onBeforeUnload)
+    return () => {
+      window.removeEventListener("pagehide", onHide)
+      window.removeEventListener("beforeunload", onBeforeUnload)
+      void flush()
+    }
+  }, [flush])
 
   const bg = getBackgroundPreset(settings.background, settings.backgroundImageUrl)
 
@@ -126,6 +167,7 @@ export function ManuscriptEditor({
       <div className="flex items-center justify-between border-b border-border px-4 py-2">
         <Link
           href={`/projects/${projectId}/chapters`}
+          onClick={(e) => leave(e, `/projects/${projectId}/chapters`)}
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeftIcon className="size-3.5" />
@@ -164,7 +206,12 @@ export function ManuscriptEditor({
           <Button
             size="sm"
             variant="ghost"
-            render={<Link href={`/read/${projectId}?chapter=${chapter.id}`} />}
+            render={
+              <Link
+                href={`/read/${projectId}?chapter=${chapter.id}`}
+                onClick={(e) => leave(e, `/read/${projectId}?chapter=${chapter.id}`)}
+              />
+            }
             nativeButton={false}
           >
             <BookOpenIcon />
