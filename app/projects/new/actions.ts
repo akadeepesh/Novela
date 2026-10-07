@@ -6,7 +6,6 @@ import { Chapter } from "@/lib/models/chapter";
 import { requireUserId } from "@/lib/projects";
 import {
   PROJECT_TYPES,
-  defaultProjectTitle,
   getDefaultSections,
   sectionLabelSingular,
   type ProjectType,
@@ -20,20 +19,22 @@ function isProjectType(value: unknown): value is ProjectType {
 }
 
 /**
- * Deliberately minimal: two inputs, no validation errors surfaced to the
- * user (a blank title just becomes "Untitled X" — there's no wrong answer
- * here). Genre and synopsis are edited later on the overview page; extra
- * sections (Characters/World/Plot…) are added from the sidebar. Returns
- * ids rather than redirecting so the client can animate before navigating.
+ * Deliberately minimal: two inputs. A title is required — a blank one used to
+ * silently create an "Untitled Novel" (plus a chapter), so people exploring the
+ * screen ended up with books they never meant to start. Genre and synopsis are
+ * edited later on the overview page; extra sections (Characters/World/Plot…)
+ * are added from the sidebar. Returns ids rather than redirecting so the
+ * client can animate before navigating.
  */
 export async function createProjectAction(input: {
   title: string;
   type: string;
-}): Promise<{ projectId: string; chapterId: string }> {
+}): Promise<{ projectId: string; chapterId: string } | { error: "title-required" }> {
   const userId = await requireUserId();
 
   const type = isProjectType(input.type) ? input.type : "novel";
-  const title = input.title.trim().slice(0, 200) || defaultProjectTitle(type);
+  const title = input.title.trim().slice(0, 200);
+  if (!title) return { error: "title-required" };
   const sections = getDefaultSections(type);
 
   await connectDB();

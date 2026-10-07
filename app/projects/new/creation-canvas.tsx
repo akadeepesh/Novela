@@ -9,7 +9,6 @@ import { cn } from "cn"
 import {
   PROJECT_TYPES,
   PROJECT_TYPE_ICON,
-  defaultProjectTitle,
   type ProjectType,
 } from "@/lib/project-config"
 import { measureFlightStart, useTitleFlight } from "@/components/project/title-flight"
@@ -40,8 +39,9 @@ export function CreationCanvas() {
   const [type, setType] = useState<ProjectType>("novel")
   const [committing, setCommitting] = useState(false)
   const [failed, setFailed] = useState(false)
+  const [missingTitle, setMissingTitle] = useState(false)
 
-  const placeholder = defaultProjectTitle(type)
+  const placeholder = "Give it a title"
 
   // Preview the book you're making: the accent shifts with the chosen type,
   // exactly as it will inside the editor, so nothing "pops" on arrival.
@@ -53,19 +53,34 @@ export function CreationCanvas() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (committing) return
+
+    // Nothing is created without a title — ask for one instead of making an
+    // "Untitled" book the person never decided to start.
+    if (!title.trim()) {
+      setMissingTitle(true)
+      inputRef.current?.focus()
+      return
+    }
+
     setCommitting(true)
     setFailed(false)
 
     // Lift the title off the canvas *before* anything else changes, so the
     // flying copy starts pixel-for-pixel where the typed text is.
     if (!reduceMotion && inputRef.current) {
-      const trimmed = title.trim()
-      flight.start(measureFlightStart(inputRef.current, trimmed || placeholder, !trimmed))
+      flight.start(measureFlightStart(inputRef.current, title.trim(), false))
     }
 
     try {
-      const { projectId, chapterId } = await createProjectAction({ title, type })
-      router.push(`/projects/${projectId}/chapters/${chapterId}`)
+      const result = await createProjectAction({ title, type })
+      if ("error" in result) {
+        flight.cancel()
+        setCommitting(false)
+        setMissingTitle(true)
+        inputRef.current?.focus()
+        return
+      }
+      router.push(`/projects/${result.projectId}/chapters/${result.chapterId}`)
     } catch {
       flight.cancel()
       setCommitting(false)
@@ -114,10 +129,14 @@ export function CreationCanvas() {
             ref={inputRef}
             autoFocus
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              setTitle(e.target.value)
+              setMissingTitle(false)
+            }}
             placeholder={placeholder}
             maxLength={200}
             aria-label="Title"
+            aria-invalid={missingTitle}
             // The flying copy takes over the instant you commit.
             style={{ visibility: flight.active ? "hidden" : "visible" }}
             className={cn(
@@ -192,6 +211,11 @@ export function CreationCanvas() {
                 ↵
               </kbd>
             </button>
+            {missingTitle ? (
+              <p role="alert" className="text-xs text-destructive">
+                Give it a title to begin — you can change it any time.
+              </p>
+            ) : null}
             {failed ? (
               <p role="alert" className="text-xs text-destructive">
                 Couldn’t create it just now — try again.
