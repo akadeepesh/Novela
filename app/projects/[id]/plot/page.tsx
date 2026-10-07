@@ -6,12 +6,11 @@ import {
   PageShellDescription,
 } from "@/components/layout/page-shell"
 import { EmptyState } from "@/components/ui/empty-state"
-import { CreateButton } from "@/components/ui/create-button"
+import { NewLinkButton } from "@/components/ui/new-link-button"
 import { SECTION_DEFS } from "@/lib/project-config"
 import { requireProjectSection } from "@/lib/require-project-section"
 import { listPlotThreadsForProject } from "@/lib/plot-threads"
 import { PlotThreadList } from "./plot-thread-list"
-import { createPlotThreadAction } from "./actions"
 
 export async function generateMetadata({
   params,
@@ -41,7 +40,7 @@ export default async function PlotPage({ params }: { params: Promise<{ id: strin
           title="No plot threads yet"
           description="Track the throughlines of your story — you can update their status as you write."
           action={
-            <CreateButton action={createPlotThreadAction.bind(null, id)}>New thread</CreateButton>
+            <NewLinkButton href={`/projects/${id}/plot/new`}>New thread</NewLinkButton>
           }
         />
       ) : (

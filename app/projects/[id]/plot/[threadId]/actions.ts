@@ -2,10 +2,11 @@
 
 import { z } from "zod";
 import { formString } from "@/lib/form";
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { connectDB } from "@/lib/db";
 import { PlotThread } from "@/lib/models/plot-thread";
-import { requireUserId } from "@/lib/projects";
+import { requireProject, requireUserId } from "@/lib/projects";
 import { PLOT_STATUSES, type PlotStatus } from "@/lib/plot-config";
 import { safeAction, GENERIC_ERROR } from "@/lib/safe-action";
 
@@ -70,4 +71,48 @@ export const updatePlotThreadAction = safeAction(
   },
   () => ({ error: GENERIC_ERROR }),
   { ids: [0, 1] }
+);
+
+/**
+ * Creates the record from the blank "new" form. Nothing exists in the database
+ * until this runs, so opening the form and walking away leaves no stray record.
+ */
+export const createPlotThreadFromFormAction = safeAction(
+  "createPlotThreadFromFormAction",
+  async (
+    projectId: string,
+    _prevState: UpdatePlotThreadState,
+    formData: FormData
+  ): Promise<UpdatePlotThreadState> => {
+    await requireProject(projectId);
+    const userId = await requireUserId();
+
+    const parsed = schema.safeParse({
+      title: formData.get("title"),
+      status: formData.get("status"),
+      aliases: formString(formData, "aliases"),
+      description: formString(formData, "description"),
+      notes: formString(formData, "notes"),
+    });
+
+    if (!parsed.success) {
+      return { error: parsed.error.issues[0]?.message ?? "Check the fields and try again." };
+    }
+
+    const { aliases, ...rest } = parsed.data;
+    const aliasList = aliases
+      ? aliases
+          .split(",")
+          .map((a) => a.trim())
+          .filter(Boolean)
+      : [];
+
+    await connectDB();
+    const created = await PlotThread.create({ projectId, ownerId: userId, ...rest, aliases: aliasList });
+
+    revalidatePath(`/projects/${projectId}/plot`);
+    redirect(`/projects/${projectId}/plot/${created._id}`);
+  },
+  () => ({ error: GENERIC_ERROR }),
+  { ids: [0] }
 );

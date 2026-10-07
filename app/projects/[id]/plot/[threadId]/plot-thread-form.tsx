@@ -16,12 +16,15 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Button } from "@/components/ui/button"
 import { PLOT_STATUSES } from "@/lib/plot-config"
 import type { SerializedPlotThread } from "@/lib/plot-threads"
-import { updatePlotThreadAction, type UpdatePlotThreadState } from "./actions"
+import { updatePlotThreadAction, createPlotThreadFromFormAction, type UpdatePlotThreadState } from "./actions"
 
 const initialState: UpdatePlotThreadState = {}
 
 export function PlotThreadForm({ thread }: { thread: SerializedPlotThread }) {
-  const boundAction = updatePlotThreadAction.bind(null, thread.projectId, thread.id)
+  // An empty id means the blank "new" form: Save creates the record.
+  const boundAction = thread.id
+    ? updatePlotThreadAction.bind(null, thread.projectId, thread.id)
+    : createPlotThreadFromFormAction.bind(null, thread.projectId)
   const [state, formAction, pending] = useActionState(boundAction, initialState)
 
   return (
@@ -42,7 +45,7 @@ export function PlotThreadForm({ thread }: { thread: SerializedPlotThread }) {
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-[1fr_auto]">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="title">Title</Label>
-              <Input id="title" name="title" defaultValue={thread.title} />
+              <Input id="title" name="title" defaultValue={thread.title} autoFocus={!thread.id} />
             </div>
 
             <div className="flex flex-col gap-1.5 sm:w-44">
@@ -97,7 +100,7 @@ export function PlotThreadForm({ thread }: { thread: SerializedPlotThread }) {
 
         <CardFooter className="mt-5 items-center gap-3 border-t pt-5">
           <Button type="submit" disabled={pending}>
-            {pending ? "Saving…" : "Save changes"}
+            {pending ? "Saving…" : thread.id ? "Save changes" : "Create thread"}
           </Button>
           {state.success ? <span className="text-sm text-muted-foreground">Saved.</span> : null}
         </CardFooter>

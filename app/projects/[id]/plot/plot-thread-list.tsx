@@ -4,13 +4,13 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { TrashIcon } from "@phosphor-icons/react/dist/ssr"
-import { CreateButton } from "@/components/ui/create-button"
+import { NewLinkButton } from "@/components/ui/new-link-button"
 import { Badge, type badgeVariants } from "@/components/ui/badge"
 import type { VariantProps } from "class-variance-authority"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { plotStatusLabel } from "@/lib/plot-config"
 import type { SerializedPlotThreadSummary } from "@/lib/plot-threads"
-import { createPlotThreadAction, deletePlotThreadAction } from "./actions"
+import { deletePlotThreadAction } from "./actions"
 
 type BadgeVariant = VariantProps<typeof badgeVariants>["variant"]
 
@@ -47,7 +47,7 @@ export function PlotThreadList({
         <p className="text-sm text-muted-foreground">
           {threads.length} {threads.length === 1 ? "thread" : "threads"}
         </p>
-        <CreateButton action={createPlotThreadAction.bind(null, projectId)} disabled={isPending}>New thread</CreateButton>
+        <NewLinkButton href={`/projects/${projectId}/plot/new`}>New thread</NewLinkButton>
       </div>
 
       <div className="flex flex-col gap-2">
