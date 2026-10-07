@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { formString } from "@/lib/form";
 import { revalidatePath } from "next/cache";
 import { connectDB } from "@/lib/db";
 import { ResearchEntry } from "@/lib/models/research-entry";
@@ -35,8 +36,8 @@ export async function updateResearchEntryAction(
   const parsed = schema.safeParse({
     title: formData.get("title"),
     type: formData.get("type"),
-    url: (formData.get("url") as string) || undefined,
-    content: (formData.get("content") as string) || undefined,
+    url: formString(formData, "url"),
+    content: formString(formData, "content"),
   });
 
   if (!parsed.success) {

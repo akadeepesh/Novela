@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { formString } from "@/lib/form";
 import { revalidatePath } from "next/cache";
 import { connectDB } from "@/lib/db";
 import { Character } from "@/lib/models/character";
@@ -36,12 +37,12 @@ export async function updateCharacterAction(
   const parsed = schema.safeParse({
     name: formData.get("name"),
     role: formData.get("role"),
-    aliases: (formData.get("aliases") as string) || undefined,
-    imageUrl: (formData.get("imageUrl") as string) || undefined,
-    appearance: (formData.get("appearance") as string) || undefined,
-    personality: (formData.get("personality") as string) || undefined,
-    backstory: (formData.get("backstory") as string) || undefined,
-    notes: (formData.get("notes") as string) || undefined,
+    aliases: formString(formData, "aliases"),
+    imageUrl: formString(formData, "imageUrl"),
+    appearance: formString(formData, "appearance"),
+    personality: formString(formData, "personality"),
+    backstory: formString(formData, "backstory"),
+    notes: formString(formData, "notes"),
   });
 
   if (!parsed.success) {

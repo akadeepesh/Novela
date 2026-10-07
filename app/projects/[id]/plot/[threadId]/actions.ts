@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { formString } from "@/lib/form";
 import { revalidatePath } from "next/cache";
 import { connectDB } from "@/lib/db";
 import { PlotThread } from "@/lib/models/plot-thread";
@@ -33,9 +34,9 @@ export async function updatePlotThreadAction(
   const parsed = schema.safeParse({
     title: formData.get("title"),
     status: formData.get("status"),
-    aliases: (formData.get("aliases") as string) || undefined,
-    description: (formData.get("description") as string) || undefined,
-    notes: (formData.get("notes") as string) || undefined,
+    aliases: formString(formData, "aliases"),
+    description: formString(formData, "description"),
+    notes: formString(formData, "notes"),
   });
 
   if (!parsed.success) {

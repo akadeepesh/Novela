@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { formString } from "@/lib/form";
 import { revalidatePath } from "next/cache";
 import { connectDB } from "@/lib/db";
 import { Note } from "@/lib/models/note";
@@ -27,9 +28,9 @@ export async function updateNoteAction(
   const userId = await requireUserId();
 
   const parsed = schema.safeParse({
-    title: (formData.get("title") as string) || undefined,
-    content: (formData.get("content") as string) || undefined,
-    tags: (formData.get("tags") as string) || undefined,
+    title: formString(formData, "title"),
+    content: formString(formData, "content"),
+    tags: formString(formData, "tags"),
     pinned: formData.get("pinned") === "on",
   });
 

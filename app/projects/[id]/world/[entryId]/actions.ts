@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { formString } from "@/lib/form";
 import { revalidatePath } from "next/cache";
 import { connectDB } from "@/lib/db";
 import { WorldEntry } from "@/lib/models/world-entry";
@@ -34,10 +35,10 @@ export async function updateWorldEntryAction(
   const parsed = schema.safeParse({
     name: formData.get("name"),
     type: formData.get("type"),
-    aliases: (formData.get("aliases") as string) || undefined,
-    imageUrl: (formData.get("imageUrl") as string) || undefined,
-    description: (formData.get("description") as string) || undefined,
-    notes: (formData.get("notes") as string) || undefined,
+    aliases: formString(formData, "aliases"),
+    imageUrl: formString(formData, "imageUrl"),
+    description: formString(formData, "description"),
+    notes: formString(formData, "notes"),
   });
 
   if (!parsed.success) {

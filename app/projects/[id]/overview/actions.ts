@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { formString } from "@/lib/form";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { connectDB } from "@/lib/db";
@@ -37,7 +38,7 @@ export async function updateOverviewAction(
 
   const parsed = schema.safeParse({
     title: formData.get("title"),
-    authorName: (formData.get("authorName") as string) || undefined,
+    authorName: formString(formData, "authorName"),
   });
 
   if (!parsed.success) {
