@@ -80,7 +80,8 @@ export function CreationCanvas() {
         inputRef.current?.focus()
         return
       }
-      router.push(`/projects/${result.projectId}/chapters/${result.chapterId}`)
+      // Opens the editor as a draft: no chapter exists until the first keystroke.
+      router.push(`/projects/${result.projectId}/chapters/new`)
     } catch {
       flight.cancel()
       setCommitting(false)

@@ -29,6 +29,7 @@ import { estimateScriptRuntime } from "@/lib/script-scaffold"
 import { createActionQueue } from "@/lib/action-queue"
 import { countWords } from "@/lib/word-count"
 import { saveChapterAction, type SaveChapterInput, type SaveChapterResult } from "./actions"
+import { createChapterFromDraftAction } from "../actions"
 import { ManuscriptSettingsPanel } from "./manuscript-settings-panel"
 import { VersionHistoryPanel } from "./version-history-panel"
 
@@ -86,6 +87,11 @@ export function ManuscriptEditor({
   // Version of the saved chapter this editor is based on. Sent with every save
   // so a save from a stale tab is rejected instead of overwriting newer text.
   const versionRef = useRef(chapter.version)
+  // An empty id means a draft: nothing exists in the database until the first
+  // change, which creates the chapter (see flush) and fills these in.
+  const chapterIdRef = useRef(chapter.id)
+  const [chapterId, setChapterId] = useState(chapter.id)
+  const latestTitle = useRef(chapter.title)
   // While true, autosave is paused until the person chooses Keep mine / Load theirs.
   const conflictRef = useRef(false)
   const forceNext = useRef(false)
@@ -133,9 +139,29 @@ export function ManuscriptEditor({
     }
     // baseVersion is read when the save actually runs (the queue may delay it
     // behind an earlier save that bumps the version).
-    return enqueue(() =>
-      saveChapterAction(projectId, chapter.id, { ...input, baseVersion: versionRef.current })
-    )
+    return enqueue(async (): Promise<SaveChapterResult> => {
+      if (chapterIdRef.current) {
+        return saveChapterAction(projectId, chapterIdRef.current, {
+          ...input,
+          baseVersion: versionRef.current,
+        })
+      }
+      // First change to a draft: create the chapter now, with everything typed so far.
+      const created = await createChapterFromDraftAction(projectId, {
+        title: input.title ?? latestTitle.current,
+        content: input.content ?? editorRef.current?.getJSON(),
+      })
+      if (!created.ok) return created
+      chapterIdRef.current = created.id
+      setChapterId(created.id)
+      // Same page, real address: a reload or Back now lands on the saved chapter.
+      // Only while still on the draft page: if the person already navigated
+      // away, leave the address bar alone.
+      if (window.location.pathname.endsWith("/chapters/new")) {
+        window.history.replaceState(null, "", `/projects/${projectId}/chapters/${created.id}`)
+      }
+      return { ok: true, version: created.version }
+    })
       .then((result) => {
         if (result.ok) {
           versionRef.current = result.version
@@ -150,7 +176,7 @@ export function ManuscriptEditor({
         restore("error")
         return false
       })
-  }, [projectId, chapter.id, enqueue])
+  }, [projectId, enqueue])
 
   const scheduleSave = useCallback(() => {
     if (conflictRef.current) return
@@ -196,6 +222,9 @@ export function ManuscriptEditor({
       MentionExtension.configure({ mentionables }),
     ],
     content: (chapter.content as object | string | null) ?? "",
+    onCreate: ({ editor }) => {
+      editorRef.current = editor
+    },
     onUpdate: ({ editor }) => {
       editorRef.current = editor
       contentDirty.current = true
@@ -205,6 +234,7 @@ export function ManuscriptEditor({
 
   function handleTitleChange(value: string) {
     setTitle(value)
+    latestTitle.current = value
     pendingTitle.current = value
     scheduleSave()
   }
@@ -228,6 +258,8 @@ export function ManuscriptEditor({
   }, [flush])
 
   const bg = getBackgroundPreset(settings.background, settings.backgroundImageUrl)
+  // A draft has no chapter yet, so Read opens the whole book instead.
+  const readHref = chapterId ? `/read/${projectId}?chapter=${chapterId}` : `/read/${projectId}`
 
   return (
     <div className="flex h-screen flex-col">
@@ -275,8 +307,8 @@ export function ManuscriptEditor({
             variant="ghost"
             render={
               <Link
-                href={`/read/${projectId}?chapter=${chapter.id}`}
-                onClick={(e) => leave(e, `/read/${projectId}?chapter=${chapter.id}`)}
+                href={readHref}
+                onClick={(e) => leave(e, readHref)}
               />
             }
             nativeButton={false}
@@ -298,6 +330,7 @@ export function ManuscriptEditor({
             size="icon-sm"
             variant={historyOpen ? "secondary" : "ghost"}
             onClick={() => setHistoryOpen((v) => !v)}
+            disabled={!chapterId}
             aria-label="Version history"
           >
             <ClockCounterClockwiseIcon />
@@ -382,7 +415,7 @@ export function ManuscriptEditor({
       {historyOpen && editor ? (
         <VersionHistoryPanel
           projectId={projectId}
-          chapterId={chapter.id}
+          chapterId={chapterId}
           getCurrentContent={() => editor.getJSON()}
           flushPending={flush}
           onClose={() => setHistoryOpen(false)}
