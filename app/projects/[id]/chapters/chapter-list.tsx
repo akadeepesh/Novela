@@ -10,14 +10,14 @@ import {
   BookOpenIcon,
 } from "@phosphor-icons/react/dist/ssr"
 import { Button } from "@/components/ui/button"
-import { CreateButton } from "@/components/ui/create-button"
+import { NewLinkButton } from "@/components/ui/new-link-button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import type { SerializedChapterSummary } from "@/lib/chapters"
 import type { ProjectType } from "@/lib/project-config"
 import { estimateScriptRuntime } from "@/lib/script-scaffold"
-import { createChapterAction, deleteChapterAction, moveChapterAction } from "./actions"
+import { deleteChapterAction, moveChapterAction } from "./actions"
 
 const STATUS_VARIANT: Record<SerializedChapterSummary["status"], { label: string }> = {
   draft: { label: "Draft" },
@@ -78,7 +78,7 @@ export function ChapterList({
               Read book
             </Button>
           ) : null}
-          <CreateButton action={createChapterAction.bind(null, projectId)} disabled={isPending}>New {singular.toLowerCase()}</CreateButton>
+          <NewLinkButton href={`/projects/${projectId}/chapters/new`}>New {singular.toLowerCase()}</NewLinkButton>
         </div>
       </div>
 

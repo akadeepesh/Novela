@@ -1,6 +1,6 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { Types } from "mongoose";
 import { connectDB } from "@/lib/db";
@@ -8,8 +8,8 @@ import { Chapter } from "@/lib/models/chapter";
 import { ChapterVersion } from "@/lib/models/chapter-version";
 import { requireProject, requireUserId } from "@/lib/projects";
 import { sectionLabelSingular } from "@/lib/project-config";
-import { initialChapterContent } from "@/lib/script-scaffold";
 import { nextDefaultName } from "@/lib/default-name";
+import { countWords } from "@/lib/word-count";
 import { safeAction } from "@/lib/safe-action";
 
 // Rewrites `order` to 0..n-1 so positions are always unique and gap-free.
@@ -41,13 +41,38 @@ async function repackOrders(
   if (ops.length > 0) await Chapter.bulkWrite(ops, { timestamps: false });
 }
 
-export const createChapterAction = safeAction(
-  "createChapterAction",
-  async (projectId: string): Promise<void> => {
+export type CreateChapterResult =
+  | { ok: true; id: string; version: number }
+  | { ok: false; code: "too_large" | "invalid" | "error" };
+
+// Same limit as saving (see MAX_CHAPTER_BYTES in [chapterId]/actions.ts).
+const MAX_NEW_CHAPTER_BYTES = 3 * 1024 * 1024;
+
+/**
+ * Creates a chapter from the draft editor, on the person's FIRST change.
+ * Opening "New chapter" creates nothing; this runs only once there is
+ * something to keep, so browsing around never leaves empty chapters behind.
+ */
+export const createChapterFromDraftAction = safeAction(
+  "createChapterFromDraftAction",
+  async (
+    projectId: string,
+    input: { title?: string; content?: unknown }
+  ): Promise<CreateChapterResult> => {
     const project = await requireProject(projectId);
     const userId = await requireUserId();
-    await connectDB();
 
+    let json: string;
+    let content: unknown;
+    try {
+      json = JSON.stringify(input.content ?? { type: "doc", content: [] });
+      if (Buffer.byteLength(json) > MAX_NEW_CHAPTER_BYTES) return { ok: false, code: "too_large" };
+      content = JSON.parse(json);
+    } catch {
+      return { ok: false, code: "invalid" };
+    }
+
+    await connectDB();
     const existing = await Chapter.find({ projectId, ownerId: userId })
       .select("title order")
       .lean<{ title: string; order: number }[]>();
@@ -56,22 +81,28 @@ export const createChapterAction = safeAction(
     // Next position after the current last one (not "how many exist", which
     // collides after a delete), and a default title nobody is already using.
     const order = existing.reduce((max, c) => Math.max(max, c.order), -1) + 1;
+    const typed = typeof input.title === "string" ? input.title.trim().slice(0, 200) : "";
+    const title =
+      typed ||
+      nextDefaultName(
+        existing.map((c) => c.title),
+        label
+      );
 
     const chapter = await Chapter.create({
       projectId,
       ownerId: userId,
-      title: nextDefaultName(
-        existing.map((c) => c.title),
-        label
-      ),
+      title,
       order,
-      content: initialChapterContent(project.type),
+      content,
+      wordCount: countWords(content),
+      contentHash: createHash("sha256").update(json).digest("hex"),
     });
 
     revalidatePath(`/projects/${projectId}/chapters`);
-    redirect(`/projects/${projectId}/chapters/${chapter._id}`);
+    return { ok: true, id: String(chapter._id), version: chapter.version ?? 0 };
   },
-  () => undefined,
+  () => ({ ok: false as const, code: "error" as const }),
   { ids: [0] }
 );
 

@@ -6,12 +6,11 @@ import {
   PageShellDescription,
 } from "@/components/layout/page-shell"
 import { EmptyState } from "@/components/ui/empty-state"
-import { CreateButton } from "@/components/ui/create-button"
+import { NewLinkButton } from "@/components/ui/new-link-button"
 import { SECTION_DEFS, sectionLabel, sectionLabelSingular } from "@/lib/project-config"
 import { requireProjectSection } from "@/lib/require-project-section"
 import { listChaptersForProject } from "@/lib/chapters"
 import { ChapterList } from "./chapter-list"
-import { createChapterAction } from "./actions"
 
 export async function generateMetadata({
   params,
@@ -43,7 +42,7 @@ export default async function ChaptersPage({ params }: { params: Promise<{ id: s
           title={`No ${label.toLowerCase()} yet`}
           description={`Start your first ${singular.toLowerCase()} — you can always reorder or rename it later.`}
           action={
-            <CreateButton action={createChapterAction.bind(null, id)}>New {singular.toLowerCase()}</CreateButton>
+            <NewLinkButton href={`/projects/${id}/chapters/new`}>New {singular.toLowerCase()}</NewLinkButton>
           }
         />
       ) : (
