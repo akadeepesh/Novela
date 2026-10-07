@@ -12,23 +12,35 @@ import { uploadProjectImage, deleteProjectImage } from "@/lib/blob";
 import { snapshotBeforeSave, createManualSnapshot, restoreVersion, listVersionsForChapter, requireVersionContent } from "@/lib/versions";
 import { tiptapToBlocks, runsText } from "@/lib/export/document-model";
 import { diffWords } from "@/lib/text-diff";
+import { countWords } from "@/lib/word-count";
+
+// Largest chapter we accept, as serialised JSON. Keep below the Server Action
+// body limit in next.config.ts.
+const MAX_CHAPTER_BYTES = 3 * 1024 * 1024;
 
 const saveSchema = z.object({
   title: z.string().trim().min(1).max(200).optional(),
   content: z.unknown().optional(),
-  wordCount: z.number().int().min(0).max(5_000_000).optional(),
+  // The chapter version this edit was made on top of (see Chapter.version).
+  baseVersion: z.number().int().min(0).optional(),
+  // "Keep mine" after a conflict: save regardless of the version.
+  force: z.boolean().optional(),
 });
 
 export type SaveChapterInput = z.infer<typeof saveSchema>;
+
+export type SaveChapterResult =
+  | { ok: true; version: number; wordCount?: number }
+  | { ok: false; code: "conflict" | "too_large" | "invalid" | "not_found" | "error" };
 
 export async function saveChapterAction(
   projectId: string,
   chapterId: string,
   input: SaveChapterInput
-): Promise<{ ok: boolean }> {
+): Promise<SaveChapterResult> {
   const userId = await requireUserId();
   const parsed = saveSchema.safeParse(input);
-  if (!parsed.success) return { ok: false };
+  if (!parsed.success) return { ok: false, code: "invalid" };
 
   // Rebuilt as a fresh plain object rather than passed straight through:
   // this is the exact value the Mongo driver's BSON layer will walk to
@@ -36,22 +48,27 @@ export async function saveChapterAction(
   // it rather than trusting the reference all the way from the client.
   const update: Record<string, unknown> = {};
   if (parsed.data.title !== undefined) update.title = parsed.data.title;
-  if (parsed.data.wordCount !== undefined) update.wordCount = parsed.data.wordCount;
   let newHash: string | undefined;
+  let newWordCount: number | undefined;
   if (parsed.data.content !== undefined) {
+    let json: string;
     try {
       // A plain JSON round-trip guarantees only JSON-safe data reaches
       // Mongo — anything that isn't (a class instance, a stray function,
       // anything non-plain) fails here, loudly and by itself, instead of
       // surfacing as a confusing crash from inside the database driver.
       // The same string is hashed, so the content is only serialised once.
-      const json = JSON.stringify(parsed.data.content);
+      json = JSON.stringify(parsed.data.content);
+      if (Buffer.byteLength(json) > MAX_CHAPTER_BYTES) return { ok: false, code: "too_large" };
       update.content = JSON.parse(json);
-      newHash = createHash("sha256").update(json).digest("hex");
-      update.contentHash = newHash;
     } catch {
-      return { ok: false };
+      return { ok: false, code: "invalid" };
     }
+    newHash = createHash("sha256").update(json).digest("hex");
+    update.contentHash = newHash;
+    // The server decides the word count; a client-supplied number is never trusted.
+    newWordCount = countWords(update.content);
+    update.wordCount = newWordCount;
   }
 
   await connectDB();
@@ -63,19 +80,33 @@ export async function saveChapterAction(
     wordCount?: number;
     contentHash?: string;
     lastSnapshotAt?: Date;
+    version?: number;
   };
+
+  // Only apply the save if nobody else has saved since the version this edit
+  // was based on. `version: null` also matches chapters from before the field existed.
+  const filter: Record<string, unknown> = { _id: chapterId, projectId, ownerId: userId };
+  if (!parsed.data.force && parsed.data.baseVersion !== undefined) {
+    filter.version =
+      parsed.data.baseVersion === 0 ? { $in: [0, null] } : parsed.data.baseVersion;
+  }
+
   let previous: PreviousChapter | null;
   try {
     previous = await Chapter.findOneAndUpdate(
-      { _id: chapterId, projectId, ownerId: userId },
-      { $set: update },
-      { new: false, projection: "title content wordCount contentHash lastSnapshotAt" }
+      filter,
+      { $set: update, $inc: { version: 1 } },
+      { new: false, projection: "title content wordCount contentHash lastSnapshotAt version" }
     ).lean<PreviousChapter>();
   } catch (err) {
     console.error("saveChapterAction: Chapter.findOneAndUpdate failed", err);
-    return { ok: false };
+    return { ok: false, code: "error" };
   }
-  if (!previous) return { ok: false };
+  if (!previous) {
+    // Either the chapter is gone, or its version moved on since this edit started.
+    const exists = await Chapter.exists({ _id: chapterId, projectId, ownerId: userId });
+    return { ok: false, code: exists ? "conflict" : "not_found" };
+  }
 
   // Title-only saves don't touch history. A snapshot failing must never turn
   // a successful save into an error, so it is isolated here.
@@ -87,14 +118,14 @@ export async function saveChapterAction(
         chapterId,
         previous,
         newHash,
-        newWordCount: parsed.data.wordCount,
+        newWordCount,
       });
     } catch (err) {
       console.error("saveChapterAction: snapshotBeforeSave failed", err);
     }
   }
 
-  return { ok: true };
+  return { ok: true, version: (previous.version ?? 0) + 1, wordCount: newWordCount };
 }
 
 export async function createVersionAction(
