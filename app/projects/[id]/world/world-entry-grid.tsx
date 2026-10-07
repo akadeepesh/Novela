@@ -4,13 +4,13 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { TrashIcon } from "@phosphor-icons/react/dist/ssr"
-import { CreateButton } from "@/components/ui/create-button"
+import { NewLinkButton } from "@/components/ui/new-link-button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { worldEntryTypeLabel, worldEntryTypeIcon } from "@/lib/world-config"
 import type { SerializedWorldEntrySummary } from "@/lib/world-entries"
-import { createWorldEntryAction, deleteWorldEntryAction } from "./actions"
+import { deleteWorldEntryAction } from "./actions"
 
 export function WorldEntryGrid({
   projectId,
@@ -38,7 +38,7 @@ export function WorldEntryGrid({
         <p className="text-sm text-muted-foreground">
           {entries.length} {entries.length === 1 ? "entry" : "entries"}
         </p>
-        <CreateButton action={createWorldEntryAction.bind(null, projectId)} disabled={isPending}>New entry</CreateButton>
+        <NewLinkButton href={`/projects/${projectId}/world/new`}>New entry</NewLinkButton>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

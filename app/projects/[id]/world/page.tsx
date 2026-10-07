@@ -6,12 +6,11 @@ import {
   PageShellDescription,
 } from "@/components/layout/page-shell"
 import { EmptyState } from "@/components/ui/empty-state"
-import { CreateButton } from "@/components/ui/create-button"
+import { NewLinkButton } from "@/components/ui/new-link-button"
 import { SECTION_DEFS } from "@/lib/project-config"
 import { requireProjectSection } from "@/lib/require-project-section"
 import { listWorldEntriesForProject } from "@/lib/world-entries"
 import { WorldEntryGrid } from "./world-entry-grid"
-import { createWorldEntryAction } from "./actions"
 
 export async function generateMetadata({
   params,
@@ -43,7 +42,7 @@ export default async function WorldPage({ params }: { params: Promise<{ id: stri
           title="No world entries yet"
           description="Add the locations, factions, and items that make up your setting — you can fill in the details any time."
           action={
-            <CreateButton action={createWorldEntryAction.bind(null, id)}>New entry</CreateButton>
+            <NewLinkButton href={`/projects/${id}/world/new`}>New entry</NewLinkButton>
           }
         />
       ) : (

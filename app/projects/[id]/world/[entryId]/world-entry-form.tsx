@@ -16,12 +16,15 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Button } from "@/components/ui/button"
 import { WORLD_ENTRY_TYPES, worldEntryTypeIcon } from "@/lib/world-config"
 import type { SerializedWorldEntry } from "@/lib/world-entries"
-import { updateWorldEntryAction, type UpdateWorldEntryState } from "./actions"
+import { updateWorldEntryAction, createWorldEntryFromFormAction, type UpdateWorldEntryState } from "./actions"
 
 const initialState: UpdateWorldEntryState = {}
 
 export function WorldEntryForm({ entry }: { entry: SerializedWorldEntry }) {
-  const boundAction = updateWorldEntryAction.bind(null, entry.projectId, entry.id)
+  // An empty id means the blank "new" form: Save creates the record.
+  const boundAction = entry.id
+    ? updateWorldEntryAction.bind(null, entry.projectId, entry.id)
+    : createWorldEntryFromFormAction.bind(null, entry.projectId)
   const [state, formAction, pending] = useActionState(boundAction, initialState)
   const worldEntryTypeIconComponent = worldEntryTypeIcon(entry.type)
 
@@ -63,7 +66,7 @@ export function WorldEntryForm({ entry }: { entry: SerializedWorldEntry }) {
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="name">Name</Label>
-              <Input id="name" name="name" defaultValue={entry.name} />
+              <Input id="name" name="name" defaultValue={entry.name} autoFocus={!entry.id} />
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -118,7 +121,7 @@ export function WorldEntryForm({ entry }: { entry: SerializedWorldEntry }) {
 
         <CardFooter className="mt-5 items-center gap-3 border-t pt-5">
           <Button type="submit" disabled={pending}>
-            {pending ? "Saving…" : "Save changes"}
+            {pending ? "Saving…" : entry.id ? "Save changes" : "Create entry"}
           </Button>
           {state.success ? <span className="text-sm text-muted-foreground">Saved.</span> : null}
         </CardFooter>
