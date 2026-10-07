@@ -17,12 +17,15 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Button } from "@/components/ui/button"
 import { CHARACTER_ROLES } from "@/lib/character-config"
 import type { SerializedCharacter } from "@/lib/characters"
-import { updateCharacterAction, type UpdateCharacterState } from "./actions"
+import { updateCharacterAction, createCharacterFromFormAction, type UpdateCharacterState } from "./actions"
 
 const initialState: UpdateCharacterState = {}
 
 export function CharacterForm({ character }: { character: SerializedCharacter }) {
-  const boundAction = updateCharacterAction.bind(null, character.projectId, character.id)
+  // An empty id means the blank "new" form: Save creates the record.
+  const boundAction = character.id
+    ? updateCharacterAction.bind(null, character.projectId, character.id)
+    : createCharacterFromFormAction.bind(null, character.projectId)
   const [state, formAction, pending] = useActionState(boundAction, initialState)
 
   return (
@@ -67,7 +70,7 @@ export function CharacterForm({ character }: { character: SerializedCharacter })
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="name">Name</Label>
-              <Input id="name" name="name" defaultValue={character.name} />
+              <Input id="name" name="name" defaultValue={character.name} autoFocus={!character.id} />
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -144,7 +147,7 @@ export function CharacterForm({ character }: { character: SerializedCharacter })
 
         <CardFooter className="mt-5 items-center gap-3 border-t pt-5">
           <Button type="submit" disabled={pending}>
-            {pending ? "Saving…" : "Save changes"}
+            {pending ? "Saving…" : character.id ? "Save changes" : "Create character"}
           </Button>
           {state.success ? <span className="text-sm text-muted-foreground">Saved.</span> : null}
         </CardFooter>

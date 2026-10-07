@@ -4,13 +4,13 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { TrashIcon, UserCircleIcon } from "@phosphor-icons/react/dist/ssr"
-import { CreateButton } from "@/components/ui/create-button"
+import { NewLinkButton } from "@/components/ui/new-link-button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { characterRoleLabel } from "@/lib/character-config"
 import type { SerializedCharacterSummary } from "@/lib/characters"
-import { createCharacterAction, deleteCharacterAction } from "./actions"
+import { deleteCharacterAction } from "./actions"
 
 export function CharacterGrid({
   projectId,
@@ -38,7 +38,7 @@ export function CharacterGrid({
         <p className="text-sm text-muted-foreground">
           {characters.length} {characters.length === 1 ? "character" : "characters"}
         </p>
-        <CreateButton action={createCharacterAction.bind(null, projectId)} disabled={isPending}>New character</CreateButton>
+        <NewLinkButton href={`/projects/${projectId}/characters/new`}>New character</NewLinkButton>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
