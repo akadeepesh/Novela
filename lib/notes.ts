@@ -1,4 +1,5 @@
 import "server-only";
+import { isObjectId } from "@/lib/object-id";
 import { cache } from "react";
 import { notFound } from "next/navigation";
 import { connectDB } from "@/lib/db";
@@ -57,14 +58,12 @@ export const requireNote = cache(async (
   const userId = await requireUserId();
   await connectDB();
 
-  let doc: Record<string, unknown> | null;
-  try {
-    doc = await Note.findOne({ _id: noteId, projectId, ownerId: userId }).lean<
+  // A malformed id is "not found"; a real database error is left to propagate
+  // (reported as an error) instead of being hidden as a 404.
+  if (!isObjectId(projectId) || !isObjectId(noteId)) notFound();
+  const doc = await Note.findOne({ _id: noteId, projectId, ownerId: userId }).lean<
       Record<string, unknown>
     >();
-  } catch {
-    notFound();
-  }
   if (!doc) notFound();
 
   return serializeNote(doc);

@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
+import { isObjectId } from "@/lib/object-id";
 import { connectDB } from "@/lib/db";
 import { Project } from "@/lib/models/project";
 import type { ProjectType, SectionId } from "@/lib/project-config";
@@ -68,13 +69,10 @@ export const requireProject = cache(async (id: string): Promise<SerializedProjec
   const userId = await requireUserId();
   await connectDB();
 
-  let doc: Record<string, unknown> | null;
-  try {
-    doc = await Project.findOne({ _id: id, ownerId: userId }).lean<Record<string, unknown>>();
-  } catch {
-    // Malformed ObjectId (e.g. a garbage URL) — treat as not found, not a crash.
-    notFound();
-  }
+  // A malformed id (a garbage URL) is "not found". A real database error is
+  // deliberately not caught here, so it is reported as an error, not hidden as a 404.
+  if (!isObjectId(id)) notFound();
+  const doc = await Project.findOne({ _id: id, ownerId: userId }).lean<Record<string, unknown>>();
   if (!doc) notFound();
   return serializeProject(doc);
 });

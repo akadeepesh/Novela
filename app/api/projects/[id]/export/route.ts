@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { connectDB } from "@/lib/db";
+import { isObjectId } from "@/lib/object-id";
 import { Project } from "@/lib/models/project";
 import { DEFAULT_MANUSCRIPT_SETTINGS, type ManuscriptSettings } from "@/lib/manuscript-config";
 import type { ProjectType, SectionId } from "@/lib/project-config";
@@ -36,14 +37,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
   const userId = session.user.id;
 
-  await connectDB();
-
-  let projectDoc;
-  try {
-    projectDoc = await Project.findOne({ _id: id, ownerId: userId }).lean<Record<string, unknown>>();
-  } catch {
+  if (!isObjectId(id)) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+
+  await connectDB();
+
+  const projectDoc = await Project.findOne({ _id: id, ownerId: userId }).lean<Record<string, unknown>>();
   if (!projectDoc) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
