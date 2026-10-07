@@ -196,11 +196,16 @@ export function ReadView({
   const areaRef = useRef<HTMLDivElement>(null)
   const measureRef = useRef<HTMLDivElement>(null)
   const bookRef = useRef<FlipBookHandle | null>(null)
+  // Latest page the reader is on. Written by the flip handler and read only
+  // inside effects/callbacks (never during render), so a re-layout or rebuild
+  // can put the reader back where they were.
   const currentRef = useRef(0)
 
   const [layout, setLayout] = useState<{ w: number; h: number; spread: boolean } | null>(null)
   const [book, setBook] = useState<Book | null>(null)
   const [pageIndex, setPageIndex] = useState(0)
+  // Page the flipbook opens on. Changes only when the layout or book is rebuilt.
+  const [startPage, setStartPage] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
 
   // Same [data-genre] hook project-shell.tsx sets, so the generated
@@ -224,6 +229,8 @@ export function ReadView({
       const availW = rect.width - 32
       const availH = rect.height - 32
       const spreadH = Math.min(availH, availW / 2 / ratio, 1100)
+      // The flipbook remounts at the new size; reopen it on the current page.
+      setStartPage(currentRef.current)
       if (spreadH * ratio >= 300) {
         setLayout({ w: Math.round(spreadH * ratio), h: Math.round(spreadH), spread: true })
       } else {
@@ -255,14 +262,21 @@ export function ReadView({
     const run = () => {
       const el = measureRef.current
       if (cancelled || !el) return
-      setBook(buildBook(doc, el, dims))
+      const built = buildBook(doc, el, dims)
+      setBook(built)
+      if (currentRef.current > 0) {
+        setStartPage(currentRef.current)
+      } else {
+        const section = built.sections.find((x) => x.id === initialChapterId)
+        setStartPage(section ? section.leaf : 0)
+      }
     }
     const ready = document.fonts?.ready ?? Promise.resolve()
     ready.then(() => requestAnimationFrame(run))
     return () => {
       cancelled = true
     }
-  }, [doc, dims])
+  }, [doc, dims, initialChapterId])
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -273,13 +287,6 @@ export function ReadView({
     window.addEventListener("keydown", onKeyDown)
     return () => window.removeEventListener("keydown", onKeyDown)
   }, [])
-
-  const startPage = useMemo(() => {
-    if (!book) return 0
-    if (currentRef.current > 0) return currentRef.current
-    const s = book.sections.find((x) => x.id === initialChapterId)
-    return s ? s.leaf : 0
-  }, [book, initialChapterId])
 
   const k = layout ? layout.w / W0 : 1
   const total = book?.leaves.length ?? 0
