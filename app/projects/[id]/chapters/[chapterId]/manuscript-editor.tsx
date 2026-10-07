@@ -27,11 +27,24 @@ import { MentionExtension } from "@/components/editor/mention-extension"
 import type { Mentionable } from "@/lib/mentions"
 import { estimateScriptRuntime } from "@/lib/script-scaffold"
 import { createActionQueue } from "@/lib/action-queue"
-import { saveChapterAction, type SaveChapterInput } from "./actions"
+import { countWords } from "@/lib/word-count"
+import { saveChapterAction, type SaveChapterInput, type SaveChapterResult } from "./actions"
 import { ManuscriptSettingsPanel } from "./manuscript-settings-panel"
 import { VersionHistoryPanel } from "./version-history-panel"
 
 const SAVE_DEBOUNCE_MS = 900
+// Show a "consider splitting" hint from here (the server hard-limit is far higher).
+const LONG_CHAPTER_WORDS = 50_000
+
+type SaveFailure = Extract<SaveChapterResult, { ok: false }>["code"]
+
+const FAILURE_MESSAGE: Record<Exclude<SaveFailure, "conflict">, string> = {
+  too_large:
+    "This chapter is too large to save (over 3 MB). Split it into smaller chapters. Your text is still in this tab, so copy it somewhere safe before leaving.",
+  not_found: "This chapter no longer exists. It may have been deleted in another tab. Copy your text before leaving.",
+  invalid: "Couldn't save this text. Copy it somewhere safe and let us know.",
+  error: "Couldn't save. Your text is still in this tab and will be retried on your next change.",
+}
 
 type Props = {
   projectId: string
@@ -57,6 +70,8 @@ export function ManuscriptEditor({
   const [settings, setSettings] = useState(manuscriptSettings)
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle")
   const [wordCount, setWordCount] = useState(chapter.wordCount)
+  const [conflict, setConflict] = useState(false)
+  const [failure, setFailure] = useState<SaveFailure | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Shared by every mutation this page makes (content/title saves here, and
@@ -68,6 +83,12 @@ export function ManuscriptEditor({
   const editorRef = useRef<Editor | null>(null)
   const pendingTitle = useRef<string | null>(null)
   const contentDirty = useRef(false)
+  // Version of the saved chapter this editor is based on. Sent with every save
+  // so a save from a stale tab is rejected instead of overwriting newer text.
+  const versionRef = useRef(chapter.version)
+  // While true, autosave is paused until the person chooses Keep mine / Load theirs.
+  const conflictRef = useRef(false)
+  const forceNext = useRef(false)
 
   // Sends whatever is pending (title and/or body) as ONE save, right now.
   // Called by the debounce timer, before in-app navigation, and on unmount /
@@ -77,54 +98,90 @@ export function ManuscriptEditor({
       clearTimeout(saveTimer.current)
       saveTimer.current = null
     }
+    // Paused on conflict: nothing is sent, and the pending changes stay pending.
+    if (conflictRef.current) return Promise.resolve(false)
+
     const input: SaveChapterInput = {}
     if (pendingTitle.current !== null) {
       input.title = pendingTitle.current.trim() || "Untitled"
       pendingTitle.current = null
     }
     if (contentDirty.current && editorRef.current) {
-      const words = editorRef.current.storage.characterCount.words()
       input.content = editorRef.current.getJSON()
-      input.wordCount = words
       contentDirty.current = false
-      setWordCount(words)
+      // Same function the server uses, so the footer matches the saved count.
+      setWordCount(countWords(input.content))
     }
     if (Object.keys(input).length === 0) return Promise.resolve(true)
 
+    if (forceNext.current) {
+      input.force = true
+      forceNext.current = false
+    }
+
     setSaveState("saving")
-    const restore = () => {
+    const restore = (code: SaveFailure) => {
       // Keep failed changes pending so the next change (or exit) retries them.
       if (input.content !== undefined) contentDirty.current = true
       if (input.title !== undefined && pendingTitle.current === null) pendingTitle.current = input.title
+      if (code === "conflict") {
+        conflictRef.current = true
+        setConflict(true)
+      }
+      setFailure(code)
       setSaveState("error")
     }
-    return enqueue(() => saveChapterAction(projectId, chapter.id, input))
+    // baseVersion is read when the save actually runs (the queue may delay it
+    // behind an earlier save that bumps the version).
+    return enqueue(() =>
+      saveChapterAction(projectId, chapter.id, { ...input, baseVersion: versionRef.current })
+    )
       .then((result) => {
         if (result.ok) {
+          versionRef.current = result.version
+          setFailure(null)
           setSaveState("saved")
           return true
         }
-        restore()
+        restore(result.code)
         return false
       })
       .catch(() => {
-        restore()
+        restore("error")
         return false
       })
   }, [projectId, chapter.id, enqueue])
 
   const scheduleSave = useCallback(() => {
+    if (conflictRef.current) return
     setSaveState("saving")
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => void flush(), SAVE_DEBOUNCE_MS)
   }, [flush])
 
   // In-app links: finish saving first, then navigate, so the next page
-  // (Read view, chapter list) always loads the latest text.
+  // (Read view, chapter list) always loads the latest text. If the save fails
+  // we stay put, so the text isn't silently dropped.
   function leave(e: React.MouseEvent, href: string) {
     if (!contentDirty.current && pendingTitle.current === null) return
     e.preventDefault()
-    void flush().then(() => router.push(href))
+    void flush().then((ok) => {
+      if (ok) router.push(href)
+    })
+  }
+
+  // Conflict: another tab or device saved this chapter after this one loaded.
+  function keepMine() {
+    conflictRef.current = false
+    setConflict(false)
+    forceNext.current = true
+    void flush()
+  }
+
+  function loadTheirs() {
+    contentDirty.current = false
+    pendingTitle.current = null
+    window.location.reload()
   }
 
   const editor = useEditor({
@@ -257,6 +314,26 @@ export function ManuscriptEditor({
         </div>
       </div>
 
+      {conflict ? (
+        <div
+          role="alert"
+          className="flex flex-wrap items-center justify-between gap-2 border-b border-border bg-destructive/10 px-4 py-2 text-sm"
+        >
+          <p className="text-foreground">
+            This {chapterLabelSingular.toLowerCase()} was changed in another tab or on another device.
+            Saving is paused so nothing is overwritten.
+          </p>
+          <div className="flex items-center gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={loadTheirs}>
+              Load their version
+            </Button>
+            <Button type="button" size="sm" onClick={keepMine}>
+              Keep mine
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       {settingsOpen ? (
         <ManuscriptSettingsPanel
           projectId={projectId}
@@ -317,6 +394,7 @@ export function ManuscriptEditor({
         <span>
           {wordCount.toLocaleString()} words
           {projectType === "script-writing" ? ` · ${estimateScriptRuntime(wordCount)}` : ""}
+          {wordCount >= LONG_CHAPTER_WORDS ? " · Very long. Consider splitting it into smaller chapters." : ""}
         </span>
         <span className={cn("italic", saveState === "error" && "text-destructive not-italic")}>
           {saveState === "saving"
@@ -324,7 +402,9 @@ export function ManuscriptEditor({
             : saveState === "saved"
               ? "Saved"
               : saveState === "error"
-                ? "Couldn't save — will retry on your next change"
+                ? failure === "conflict"
+                  ? "Saving paused"
+                  : FAILURE_MESSAGE[failure ?? "error"]
                 : ""}
         </span>
       </div>
