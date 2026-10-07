@@ -1,4 +1,5 @@
 import "server-only";
+import { Types } from "mongoose";
 import { connectDB } from "@/lib/db";
 import { Project } from "@/lib/models/project";
 import { Chapter } from "@/lib/models/chapter";
@@ -35,51 +36,59 @@ export async function getDashboardData(): Promise<DashboardData> {
 
   if (projects.length === 0) return { hero: null, others: [] };
 
-  // "Most recently edited" means most recently edited CONTENT, not just
-  // any project field — so this is driven by the single most-recently
-  // updated chapter across every project, not project.updatedAt (which
-  // also changes on unrelated edits like the title or manuscript settings).
-  const latestChapter = await Chapter.findOne({ ownerId: userId })
-    .select("projectId title updatedAt")
-    .sort({ updatedAt: -1 })
-    .lean<{ _id: unknown; projectId: unknown; title: string; updatedAt: Date }>();
+  // "Last activity" of a project = when its most recently edited chapter was
+  // edited, NOT project.updatedAt (which also moves on unrelated edits such as
+  // the title or manuscript settings, and never moves when you just write).
+  // One grouped query gives every project's latest chapter at once, so the
+  // hero and the list below it are ordered by the same rule.
+  const latestByProject = await Chapter.aggregate<{
+    _id: unknown;
+    chapterId: unknown;
+    title: string;
+    updatedAt: Date;
+  }>([
+    { $match: { ownerId: new Types.ObjectId(userId) } },
+    { $sort: { updatedAt: -1 } },
+    {
+      $group: {
+        _id: "$projectId",
+        chapterId: { $first: "$_id" },
+        title: { $first: "$title" },
+        updatedAt: { $first: "$updatedAt" },
+      },
+    },
+  ]);
+  const latest = new Map(latestByProject.map((c) => [String(c._id), c]));
 
-  let heroProject = latestChapter
-    ? projects.find((p) => String(p._id) === String(latestChapter.projectId))
-    : undefined;
+  // Projects without chapters fall back to their own updatedAt.
+  const ranked = projects
+    .map((p) => {
+      const chapter = latest.get(String(p._id)) ?? null;
+      return { project: p, chapter, activity: new Date(chapter?.updatedAt ?? p.updatedAt) };
+    })
+    .sort((a, b) => b.activity.getTime() - a.activity.getTime());
 
-  // No chapters anywhere yet (shouldn't normally happen now that creation
-  // always makes a first chapter, but stays correct for older/edge-case
-  // data) — fall back to the most recently updated project.
-  if (!heroProject) {
-    heroProject = [...projects].sort(
-      (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-    )[0];
-  }
+  const [first, ...rest] = ranked;
 
   const hero: DashboardHero = {
-    id: String(heroProject._id),
-    title: heroProject.title,
-    type: normalizeProjectType(heroProject.type),
-    chapter:
-      latestChapter && String(latestChapter.projectId) === String(heroProject._id)
-        ? {
-            id: String(latestChapter._id),
-            title: latestChapter.title,
-            updatedAt: latestChapter.updatedAt.toISOString(),
-          }
-        : null,
+    id: String(first.project._id),
+    title: first.project.title,
+    type: normalizeProjectType(first.project.type),
+    chapter: first.chapter
+      ? {
+          id: String(first.chapter.chapterId),
+          title: first.chapter.title,
+          updatedAt: first.activity.toISOString(),
+        }
+      : null,
   };
 
-  const others: DashboardOther[] = projects
-    .filter((p) => String(p._id) !== hero.id)
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    .map((p) => ({
-      id: String(p._id),
-      title: p.title,
-      type: normalizeProjectType(p.type),
-      updatedAt: p.updatedAt.toISOString(),
-    }));
+  const others: DashboardOther[] = rest.map((r) => ({
+    id: String(r.project._id),
+    title: r.project.title,
+    type: normalizeProjectType(r.project.type),
+    updatedAt: r.activity.toISOString(),
+  }));
 
   return { hero, others };
 }
