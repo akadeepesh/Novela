@@ -5,11 +5,14 @@ import { connectDB } from "@/lib/db";
 import { Project } from "@/lib/models/project";
 import { requireUserId } from "@/lib/projects";
 import { ADDABLE_SECTIONS, SECTION_DEFS, type SectionId } from "@/lib/project-config";
+import { safeAction } from "@/lib/safe-action";
 
-export async function addProjectSectionAction(
+export const addProjectSectionAction = safeAction(
+  "addProjectSectionAction",
+  async (
   projectId: string,
   sectionId: string
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean }> => {
   const userId = await requireUserId();
   if (!ADDABLE_SECTIONS.includes(sectionId as SectionId) || !(sectionId in SECTION_DEFS)) {
     return { ok: false };
@@ -39,4 +42,7 @@ export async function addProjectSectionAction(
     revalidatePath(`/projects/${projectId}`, "layout");
   }
   return { ok: result.matchedCount > 0 };
-}
+  },
+  () => ({ ok: false }),
+  { ids: [0] }
+);

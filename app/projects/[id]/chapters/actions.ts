@@ -10,6 +10,7 @@ import { requireProject, requireUserId } from "@/lib/projects";
 import { sectionLabelSingular } from "@/lib/project-config";
 import { initialChapterContent } from "@/lib/script-scaffold";
 import { nextDefaultName } from "@/lib/default-name";
+import { safeAction } from "@/lib/safe-action";
 
 // Rewrites `order` to 0..n-1 so positions are always unique and gap-free.
 // Optionally moves one chapter up/down first. Running this also heals projects
@@ -40,52 +41,66 @@ async function repackOrders(
   if (ops.length > 0) await Chapter.bulkWrite(ops, { timestamps: false });
 }
 
-export async function createChapterAction(projectId: string) {
-  const project = await requireProject(projectId);
-  const userId = await requireUserId();
-  await connectDB();
+export const createChapterAction = safeAction(
+  "createChapterAction",
+  async (projectId: string): Promise<void> => {
+    const project = await requireProject(projectId);
+    const userId = await requireUserId();
+    await connectDB();
 
-  const existing = await Chapter.find({ projectId, ownerId: userId })
-    .select("title order")
-    .lean<{ title: string; order: number }[]>();
-  const label = sectionLabelSingular("chapters", project.type);
+    const existing = await Chapter.find({ projectId, ownerId: userId })
+      .select("title order")
+      .lean<{ title: string; order: number }[]>();
+    const label = sectionLabelSingular("chapters", project.type);
 
-  // Next position after the current last one (not "how many exist", which
-  // collides after a delete), and a default title nobody is already using.
-  const order = existing.reduce((max, c) => Math.max(max, c.order), -1) + 1;
+    // Next position after the current last one (not "how many exist", which
+    // collides after a delete), and a default title nobody is already using.
+    const order = existing.reduce((max, c) => Math.max(max, c.order), -1) + 1;
 
-  const chapter = await Chapter.create({
-    projectId,
-    ownerId: userId,
-    title: nextDefaultName(existing.map((c) => c.title), label),
-    order,
-    content: initialChapterContent(project.type),
-  });
+    const chapter = await Chapter.create({
+      projectId,
+      ownerId: userId,
+      title: nextDefaultName(
+        existing.map((c) => c.title),
+        label
+      ),
+      order,
+      content: initialChapterContent(project.type),
+    });
 
-  revalidatePath(`/projects/${projectId}/chapters`);
-  redirect(`/projects/${projectId}/chapters/${chapter._id}`);
-}
+    revalidatePath(`/projects/${projectId}/chapters`);
+    redirect(`/projects/${projectId}/chapters/${chapter._id}`);
+  },
+  () => undefined,
+  { ids: [0] }
+);
 
-export async function deleteChapterAction(projectId: string, chapterId: string) {
-  const userId = await requireUserId();
-  await connectDB();
-  const result = await Chapter.deleteOne({ _id: chapterId, projectId, ownerId: userId });
-  if (result.deletedCount > 0) {
-    // Versions of a deleted chapter would otherwise be orphaned, unreachable
-    // from the UI but still taking up storage.
-    await ChapterVersion.deleteMany({ chapterId, projectId, ownerId: userId });
-    await repackOrders(projectId, userId);
-  }
-  revalidatePath(`/projects/${projectId}/chapters`);
-}
+export const deleteChapterAction = safeAction(
+  "deleteChapterAction",
+  async (projectId: string, chapterId: string) => {
+    const userId = await requireUserId();
+    await connectDB();
+    const result = await Chapter.deleteOne({ _id: chapterId, projectId, ownerId: userId });
+    if (result.deletedCount > 0) {
+      // Versions of a deleted chapter would otherwise be orphaned, unreachable
+      // from the UI but still taking up storage.
+      await ChapterVersion.deleteMany({ chapterId, projectId, ownerId: userId });
+      await repackOrders(projectId, userId);
+    }
+    revalidatePath(`/projects/${projectId}/chapters`);
+  },
+  () => undefined,
+  { ids: [0, 1] }
+);
 
-export async function moveChapterAction(
-  projectId: string,
-  chapterId: string,
-  direction: "up" | "down"
-) {
-  const userId = await requireUserId();
-  await connectDB();
-  await repackOrders(projectId, userId, { chapterId, direction });
-  revalidatePath(`/projects/${projectId}/chapters`);
-}
+export const moveChapterAction = safeAction(
+  "moveChapterAction",
+  async (projectId: string, chapterId: string, direction: "up" | "down") => {
+    const userId = await requireUserId();
+    await connectDB();
+    await repackOrders(projectId, userId, { chapterId, direction });
+    revalidatePath(`/projects/${projectId}/chapters`);
+  },
+  () => undefined,
+  { ids: [0, 1] }
+);

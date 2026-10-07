@@ -7,6 +7,7 @@ import { connectDB } from "@/lib/db";
 import { WorldEntry } from "@/lib/models/world-entry";
 import { requireUserId } from "@/lib/projects";
 import { WORLD_ENTRY_TYPES, type WorldEntryType } from "@/lib/world-config";
+import { safeAction, GENERIC_ERROR } from "@/lib/safe-action";
 
 const TYPE_VALUES = WORLD_ENTRY_TYPES.map((t) => t.value) as [WorldEntryType, ...WorldEntryType[]];
 
@@ -24,46 +25,51 @@ export type UpdateWorldEntryState = {
   success?: boolean;
 };
 
-export async function updateWorldEntryAction(
-  projectId: string,
-  entryId: string,
-  _prevState: UpdateWorldEntryState,
-  formData: FormData
-): Promise<UpdateWorldEntryState> {
-  const userId = await requireUserId();
+export const updateWorldEntryAction = safeAction(
+  "updateWorldEntryAction",
+  async (
+    projectId: string,
+    entryId: string,
+    _prevState: UpdateWorldEntryState,
+    formData: FormData
+  ): Promise<UpdateWorldEntryState> => {
+    const userId = await requireUserId();
 
-  const parsed = schema.safeParse({
-    name: formData.get("name"),
-    type: formData.get("type"),
-    aliases: formString(formData, "aliases"),
-    imageUrl: formString(formData, "imageUrl"),
-    description: formString(formData, "description"),
-    notes: formString(formData, "notes"),
-  });
+    const parsed = schema.safeParse({
+      name: formData.get("name"),
+      type: formData.get("type"),
+      aliases: formString(formData, "aliases"),
+      imageUrl: formString(formData, "imageUrl"),
+      description: formString(formData, "description"),
+      notes: formString(formData, "notes"),
+    });
 
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Check the fields and try again." };
-  }
+    if (!parsed.success) {
+      return { error: parsed.error.issues[0]?.message ?? "Check the fields and try again." };
+    }
 
-  const { aliases, ...rest } = parsed.data;
-  const aliasList = aliases
-    ? aliases
-        .split(",")
-        .map((a) => a.trim())
-        .filter(Boolean)
-    : [];
+    const { aliases, ...rest } = parsed.data;
+    const aliasList = aliases
+      ? aliases
+          .split(",")
+          .map((a) => a.trim())
+          .filter(Boolean)
+      : [];
 
-  await connectDB();
-  const result = await WorldEntry.updateOne(
-    { _id: entryId, projectId, ownerId: userId },
-    { $set: { ...rest, aliases: aliasList } }
-  );
+    await connectDB();
+    const result = await WorldEntry.updateOne(
+      { _id: entryId, projectId, ownerId: userId },
+      { $set: { ...rest, aliases: aliasList } }
+    );
 
-  if (result.matchedCount === 0) {
-    return { error: "Couldn't find this entry." };
-  }
+    if (result.matchedCount === 0) {
+      return { error: "Couldn't find this entry." };
+    }
 
-  revalidatePath(`/projects/${projectId}/world`);
-  revalidatePath(`/projects/${projectId}/world/${entryId}`);
-  return { success: true };
-}
+    revalidatePath(`/projects/${projectId}/world`);
+    revalidatePath(`/projects/${projectId}/world/${entryId}`);
+    return { success: true };
+  },
+  () => ({ error: GENERIC_ERROR }),
+  { ids: [0, 1] }
+);

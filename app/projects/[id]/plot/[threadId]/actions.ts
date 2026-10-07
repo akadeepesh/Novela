@@ -7,6 +7,7 @@ import { connectDB } from "@/lib/db";
 import { PlotThread } from "@/lib/models/plot-thread";
 import { requireUserId } from "@/lib/projects";
 import { PLOT_STATUSES, type PlotStatus } from "@/lib/plot-config";
+import { safeAction, GENERIC_ERROR } from "@/lib/safe-action";
 
 const STATUS_VALUES = PLOT_STATUSES.map((s) => s.value) as [PlotStatus, ...PlotStatus[]];
 
@@ -23,45 +24,50 @@ export type UpdatePlotThreadState = {
   success?: boolean;
 };
 
-export async function updatePlotThreadAction(
-  projectId: string,
-  threadId: string,
-  _prevState: UpdatePlotThreadState,
-  formData: FormData
-): Promise<UpdatePlotThreadState> {
-  const userId = await requireUserId();
+export const updatePlotThreadAction = safeAction(
+  "updatePlotThreadAction",
+  async (
+    projectId: string,
+    threadId: string,
+    _prevState: UpdatePlotThreadState,
+    formData: FormData
+  ): Promise<UpdatePlotThreadState> => {
+    const userId = await requireUserId();
 
-  const parsed = schema.safeParse({
-    title: formData.get("title"),
-    status: formData.get("status"),
-    aliases: formString(formData, "aliases"),
-    description: formString(formData, "description"),
-    notes: formString(formData, "notes"),
-  });
+    const parsed = schema.safeParse({
+      title: formData.get("title"),
+      status: formData.get("status"),
+      aliases: formString(formData, "aliases"),
+      description: formString(formData, "description"),
+      notes: formString(formData, "notes"),
+    });
 
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Check the fields and try again." };
-  }
+    if (!parsed.success) {
+      return { error: parsed.error.issues[0]?.message ?? "Check the fields and try again." };
+    }
 
-  const { aliases, ...rest } = parsed.data;
-  const aliasList = aliases
-    ? aliases
-        .split(",")
-        .map((a) => a.trim())
-        .filter(Boolean)
-    : [];
+    const { aliases, ...rest } = parsed.data;
+    const aliasList = aliases
+      ? aliases
+          .split(",")
+          .map((a) => a.trim())
+          .filter(Boolean)
+      : [];
 
-  await connectDB();
-  const result = await PlotThread.updateOne(
-    { _id: threadId, projectId, ownerId: userId },
-    { $set: { ...rest, aliases: aliasList } }
-  );
+    await connectDB();
+    const result = await PlotThread.updateOne(
+      { _id: threadId, projectId, ownerId: userId },
+      { $set: { ...rest, aliases: aliasList } }
+    );
 
-  if (result.matchedCount === 0) {
-    return { error: "Couldn't find this thread." };
-  }
+    if (result.matchedCount === 0) {
+      return { error: "Couldn't find this thread." };
+    }
 
-  revalidatePath(`/projects/${projectId}/plot`);
-  revalidatePath(`/projects/${projectId}/plot/${threadId}`);
-  return { success: true };
-}
+    revalidatePath(`/projects/${projectId}/plot`);
+    revalidatePath(`/projects/${projectId}/plot/${threadId}`);
+    return { success: true };
+  },
+  () => ({ error: GENERIC_ERROR }),
+  { ids: [0, 1] }
+);

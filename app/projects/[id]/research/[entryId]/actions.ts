@@ -7,6 +7,7 @@ import { connectDB } from "@/lib/db";
 import { ResearchEntry } from "@/lib/models/research-entry";
 import { requireUserId } from "@/lib/projects";
 import { RESEARCH_ENTRY_TYPES, type ResearchEntryType } from "@/lib/research-config";
+import { safeAction, GENERIC_ERROR } from "@/lib/safe-action";
 
 const TYPE_VALUES = RESEARCH_ENTRY_TYPES.map((t) => t.value) as [
   ResearchEntryType,
@@ -25,36 +26,41 @@ export type UpdateResearchEntryState = {
   success?: boolean;
 };
 
-export async function updateResearchEntryAction(
-  projectId: string,
-  entryId: string,
-  _prevState: UpdateResearchEntryState,
-  formData: FormData
-): Promise<UpdateResearchEntryState> {
-  const userId = await requireUserId();
+export const updateResearchEntryAction = safeAction(
+  "updateResearchEntryAction",
+  async (
+    projectId: string,
+    entryId: string,
+    _prevState: UpdateResearchEntryState,
+    formData: FormData
+  ): Promise<UpdateResearchEntryState> => {
+    const userId = await requireUserId();
 
-  const parsed = schema.safeParse({
-    title: formData.get("title"),
-    type: formData.get("type"),
-    url: formString(formData, "url"),
-    content: formString(formData, "content"),
-  });
+    const parsed = schema.safeParse({
+      title: formData.get("title"),
+      type: formData.get("type"),
+      url: formString(formData, "url"),
+      content: formString(formData, "content"),
+    });
 
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Check the fields and try again." };
-  }
+    if (!parsed.success) {
+      return { error: parsed.error.issues[0]?.message ?? "Check the fields and try again." };
+    }
 
-  await connectDB();
-  const result = await ResearchEntry.updateOne(
-    { _id: entryId, projectId, ownerId: userId },
-    { $set: parsed.data }
-  );
+    await connectDB();
+    const result = await ResearchEntry.updateOne(
+      { _id: entryId, projectId, ownerId: userId },
+      { $set: parsed.data }
+    );
 
-  if (result.matchedCount === 0) {
-    return { error: "Couldn't find this entry." };
-  }
+    if (result.matchedCount === 0) {
+      return { error: "Couldn't find this entry." };
+    }
 
-  revalidatePath(`/projects/${projectId}/research`);
-  revalidatePath(`/projects/${projectId}/research/${entryId}`);
-  return { success: true };
-}
+    revalidatePath(`/projects/${projectId}/research`);
+    revalidatePath(`/projects/${projectId}/research/${entryId}`);
+    return { success: true };
+  },
+  () => ({ error: GENERIC_ERROR }),
+  { ids: [0, 1] }
+);
