@@ -5,18 +5,21 @@ import { revalidatePath } from "next/cache";
 import { connectDB } from "@/lib/db";
 import { PlotThread } from "@/lib/models/plot-thread";
 import { requireProject, requireUserId } from "@/lib/projects";
+import { nextDefaultName } from "@/lib/default-name";
 
 export async function createPlotThreadAction(projectId: string) {
   await requireProject(projectId);
   const userId = await requireUserId();
   await connectDB();
 
-  const count = await PlotThread.countDocuments({ projectId });
+  const existing = await PlotThread.find({ projectId, ownerId: userId })
+    .select("title")
+    .lean<{ title: string }[]>();
 
   const thread = await PlotThread.create({
     projectId,
     ownerId: userId,
-    title: `New Thread ${count + 1}`,
+    title: nextDefaultName(existing.map((t) => t.title), "New Thread"),
   });
 
   revalidatePath(`/projects/${projectId}/plot`);

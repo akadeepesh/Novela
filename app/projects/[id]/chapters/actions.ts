@@ -9,6 +9,7 @@ import { ChapterVersion } from "@/lib/models/chapter-version";
 import { requireProject, requireUserId } from "@/lib/projects";
 import { sectionLabelSingular } from "@/lib/project-config";
 import { initialChapterContent } from "@/lib/script-scaffold";
+import { nextDefaultName } from "@/lib/default-name";
 
 // Rewrites `order` to 0..n-1 so positions are always unique and gap-free.
 // Optionally moves one chapter up/down first. Running this also heals projects
@@ -52,14 +53,11 @@ export async function createChapterAction(projectId: string) {
   // Next position after the current last one (not "how many exist", which
   // collides after a delete), and a default title nobody is already using.
   const order = existing.reduce((max, c) => Math.max(max, c.order), -1) + 1;
-  const titles = new Set(existing.map((c) => c.title));
-  let n = existing.length + 1;
-  while (titles.has(`${label} ${n}`)) n++;
 
   const chapter = await Chapter.create({
     projectId,
     ownerId: userId,
-    title: `${label} ${n}`,
+    title: nextDefaultName(existing.map((c) => c.title), label),
     order,
     content: initialChapterContent(project.type),
   });
