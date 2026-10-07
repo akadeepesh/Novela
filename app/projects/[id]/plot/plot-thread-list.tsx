@@ -3,8 +3,8 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
-import { PlusIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr"
-import { Button } from "@/components/ui/button"
+import { TrashIcon } from "@phosphor-icons/react/dist/ssr"
+import { CreateButton } from "@/components/ui/create-button"
 import { Badge, type badgeVariants } from "@/components/ui/badge"
 import type { VariantProps } from "class-variance-authority"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
@@ -47,12 +47,7 @@ export function PlotThreadList({
         <p className="text-sm text-muted-foreground">
           {threads.length} {threads.length === 1 ? "thread" : "threads"}
         </p>
-        <form action={createPlotThreadAction.bind(null, projectId)}>
-          <Button type="submit" size="sm" disabled={isPending}>
-            <PlusIcon />
-            New thread
-          </Button>
-        </form>
+        <CreateButton action={createPlotThreadAction.bind(null, projectId)} disabled={isPending}>New thread</CreateButton>
       </div>
 
       <div className="flex flex-col gap-2">

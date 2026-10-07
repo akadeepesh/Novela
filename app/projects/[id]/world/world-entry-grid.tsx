@@ -3,8 +3,8 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
-import { PlusIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr"
-import { Button } from "@/components/ui/button"
+import { TrashIcon } from "@phosphor-icons/react/dist/ssr"
+import { CreateButton } from "@/components/ui/create-button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
@@ -38,12 +38,7 @@ export function WorldEntryGrid({
         <p className="text-sm text-muted-foreground">
           {entries.length} {entries.length === 1 ? "entry" : "entries"}
         </p>
-        <form action={createWorldEntryAction.bind(null, projectId)}>
-          <Button type="submit" size="sm" disabled={isPending}>
-            <PlusIcon />
-            New entry
-          </Button>
-        </form>
+        <CreateButton action={createWorldEntryAction.bind(null, projectId)} disabled={isPending}>New entry</CreateButton>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">

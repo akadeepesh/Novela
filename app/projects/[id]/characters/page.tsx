@@ -1,5 +1,4 @@
 import type { Metadata } from "next"
-import { PlusIcon } from "@phosphor-icons/react/dist/ssr"
 import {
   PageShell,
   PageShellHeader,
@@ -7,7 +6,7 @@ import {
   PageShellDescription,
 } from "@/components/layout/page-shell"
 import { EmptyState } from "@/components/ui/empty-state"
-import { Button } from "@/components/ui/button"
+import { CreateButton } from "@/components/ui/create-button"
 import { SECTION_DEFS } from "@/lib/project-config"
 import { requireProjectSection } from "@/lib/require-project-section"
 import { listCharactersForProject } from "@/lib/characters"
@@ -42,12 +41,7 @@ export default async function CharactersPage({ params }: { params: Promise<{ id:
           title="No characters yet"
           description="Add the people (or otherwise) who populate your story — you can fill in the details any time."
           action={
-            <form action={createCharacterAction.bind(null, id)}>
-              <Button type="submit" size="sm">
-                <PlusIcon />
-                New character
-              </Button>
-            </form>
+            <CreateButton action={createCharacterAction.bind(null, id)}>New character</CreateButton>
           }
         />
       ) : (

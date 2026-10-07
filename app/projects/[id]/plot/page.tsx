@@ -1,5 +1,4 @@
 import type { Metadata } from "next"
-import { PlusIcon } from "@phosphor-icons/react/dist/ssr"
 import {
   PageShell,
   PageShellHeader,
@@ -7,7 +6,7 @@ import {
   PageShellDescription,
 } from "@/components/layout/page-shell"
 import { EmptyState } from "@/components/ui/empty-state"
-import { Button } from "@/components/ui/button"
+import { CreateButton } from "@/components/ui/create-button"
 import { SECTION_DEFS } from "@/lib/project-config"
 import { requireProjectSection } from "@/lib/require-project-section"
 import { listPlotThreadsForProject } from "@/lib/plot-threads"
@@ -42,12 +41,7 @@ export default async function PlotPage({ params }: { params: Promise<{ id: strin
           title="No plot threads yet"
           description="Track the throughlines of your story — you can update their status as you write."
           action={
-            <form action={createPlotThreadAction.bind(null, id)}>
-              <Button type="submit" size="sm">
-                <PlusIcon />
-                New thread
-              </Button>
-            </form>
+            <CreateButton action={createPlotThreadAction.bind(null, id)}>New thread</CreateButton>
           }
         />
       ) : (

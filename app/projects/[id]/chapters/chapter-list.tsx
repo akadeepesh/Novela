@@ -4,13 +4,13 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import {
-  PlusIcon,
   CaretUpIcon,
   CaretDownIcon,
   TrashIcon,
   BookOpenIcon,
 } from "@phosphor-icons/react/dist/ssr"
 import { Button } from "@/components/ui/button"
+import { CreateButton } from "@/components/ui/create-button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
@@ -78,12 +78,7 @@ export function ChapterList({
               Read book
             </Button>
           ) : null}
-          <form action={createChapterAction.bind(null, projectId)}>
-            <Button type="submit" size="sm" disabled={isPending}>
-              <PlusIcon />
-              New {singular.toLowerCase()}
-            </Button>
-          </form>
+          <CreateButton action={createChapterAction.bind(null, projectId)} disabled={isPending}>New {singular.toLowerCase()}</CreateButton>
         </div>
       </div>
 

@@ -1,5 +1,4 @@
 import type { Metadata } from "next"
-import { PlusIcon } from "@phosphor-icons/react/dist/ssr"
 import {
   PageShell,
   PageShellHeader,
@@ -7,7 +6,7 @@ import {
   PageShellDescription,
 } from "@/components/layout/page-shell"
 import { EmptyState } from "@/components/ui/empty-state"
-import { Button } from "@/components/ui/button"
+import { CreateButton } from "@/components/ui/create-button"
 import { SECTION_DEFS, sectionLabel, sectionLabelSingular } from "@/lib/project-config"
 import { requireProjectSection } from "@/lib/require-project-section"
 import { listChaptersForProject } from "@/lib/chapters"
@@ -44,12 +43,7 @@ export default async function ChaptersPage({ params }: { params: Promise<{ id: s
           title={`No ${label.toLowerCase()} yet`}
           description={`Start your first ${singular.toLowerCase()} — you can always reorder or rename it later.`}
           action={
-            <form action={createChapterAction.bind(null, id)}>
-              <Button type="submit" size="sm">
-                <PlusIcon />
-                New {singular.toLowerCase()}
-              </Button>
-            </form>
+            <CreateButton action={createChapterAction.bind(null, id)}>New {singular.toLowerCase()}</CreateButton>
           }
         />
       ) : (

@@ -1,5 +1,4 @@
 import type { Metadata } from "next"
-import { PlusIcon } from "@phosphor-icons/react/dist/ssr"
 import {
   PageShell,
   PageShellHeader,
@@ -7,7 +6,7 @@ import {
   PageShellDescription,
 } from "@/components/layout/page-shell"
 import { EmptyState } from "@/components/ui/empty-state"
-import { Button } from "@/components/ui/button"
+import { CreateButton } from "@/components/ui/create-button"
 import { SECTION_DEFS } from "@/lib/project-config"
 import { requireProjectSection } from "@/lib/require-project-section"
 import { listWorldEntriesForProject } from "@/lib/world-entries"
@@ -44,12 +43,7 @@ export default async function WorldPage({ params }: { params: Promise<{ id: stri
           title="No world entries yet"
           description="Add the locations, factions, and items that make up your setting — you can fill in the details any time."
           action={
-            <form action={createWorldEntryAction.bind(null, id)}>
-              <Button type="submit" size="sm">
-                <PlusIcon />
-                New entry
-              </Button>
-            </form>
+            <CreateButton action={createWorldEntryAction.bind(null, id)}>New entry</CreateButton>
           }
         />
       ) : (

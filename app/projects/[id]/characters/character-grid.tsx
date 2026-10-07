@@ -3,8 +3,8 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
-import { PlusIcon, TrashIcon, UserCircleIcon } from "@phosphor-icons/react/dist/ssr"
-import { Button } from "@/components/ui/button"
+import { TrashIcon, UserCircleIcon } from "@phosphor-icons/react/dist/ssr"
+import { CreateButton } from "@/components/ui/create-button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
@@ -38,12 +38,7 @@ export function CharacterGrid({
         <p className="text-sm text-muted-foreground">
           {characters.length} {characters.length === 1 ? "character" : "characters"}
         </p>
-        <form action={createCharacterAction.bind(null, projectId)}>
-          <Button type="submit" size="sm" disabled={isPending}>
-            <PlusIcon />
-            New character
-          </Button>
-        </form>
+        <CreateButton action={createCharacterAction.bind(null, projectId)} disabled={isPending}>New character</CreateButton>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
