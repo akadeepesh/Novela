@@ -155,7 +155,6 @@ const BOOK_CSS = `
 
 export function ReadView({
   doc,
-  projectId,
   projectType,
   manuscriptSettings: settings,
   coverFrontUrl,
@@ -164,7 +163,6 @@ export function ReadView({
   backHref,
 }: {
   doc: ExportDocument
-  projectId: string
   projectType: ProjectType
   manuscriptSettings: ManuscriptSettings
   coverFrontUrl?: string

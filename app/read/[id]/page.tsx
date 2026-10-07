@@ -38,7 +38,6 @@ export default async function ReadBookPage({
   return (
     <ReadView
       doc={doc}
-      projectId={id}
       projectType={project.type}
       manuscriptSettings={project.manuscriptSettings}
       coverFrontUrl={project.coverFrontUrl}
