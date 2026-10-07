@@ -11,6 +11,8 @@ const chapterVersionSchema = new Schema(
     // never depends on replaying a chain of prior versions correctly.
     content: { type: Schema.Types.Mixed, default: null },
     wordCount: { type: Number, default: 0 },
+    // sha256 of `content` (missing on versions created before this field existed).
+    contentHash: { type: String },
     // "auto" snapshots are taken periodically while writing; "manual" ones
     // are explicit "Save version" clicks and a label the person chose.
     kind: { type: String, enum: ["auto", "manual", "restore-point"], default: "auto" },
@@ -20,6 +22,8 @@ const chapterVersionSchema = new Schema(
 );
 
 chapterVersionSchema.index({ chapterId: 1, createdAt: -1 });
+// Serves the retention job (auto versions older than N days).
+chapterVersionSchema.index({ kind: 1, createdAt: 1 });
 
 export type ChapterVersionDoc = InferSchemaType<typeof chapterVersionSchema>;
 

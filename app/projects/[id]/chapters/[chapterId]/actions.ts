@@ -1,5 +1,6 @@
 "use server";
 
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { connectDB } from "@/lib/db";
@@ -8,7 +9,7 @@ import { Project } from "@/lib/models/project";
 import { requireUserId } from "@/lib/projects";
 import { BACKGROUND_IDS, CUSTOM_BACKGROUND_ID, LINE_WIDTHS } from "@/lib/manuscript-config";
 import { uploadProjectImage, deleteProjectImage } from "@/lib/blob";
-import { maybeCreateAutoSnapshot, createManualSnapshot, restoreVersion, listVersionsForChapter, requireVersionContent } from "@/lib/versions";
+import { snapshotBeforeSave, createManualSnapshot, restoreVersion, listVersionsForChapter, requireVersionContent } from "@/lib/versions";
 import { tiptapToBlocks, runsText } from "@/lib/export/document-model";
 import { diffWords } from "@/lib/text-diff";
 
@@ -36,51 +37,64 @@ export async function saveChapterAction(
   const update: Record<string, unknown> = {};
   if (parsed.data.title !== undefined) update.title = parsed.data.title;
   if (parsed.data.wordCount !== undefined) update.wordCount = parsed.data.wordCount;
+  let newHash: string | undefined;
   if (parsed.data.content !== undefined) {
     try {
       // A plain JSON round-trip guarantees only JSON-safe data reaches
       // Mongo — anything that isn't (a class instance, a stray function,
       // anything non-plain) fails here, loudly and by itself, instead of
       // surfacing as a confusing crash from inside the database driver.
-      update.content = JSON.parse(JSON.stringify(parsed.data.content));
+      // The same string is hashed, so the content is only serialised once.
+      const json = JSON.stringify(parsed.data.content);
+      update.content = JSON.parse(json);
+      newHash = createHash("sha256").update(json).digest("hex");
+      update.contentHash = newHash;
     } catch {
       return { ok: false };
     }
   }
 
   await connectDB();
-  let result: { matchedCount: number };
+  // Returns the chapter as it was BEFORE this update, so the version history
+  // can keep the text that is about to be replaced (see snapshotBeforeSave).
+  type PreviousChapter = {
+    title: string;
+    content: unknown;
+    wordCount?: number;
+    contentHash?: string;
+    lastSnapshotAt?: Date;
+  };
+  let previous: PreviousChapter | null;
   try {
-    result = await Chapter.updateOne(
+    previous = await Chapter.findOneAndUpdate(
       { _id: chapterId, projectId, ownerId: userId },
-      { $set: update }
-    );
+      { $set: update },
+      { new: false, projection: "title content wordCount contentHash lastSnapshotAt" }
+    ).lean<PreviousChapter>();
   } catch (err) {
-    console.error("saveChapterAction: Chapter.updateOne failed", err);
+    console.error("saveChapterAction: Chapter.findOneAndUpdate failed", err);
     return { ok: false };
   }
+  if (!previous) return { ok: false };
 
-  // Version snapshots only matter for actual content changes — a
-  // title-only save shouldn't churn it.
-  if (result.matchedCount > 0 && "content" in update) {
-    const chapter = await Chapter.findOne({ _id: chapterId, projectId, ownerId: userId }).lean<{
-      title: string;
-      content: unknown;
-      wordCount: number;
-    }>();
-    if (chapter) {
-      await maybeCreateAutoSnapshot({
+  // Title-only saves don't touch history. A snapshot failing must never turn
+  // a successful save into an error, so it is isolated here.
+  if (newHash !== undefined) {
+    try {
+      await snapshotBeforeSave({
         userId,
         projectId,
         chapterId,
-        title: chapter.title,
-        content: chapter.content,
-        wordCount: chapter.wordCount ?? 0,
+        previous,
+        newHash,
+        newWordCount: parsed.data.wordCount,
       });
+    } catch (err) {
+      console.error("saveChapterAction: snapshotBeforeSave failed", err);
     }
   }
 
-  return { ok: result.matchedCount > 0 };
+  return { ok: true };
 }
 
 export async function createVersionAction(

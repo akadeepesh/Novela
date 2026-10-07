@@ -11,6 +11,12 @@ const chapterSchema = new Schema(
     content: { type: Schema.Types.Mixed, default: null },
     order: { type: Number, required: true, default: 0 },
     wordCount: { type: Number, default: 0 },
+    // sha256 of the stored content JSON. Lets saves and snapshots tell "did the
+    // text actually change?" without re-serialising the whole chapter.
+    contentHash: { type: String },
+    // When the last automatic/big-delete snapshot was taken. Kept on the chapter
+    // so a normal save needs no extra query to know whether one is due.
+    lastSnapshotAt: { type: Date },
     status: {
       type: String,
       enum: ["draft", "in-progress", "done"],
