@@ -36,13 +36,19 @@ export function VersionHistoryPanel({
   projectId,
   chapterId,
   getCurrentContent,
+  flushPending,
   onClose,
 }: {
   projectId: string
   chapterId: string
   getCurrentContent: () => unknown
+  // Saves anything still waiting in the editor's debounce window; resolves to
+  // false if that save failed. Versions are taken from the database, so this
+  // must run first or they would miss the last few seconds of typing.
+  flushPending: () => Promise<boolean>
   onClose: () => void
 }) {
+  const [notice, setNotice] = useState<string | null>(null)
   const [versions, setVersions] = useState<SerializedVersion[] | null>(null)
   const [label, setLabel] = useState("")
   const [saving, setSaving] = useState(false)
@@ -69,6 +75,12 @@ export function VersionHistoryPanel({
 
   async function handleSaveVersion() {
     setSaving(true)
+    setNotice(null)
+    if (!(await flushPending())) {
+      setNotice("Couldn't save your latest changes, so no version was taken. Try again in a moment.")
+      setSaving(false)
+      return
+    }
     await createVersionAction(projectId, chapterId, label)
     setLabel("")
     setSaving(false)
@@ -97,7 +109,16 @@ export function VersionHistoryPanel({
     if (!restoreTarget) return
     const versionId = restoreTarget.id
     setRestoreTarget(null)
+    setNotice(null)
     setRestoringId(versionId)
+    // Save the current draft first so the "Before restore" snapshot really
+    // contains it. If that fails, stop: restoring now would overwrite text
+    // that exists nowhere else.
+    if (!(await flushPending())) {
+      setNotice("Couldn't save your current draft, so nothing was restored. Try again in a moment.")
+      setRestoringId(null)
+      return
+    }
     const result = await restoreVersionAction(projectId, chapterId, versionId)
     if (result.ok) {
       window.location.reload()
@@ -129,6 +150,12 @@ export function VersionHistoryPanel({
           <FloppyDiskIcon />
         </Button>
       </div>
+
+      {notice ? (
+        <p role="alert" className="border-b border-border px-4 py-2 text-xs text-destructive">
+          {notice}
+        </p>
+      ) : null}
 
       <div className="flex-1 overflow-y-auto px-4 py-3">
         {versions === null ? (

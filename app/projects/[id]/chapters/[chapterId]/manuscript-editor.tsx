@@ -72,7 +72,7 @@ export function ManuscriptEditor({
   // Sends whatever is pending (title and/or body) as ONE save, right now.
   // Called by the debounce timer, before in-app navigation, and on unmount /
   // page hide, so the last moments of typing are never thrown away.
-  const flush = useCallback((): Promise<void> => {
+  const flush = useCallback((): Promise<boolean> => {
     if (saveTimer.current) {
       clearTimeout(saveTimer.current)
       saveTimer.current = null
@@ -89,7 +89,7 @@ export function ManuscriptEditor({
       contentDirty.current = false
       setWordCount(words)
     }
-    if (Object.keys(input).length === 0) return Promise.resolve()
+    if (Object.keys(input).length === 0) return Promise.resolve(true)
 
     setSaveState("saving")
     const restore = () => {
@@ -99,8 +99,18 @@ export function ManuscriptEditor({
       setSaveState("error")
     }
     return enqueue(() => saveChapterAction(projectId, chapter.id, input))
-      .then((result) => (result.ok ? setSaveState("saved") : restore()))
-      .catch(restore)
+      .then((result) => {
+        if (result.ok) {
+          setSaveState("saved")
+          return true
+        }
+        restore()
+        return false
+      })
+      .catch(() => {
+        restore()
+        return false
+      })
   }, [projectId, chapter.id, enqueue])
 
   const scheduleSave = useCallback(() => {
@@ -297,6 +307,7 @@ export function ManuscriptEditor({
           projectId={projectId}
           chapterId={chapter.id}
           getCurrentContent={() => editor.getJSON()}
+          flushPending={flush}
           onClose={() => setHistoryOpen(false)}
         />
       ) : null}
