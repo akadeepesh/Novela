@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useTransition } from "react"
+import { useRef, useState, useTransition } from "react"
 import { PlusIcon } from "@phosphor-icons/react/dist/ssr"
 import { Button } from "@/components/ui/button"
 
@@ -19,14 +19,19 @@ export function CreateButton({
   disabled?: boolean
 }) {
   const [isPending, startTransition] = useTransition()
+  const [failed, setFailed] = useState(false)
   const locked = useRef(false)
 
   function handleClick() {
     if (locked.current) return
     locked.current = true
+    setFailed(false)
     startTransition(async () => {
       try {
         await action()
+        // A successful create always redirects into the new item, so getting
+        // here means the server could not create it (see safeAction).
+        setFailed(true)
       } finally {
         locked.current = false
       }
@@ -34,9 +39,16 @@ export function CreateButton({
   }
 
   return (
-    <Button type="button" size="sm" disabled={isPending || disabled} onClick={handleClick}>
-      <PlusIcon />
-      {children}
-    </Button>
+    <div className="flex items-center gap-2">
+      {failed ? (
+        <span role="alert" className="text-xs text-destructive">
+          Couldn&apos;t create it. Try again.
+        </span>
+      ) : null}
+      <Button type="button" size="sm" disabled={isPending || disabled} onClick={handleClick}>
+        <PlusIcon />
+        {children}
+      </Button>
+    </div>
   )
 }
