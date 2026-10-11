@@ -18,6 +18,9 @@ export function DeleteConfirmDialog({
   description,
   onConfirm,
   pending,
+  title,
+  confirmLabel,
+  pendingLabel,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -29,12 +32,18 @@ export function DeleteConfirmDialog({
   description?: React.ReactNode
   onConfirm: () => void
   pending?: boolean
+  /** Defaults to "Delete {itemLabel}?". */
+  title?: string
+  /** Defaults to "Delete". */
+  confirmLabel?: string
+  /** Defaults to "Deleting…". */
+  pendingLabel?: string
 }) {
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete {itemLabel}?</AlertDialogTitle>
+          <AlertDialogTitle>{title ?? `Delete ${itemLabel}?`}</AlertDialogTitle>
           <AlertDialogDescription>
             {description ?? (
               <>
@@ -53,7 +62,7 @@ export function DeleteConfirmDialog({
             Cancel
           </Button>
           <Button type="button" variant="destructive" onClick={onConfirm} disabled={pending}>
-            {pending ? "Deleting…" : "Delete"}
+            {pending ? (pendingLabel ?? "Deleting…") : (confirmLabel ?? "Delete")}
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
