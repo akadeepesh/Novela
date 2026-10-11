@@ -46,13 +46,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async signIn({ user, account }) {
+    async signIn({ user, account, profile }) {
       // Credentials already resolved against our own User collection in
       // `authorize` above — nothing more to do there.
       if (account?.provider !== "google") return true;
 
       const email = user.email?.toLowerCase();
       if (!email) return false;
+
+      // Only trust an email Google itself has verified. Linking by email is
+      // only safe if the email really belongs to the person signing in.
+      if (profile?.email_verified !== true) return false;
 
       await connectDB();
       let dbUser = await User.findOne({ email });
@@ -64,14 +68,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           email,
           image: user.image || undefined,
           provider: "google",
+          emailVerified: new Date(),
         });
-      } else if (user.image && dbUser.image !== user.image) {
-        // Existing account (possibly a credentials one) signing in with
-        // Google for the first time, or Google's avatar changed — link
-        // them by email rather than creating a duplicate account, and
-        // pick up the profile photo.
-        dbUser.image = user.image;
-        await dbUser.save();
+      } else {
+        // Existing account with this email: link it rather than creating a
+        // duplicate, and pick up the profile photo.
+        //
+        // If the email was never proven (a password account made on the
+        // sign-up form), the password may have been set by someone who does
+        // NOT own the email — e.g. an attacker registering a victim's address
+        // before the victim ever shows up. Google has now proven who owns it,
+        // so mark it verified and DROP the unproven password: only the real
+        // owner keeps access.
+        const update: Record<string, Record<string, unknown>> = {};
+        if (!dbUser.emailVerified) {
+          update.$set = { emailVerified: new Date() };
+          update.$unset = { passwordHash: "" };
+        }
+        if (user.image && dbUser.image !== user.image) {
+          update.$set = { ...update.$set, image: user.image };
+        }
+        if (Object.keys(update).length > 0) {
+          await User.updateOne({ _id: dbUser._id }, update);
+        }
       }
 
       // Normalize the id NextAuth carries forward to our own Mongo _id,

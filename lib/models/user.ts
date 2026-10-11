@@ -15,6 +15,10 @@ const userSchema = new Schema(
     // password on this app.
     passwordHash: { type: String, select: false },
     image: { type: String },
+    // Set when we have proof the person controls this email: Google vouched
+    // for it, or (later) they clicked a verification link. Absent = never
+    // proven, so a password on the account can't be trusted either.
+    emailVerified: { type: Date },
     // How this account first signed up — informational, and lets the
     // credentials login give a clearer error to a Google-only account
     // that mistakenly tries a password.
