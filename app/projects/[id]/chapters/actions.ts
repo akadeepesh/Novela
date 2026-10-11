@@ -10,7 +10,7 @@ import { requireProject, requireUserId } from "@/lib/projects";
 import { sectionLabelSingular } from "@/lib/project-config";
 import { nextDefaultName } from "@/lib/default-name";
 import { countWords } from "@/lib/word-count";
-import { LIMITS, limitMessage } from "@/lib/limits";
+import { LIMITS } from "@/lib/limits";
 import { safeAction } from "@/lib/safe-action";
 
 // Rewrites `order` to 0..n-1 so positions are always unique and gap-free.
