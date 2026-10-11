@@ -27,6 +27,7 @@ export function ResearchComposer({
   const [error, setError] = useState<string | null>(null)
 
   function resetNote() {
+    setError(null)
     setTitle("")
     setContent("")
   }
@@ -49,12 +50,16 @@ export function ResearchComposer({
   async function handleNoteSubmit() {
     if ((!title.trim() && !content.trim()) || pending) return
     setPending(true)
+    setError(null)
     const result = await createQuickNoteEntryAction(projectId, { title, content })
     setPending(false)
     if (result.ok && result.entry) {
       onCreated(result.entry)
       resetNote()
       setMode("url")
+    } else {
+      // Keep what was typed; say why it wasn't saved.
+      setError(result.error ?? "Couldn't save that note. Try again.")
     }
   }
 
@@ -100,6 +105,7 @@ export function ResearchComposer({
             rows={3}
             className="w-full resize-none bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
           />
+          {error ? <p className="text-xs text-destructive">{error}</p> : null}
           <div className="flex items-center justify-end gap-2 border-t border-border pt-2.5">
             <Button
               type="button"

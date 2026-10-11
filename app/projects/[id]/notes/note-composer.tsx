@@ -23,9 +23,11 @@ export function NoteComposer({
   const [title, setTitle] = useState("")
   const [content, setContent] = useState("")
   const [pending, setPending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
   function reset() {
+    setError(null)
     setTitle("")
     setContent("")
     setExpanded(false)
@@ -37,10 +39,16 @@ export function NoteComposer({
       return
     }
     setPending(true)
+    setError(null)
     createNoteInlineAction(projectId, { title, content }).then((result) => {
       setPending(false)
-      if (result.ok && result.note) onCreated(result.note)
-      reset()
+      if (result.ok && result.note) {
+        onCreated(result.note)
+        reset()
+      } else {
+        // Keep what was typed: a failed save must never throw the note away.
+        setError(result.error ?? "Couldn't save the note. Try again.")
+      }
     })
   }
 
@@ -81,7 +89,9 @@ export function NoteComposer({
       />
       {expanded ? (
         <div className="mt-2 flex items-center justify-end gap-2 border-t border-border pt-2.5">
-          <span className="mr-auto text-xs text-muted-foreground">{pending ? "Saving…" : ""}</span>
+          <span className={cn("mr-auto text-xs", error && !pending ? "text-destructive" : "text-muted-foreground")}>
+            {pending ? "Saving…" : (error ?? "")}
+          </span>
           <Button type="button" size="sm" variant="ghost" onClick={reset} disabled={pending}>
             Cancel
           </Button>

@@ -7,6 +7,7 @@ import { Note } from "@/lib/models/note";
 import { requireProject, requireUserId } from "@/lib/projects";
 import { serializeNoteSummary, type SerializedNoteSummary } from "@/lib/notes";
 import { safeAction } from "@/lib/safe-action";
+import { LIMITS, limitMessage } from "@/lib/limits";
 
 const createSchema = z.object({
   title: z.string().trim().max(160).optional(),
@@ -23,7 +24,7 @@ export const createNoteInlineAction = safeAction(
   async (
     projectId: string,
     input: { title?: string; content?: string }
-  ): Promise<{ ok: boolean; note?: SerializedNoteSummary }> => {
+  ): Promise<{ ok: boolean; note?: SerializedNoteSummary; error?: string }> => {
     await requireProject(projectId);
     const userId = await requireUserId();
 
@@ -36,6 +37,9 @@ export const createNoteInlineAction = safeAction(
     }
 
     await connectDB();
+    if ((await Note.countDocuments({ projectId, ownerId: userId })) >= LIMITS.notes) {
+      return { ok: false, error: limitMessage("notes") };
+    }
     const note = await Note.create({
       projectId,
       ownerId: userId,
