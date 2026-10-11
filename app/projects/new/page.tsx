@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "New" }
 export default async function NewProjectPage() {
   const userId = await requireUserId()
   await connectDB()
-  if ((await Project.countDocuments({ ownerId: userId })) >= LIMITS.projects) {
+  if ((await Project.countDocuments({ ownerId: userId, deletedAt: null })) >= LIMITS.projects) {
     return <LimitReached message={limitMessage("projects")} backHref="/dashboard" backLabel="Dashboard" />
   }
   return <CreationCanvas />

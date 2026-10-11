@@ -3,7 +3,7 @@
 import { connectDB } from "@/lib/db";
 import { Project } from "@/lib/models/project";
 import { requireUserId } from "@/lib/projects";
-import { LIMITS, limitMessage } from "@/lib/limits";
+import { LIMITS } from "@/lib/limits";
 import {
   PROJECT_TYPES,
   getDefaultSections,
@@ -36,7 +36,7 @@ export async function createProjectAction(input: {
   const sections = getDefaultSections(type);
 
   await connectDB();
-  if ((await Project.countDocuments({ ownerId: userId })) >= LIMITS.projects) {
+  if ((await Project.countDocuments({ ownerId: userId, deletedAt: null })) >= LIMITS.projects) {
     return { error: "limit-reached" };
   }
   const project = await Project.create({ ownerId: userId, title, type, sections });

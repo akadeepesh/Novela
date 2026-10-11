@@ -72,7 +72,7 @@ export const requireProject = cache(async (id: string): Promise<SerializedProjec
   // A malformed id (a garbage URL) is "not found". A real database error is
   // deliberately not caught here, so it is reported as an error, not hidden as a 404.
   if (!isObjectId(id)) notFound();
-  const doc = await Project.findOne({ _id: id, ownerId: userId }).lean<Record<string, unknown>>();
+  const doc = await Project.findOne({ _id: id, ownerId: userId, deletedAt: null }).lean<Record<string, unknown>>();
   if (!doc) notFound();
   return serializeProject(doc);
 });

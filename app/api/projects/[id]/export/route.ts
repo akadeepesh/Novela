@@ -43,7 +43,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   await connectDB();
 
-  const projectDoc = await Project.findOne({ _id: id, ownerId: userId }).lean<Record<string, unknown>>();
+  const projectDoc = await Project.findOne({ _id: id, ownerId: userId, deletedAt: null }).lean<Record<string, unknown>>();
   if (!projectDoc) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }

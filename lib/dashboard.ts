@@ -30,7 +30,7 @@ export async function getDashboardData(): Promise<DashboardData> {
   const userId = await requireUserId();
   await connectDB();
 
-  const projects = await Project.find({ ownerId: userId })
+  const projects = await Project.find({ ownerId: userId, deletedAt: null })
     .select("title type updatedAt")
     .lean<{ _id: unknown; title: string; type: string; updatedAt: Date }[]>();
 
