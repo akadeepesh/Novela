@@ -10,6 +10,7 @@ import { requireProject, requireUserId } from "@/lib/projects";
 import { sectionLabelSingular } from "@/lib/project-config";
 import { nextDefaultName } from "@/lib/default-name";
 import { countWords } from "@/lib/word-count";
+import { LIMITS, limitMessage } from "@/lib/limits";
 import { safeAction } from "@/lib/safe-action";
 
 // Rewrites `order` to 0..n-1 so positions are always unique and gap-free.
@@ -43,7 +44,7 @@ async function repackOrders(
 
 export type CreateChapterResult =
   | { ok: true; id: string; version: number }
-  | { ok: false; code: "too_large" | "invalid" | "error" };
+  | { ok: false; code: "too_large" | "invalid" | "limit" | "error" };
 
 // Same limit as saving (see MAX_CHAPTER_BYTES in [chapterId]/actions.ts).
 const MAX_NEW_CHAPTER_BYTES = 3 * 1024 * 1024;
@@ -76,6 +77,7 @@ export const createChapterFromDraftAction = safeAction(
     const existing = await Chapter.find({ projectId, ownerId: userId })
       .select("title order")
       .lean<{ title: string; order: number }[]>();
+    if (existing.length >= LIMITS.chapters) return { ok: false, code: "limit" };
     const label = sectionLabelSingular("chapters", project.type);
 
     // Next position after the current last one (not "how many exist", which

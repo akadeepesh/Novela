@@ -7,6 +7,8 @@ import { requireProjectSection } from "@/lib/require-project-section"
 import { listMentionablesForProject } from "@/lib/mentions"
 import { initialChapterContent } from "@/lib/script-scaffold"
 import { nextDefaultName } from "@/lib/default-name"
+import { LIMITS, limitMessage } from "@/lib/limits"
+import { LimitReached } from "@/components/project/limit-reached"
 import type { SerializedChapter } from "@/lib/chapters"
 import { ManuscriptEditor } from "../[chapterId]/manuscript-editor"
 
@@ -37,6 +39,16 @@ export default async function NewChapterPage({
     .select("title")
     .lean<{ title: string }[]>()
   const singular = sectionLabelSingular("chapters", project.type)
+
+  if (existing.length >= LIMITS.chapters) {
+    return (
+      <LimitReached
+        message={limitMessage("chapters", `${singular.toLowerCase()}s`)}
+        backHref={`/projects/${id}/chapters`}
+        backLabel={`${singular}s`}
+      />
+    )
+  }
 
   const draft: SerializedChapter = {
     id: "",

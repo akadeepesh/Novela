@@ -43,6 +43,8 @@ const FAILURE_MESSAGE: Record<Exclude<SaveFailure, "conflict">, string> = {
   too_large:
     "This chapter is too large to save (over 3 MB). Split it into smaller chapters. Your text is still in this tab, so copy it somewhere safe before leaving.",
   not_found: "This chapter no longer exists. It may have been deleted in another tab. Copy your text before leaving.",
+  limit:
+    "This project has reached its beta limit of chapters, so this one couldn't be saved. Your text is still in this tab. Copy it, then delete a chapter you no longer need.",
   invalid: "Couldn't save this text. Copy it somewhere safe and let us know.",
   error: "Couldn't save. Your text is still in this tab and will be retried on your next change.",
 }

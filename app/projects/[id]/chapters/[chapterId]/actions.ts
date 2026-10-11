@@ -38,7 +38,7 @@ export type SaveChapterInput = z.infer<typeof saveSchema>;
 
 export type SaveChapterResult =
   | { ok: true; version: number; wordCount?: number }
-  | { ok: false; code: "conflict" | "too_large" | "invalid" | "not_found" | "error" };
+  | { ok: false; code: "conflict" | "too_large" | "invalid" | "not_found" | "limit" | "error" };
 
 export const saveChapterAction = safeAction(
   "saveChapterAction",
