@@ -3,6 +3,11 @@ import Link from "next/link"
 import { ArrowLeftIcon } from "@phosphor-icons/react/dist/ssr"
 import { PageShell, PageShellHeader, PageShellTitle } from "@/components/layout/page-shell"
 import { requireProjectSection } from "@/lib/require-project-section"
+import { connectDB } from "@/lib/db"
+import { PlotThread } from "@/lib/models/plot-thread"
+import { requireUserId } from "@/lib/projects"
+import { LIMITS, limitMessage } from "@/lib/limits"
+import { LimitReached } from "@/components/project/limit-reached"
 import type { SerializedPlotThread } from "@/lib/plot-threads"
 import { PlotThreadForm } from "./[threadId]/plot-thread-form"
 
@@ -24,6 +29,17 @@ export default async function NewPlotThreadPage({
 }) {
   const { id } = await params
   await requireProjectSection(id, "plot")
+  const userId = await requireUserId()
+  await connectDB()
+  if ((await PlotThread.countDocuments({ projectId: id, ownerId: userId })) >= LIMITS.plotThreads) {
+    return (
+      <LimitReached
+        message={limitMessage("plotThreads")}
+        backHref={`/projects/${id}/plot`}
+        backLabel="Plot"
+      />
+    )
+  }
   const draft: SerializedPlotThread = { id: "", projectId: id, title: "", status: "planned", aliases: [], updatedAt: "", createdAt: "" }
 
   return (

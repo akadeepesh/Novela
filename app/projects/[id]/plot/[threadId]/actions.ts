@@ -9,6 +9,7 @@ import { PlotThread } from "@/lib/models/plot-thread";
 import { requireProject, requireUserId } from "@/lib/projects";
 import { PLOT_STATUSES, type PlotStatus } from "@/lib/plot-config";
 import { safeAction, GENERIC_ERROR } from "@/lib/safe-action";
+import { LIMITS, limitMessage } from "@/lib/limits";
 
 const STATUS_VALUES = PLOT_STATUSES.map((s) => s.value) as [PlotStatus, ...PlotStatus[]];
 
@@ -108,6 +109,9 @@ export const createPlotThreadFromFormAction = safeAction(
       : [];
 
     await connectDB();
+    if ((await PlotThread.countDocuments({ projectId, ownerId: userId })) >= LIMITS.plotThreads) {
+      return { error: limitMessage("plotThreads") };
+    }
     const created = await PlotThread.create({ projectId, ownerId: userId, ...rest, aliases: aliasList });
 
     revalidatePath(`/projects/${projectId}/plot`);

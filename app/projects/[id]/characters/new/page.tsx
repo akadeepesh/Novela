@@ -3,6 +3,11 @@ import Link from "next/link"
 import { ArrowLeftIcon } from "@phosphor-icons/react/dist/ssr"
 import { PageShell, PageShellHeader, PageShellTitle } from "@/components/layout/page-shell"
 import { requireProjectSection } from "@/lib/require-project-section"
+import { connectDB } from "@/lib/db"
+import { Character } from "@/lib/models/character"
+import { requireUserId } from "@/lib/projects"
+import { LIMITS, limitMessage } from "@/lib/limits"
+import { LimitReached } from "@/components/project/limit-reached"
 import type { SerializedCharacter } from "@/lib/characters"
 import { CharacterForm } from "./[characterId]/character-form"
 
@@ -24,6 +29,17 @@ export default async function NewCharacterPage({
 }) {
   const { id } = await params
   await requireProjectSection(id, "characters")
+  const userId = await requireUserId()
+  await connectDB()
+  if ((await Character.countDocuments({ projectId: id, ownerId: userId })) >= LIMITS.characters) {
+    return (
+      <LimitReached
+        message={limitMessage("characters")}
+        backHref={`/projects/${id}/characters`}
+        backLabel="Characters"
+      />
+    )
+  }
   const draft: SerializedCharacter = { id: "", projectId: id, name: "", role: "supporting", aliases: [], createdAt: "", updatedAt: "" }
 
   return (

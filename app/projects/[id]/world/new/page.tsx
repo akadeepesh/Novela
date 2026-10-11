@@ -3,6 +3,11 @@ import Link from "next/link"
 import { ArrowLeftIcon } from "@phosphor-icons/react/dist/ssr"
 import { PageShell, PageShellHeader, PageShellTitle } from "@/components/layout/page-shell"
 import { requireProjectSection } from "@/lib/require-project-section"
+import { connectDB } from "@/lib/db"
+import { WorldEntry } from "@/lib/models/world-entry"
+import { requireUserId } from "@/lib/projects"
+import { LIMITS, limitMessage } from "@/lib/limits"
+import { LimitReached } from "@/components/project/limit-reached"
 import type { SerializedWorldEntry } from "@/lib/world-entries"
 import { WorldEntryForm } from "./[entryId]/world-entry-form"
 
@@ -24,6 +29,17 @@ export default async function NewWorldEntryPage({
 }) {
   const { id } = await params
   await requireProjectSection(id, "world")
+  const userId = await requireUserId()
+  await connectDB()
+  if ((await WorldEntry.countDocuments({ projectId: id, ownerId: userId })) >= LIMITS.worldEntries) {
+    return (
+      <LimitReached
+        message={limitMessage("worldEntries")}
+        backHref={`/projects/${id}/world`}
+        backLabel="World"
+      />
+    )
+  }
   const draft: SerializedWorldEntry = { id: "", projectId: id, name: "", type: "location", aliases: [], createdAt: "", updatedAt: "" }
 
   return (

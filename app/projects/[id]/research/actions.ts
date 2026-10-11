@@ -11,6 +11,7 @@ import {
   type SerializedResearchEntrySummary,
 } from "@/lib/research-entries";
 import { safeAction } from "@/lib/safe-action";
+import { LIMITS, limitMessage } from "@/lib/limits";
 
 const urlSchema = z.string().trim().min(1).max(2000);
 
@@ -30,6 +31,12 @@ export const createLinkEntryAction = safeAction(
 
     const parsedUrl = urlSchema.safeParse(rawUrl);
     if (!parsedUrl.success) return { ok: false, error: "Paste a link first." };
+
+    // Checked before fetching the page, so a full board costs nothing.
+    await connectDB();
+    if ((await ResearchEntry.countDocuments({ projectId, ownerId: userId })) >= LIMITS.research) {
+      return { ok: false, error: limitMessage("research") };
+    }
 
     // A bare "example.com" with no scheme is still what most people paste —
     // let URL do the normalizing rather than rejecting it outright.
@@ -73,7 +80,7 @@ export const createQuickNoteEntryAction = safeAction(
   async (
     projectId: string,
     input: { title?: string; content?: string }
-  ): Promise<{ ok: boolean; entry?: SerializedResearchEntrySummary }> => {
+  ): Promise<{ ok: boolean; entry?: SerializedResearchEntrySummary; error?: string }> => {
     await requireProject(projectId);
     const userId = await requireUserId();
 
@@ -82,6 +89,9 @@ export const createQuickNoteEntryAction = safeAction(
     if (!parsed.data.title?.trim() && !parsed.data.content?.trim()) return { ok: false };
 
     await connectDB();
+    if ((await ResearchEntry.countDocuments({ projectId, ownerId: userId })) >= LIMITS.research) {
+      return { ok: false, error: limitMessage("research") };
+    }
     const entry = await ResearchEntry.create({
       projectId,
       ownerId: userId,

@@ -9,6 +9,7 @@ import { Character } from "@/lib/models/character";
 import { requireProject, requireUserId } from "@/lib/projects";
 import { CHARACTER_ROLES, type CharacterRole } from "@/lib/character-config";
 import { safeAction, GENERIC_ERROR } from "@/lib/safe-action";
+import { LIMITS, limitMessage } from "@/lib/limits";
 
 const ROLE_VALUES = CHARACTER_ROLES.map((r) => r.value) as [CharacterRole, ...CharacterRole[]];
 
@@ -117,6 +118,9 @@ export const createCharacterFromFormAction = safeAction(
       : [];
 
     await connectDB();
+    if ((await Character.countDocuments({ projectId, ownerId: userId })) >= LIMITS.characters) {
+      return { error: limitMessage("characters") };
+    }
     const created = await Character.create({ projectId, ownerId: userId, ...rest, aliases: aliasList });
 
     revalidatePath(`/projects/${projectId}/characters`);

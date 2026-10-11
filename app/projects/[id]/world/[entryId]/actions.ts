@@ -9,6 +9,7 @@ import { WorldEntry } from "@/lib/models/world-entry";
 import { requireProject, requireUserId } from "@/lib/projects";
 import { WORLD_ENTRY_TYPES, type WorldEntryType } from "@/lib/world-config";
 import { safeAction, GENERIC_ERROR } from "@/lib/safe-action";
+import { LIMITS, limitMessage } from "@/lib/limits";
 
 const TYPE_VALUES = WORLD_ENTRY_TYPES.map((t) => t.value) as [WorldEntryType, ...WorldEntryType[]];
 
@@ -111,6 +112,9 @@ export const createWorldEntryFromFormAction = safeAction(
       : [];
 
     await connectDB();
+    if ((await WorldEntry.countDocuments({ projectId, ownerId: userId })) >= LIMITS.worldEntries) {
+      return { error: limitMessage("worldEntries") };
+    }
     const created = await WorldEntry.create({ projectId, ownerId: userId, ...rest, aliases: aliasList });
 
     revalidatePath(`/projects/${projectId}/world`);
