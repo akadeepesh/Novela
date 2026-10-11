@@ -1,4 +1,8 @@
 import "server-only";
+import http from "node:http";
+import https from "node:https";
+import net from "node:net";
+import { isObviouslyInternalHost, resolvePublicAddress, type ResolvedTarget } from "@/lib/ssrf-guard";
 
 /**
  * Fetches enough of a page's <head> to build a bookmark-card preview:
@@ -19,18 +23,8 @@ const FETCH_TIMEOUT_MS = 6000;
 // Most og/meta tags live in <head>, which is almost always well within
 // this — no reason to pull an entire (possibly huge) page over the wire.
 const MAX_BYTES = 300_000;
-
-function isBlockedHost(hostname: string): boolean {
-  const h = hostname.toLowerCase();
-  if (h === "localhost" || h.endsWith(".localhost")) return true;
-  if (h === "0.0.0.0" || h === "::1") return true;
-  if (/^127\./.test(h)) return true;
-  if (/^10\./.test(h)) return true;
-  if (/^192\.168\./.test(h)) return true;
-  if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(h)) return true;
-  if (h === "169.254.169.254") return true; // cloud metadata endpoint
-  return false;
-}
+const MAX_REDIRECTS = 3;
+const USER_AGENT = "Mozilla/5.0 (compatible; KoraKagajBot/1.0; +https://korakagaj.app/bot)";
 
 function faviconFor(hostname: string): string {
   return `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(hostname)}`;
@@ -89,6 +83,62 @@ function extractTitleTag(html: string): string {
   return match?.[1]?.trim() ?? "";
 }
 
+/** http(s) only, default ports only, no embedded credentials. */
+function isAllowedUrl(url: URL): boolean {
+  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+  if (url.username || url.password) return false;
+  const defaultPort = url.protocol === "https:" ? "443" : "80";
+  return url.port === "" || url.port === defaultPort;
+}
+
+/**
+ * One GET that connects ONLY to the already-checked address. The hostname is
+ * still used for the Host header and TLS, but the connection can't be
+ * redirected to a different IP by a second DNS lookup (DNS rebinding).
+ */
+function requestPinned(url: URL, target: ResolvedTarget, signal: AbortSignal): Promise<http.IncomingMessage> {
+  return new Promise((resolve, reject) => {
+    const isHttps = url.protocol === "https:";
+    const host = url.hostname.replace(/^\[|\]$/g, "");
+    const lookup = ((_host: string, options: { all?: boolean }, cb: (...args: unknown[]) => void) => {
+      if (options?.all) cb(null, [{ address: target.address, family: target.family }]);
+      else cb(null, target.address, target.family);
+    }) as unknown as net.LookupFunction;
+
+    const req = (isHttps ? https : http).request(
+      {
+        host,
+        port: url.port || (isHttps ? 443 : 80),
+        path: `${url.pathname}${url.search}`,
+        method: "GET",
+        signal,
+        lookup,
+        servername: isHttps && !net.isIP(host) ? host : undefined,
+        headers: {
+          // A plain fetch UA gets blocked by some sites' bot filters far
+          // more often than a browser-shaped one.
+          "User-Agent": USER_AGENT,
+          Accept: "text/html,application/xhtml+xml",
+          "Accept-Encoding": "identity",
+        },
+      },
+      resolve
+    );
+    req.on("error", reject);
+    req.end();
+  });
+}
+
+/** An og:image URL is only ever handed to the browser, but still: https, public-looking host. */
+function isSafeImageUrl(imageUrl: string): boolean {
+  try {
+    const u = new URL(imageUrl);
+    return u.protocol === "https:" && !u.username && !isObviouslyInternalHost(u.hostname);
+  } catch {
+    return false;
+  }
+}
+
 export async function fetchUrlPreview(rawUrl: string): Promise<UrlPreview | null> {
   let url: URL;
   try {
@@ -96,44 +146,57 @@ export async function fetchUrlPreview(rawUrl: string): Promise<UrlPreview | null
   } catch {
     return null;
   }
-  if (url.protocol !== "http:" && url.protocol !== "https:") return null;
-  if (isBlockedHost(url.hostname)) return null;
+  if (!isAllowedUrl(url)) return null;
+  const firstTarget = await resolvePublicAddress(url.hostname);
+  if (!firstTarget) return null;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
-    const res = await fetch(url.toString(), {
-      signal: controller.signal,
-      redirect: "follow",
-      headers: {
-        // A plain fetch UA gets blocked by some sites' bot filters far
-        // more often than a browser-shaped one.
-        "User-Agent":
-          "Mozilla/5.0 (compatible; KoraKagajBot/1.0; +https://korakagaj.app/bot)",
-        Accept: "text/html,application/xhtml+xml",
-      },
-    });
+    // Follow redirects by hand: every hop is re-validated and re-resolved, so
+    // a public page can't bounce us to an internal address.
+    let current = url;
+    let target = firstTarget;
+    let res = await requestPinned(current, target, controller.signal);
+    for (let hop = 0; ; hop++) {
+      const status = res.statusCode ?? 0;
+      const location = res.headers.location;
+      if (status < 300 || status >= 400 || !location) break;
+      res.destroy();
+      if (hop >= MAX_REDIRECTS) return fallbackPreview(url);
+      let next: URL;
+      try {
+        next = new URL(location, current);
+      } catch {
+        return fallbackPreview(url);
+      }
+      if (!isAllowedUrl(next)) return fallbackPreview(url);
+      const nextTarget = await resolvePublicAddress(next.hostname);
+      if (!nextTarget) return fallbackPreview(url);
+      current = next;
+      target = nextTarget;
+      res = await requestPinned(current, target, controller.signal);
+    }
 
-    const contentType = res.headers.get("content-type") ?? "";
-    if (!res.ok || !res.body || !contentType.includes("text/html")) {
+    const contentType = String(res.headers["content-type"] ?? "");
+    const ok = (res.statusCode ?? 0) >= 200 && (res.statusCode ?? 0) < 300;
+    if (!ok || !contentType.includes("text/html")) {
+      res.destroy();
       return fallbackPreview(url);
     }
 
-    const reader = res.body.getReader();
-    const chunks: Uint8Array[] = [];
+    const chunks: Buffer[] = [];
     let received = 0;
-    while (received < MAX_BYTES) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (value) {
-        chunks.push(value);
-        received += value.byteLength;
-      }
+    for await (const chunk of res) {
+      const buf = chunk as Buffer;
+      chunks.push(buf);
+      received += buf.byteLength;
+      if (received >= MAX_BYTES) break;
     }
-    reader.cancel().catch(() => {});
+    res.destroy();
 
-    const html = Buffer.concat(chunks.map((c) => Buffer.from(c))).toString("utf-8");
+    const html = Buffer.concat(chunks).toString("utf-8");
     const meta = collectMetaTags(html);
 
     const rawTitle =
@@ -144,11 +207,11 @@ export async function fetchUrlPreview(rawUrl: string): Promise<UrlPreview | null
     let imageUrl = meta.get("og:image") || meta.get("twitter:image") || "";
     if (imageUrl) {
       try {
-        imageUrl = new URL(imageUrl, url.toString()).toString();
-        if (isBlockedHost(new URL(imageUrl).hostname)) imageUrl = "";
+        imageUrl = new URL(imageUrl, current.toString()).toString();
       } catch {
         imageUrl = "";
       }
+      if (imageUrl && !isSafeImageUrl(imageUrl)) imageUrl = "";
     }
 
     return {
