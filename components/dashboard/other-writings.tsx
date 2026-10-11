@@ -5,6 +5,7 @@ import { motion } from "motion/react"
 import { CaretRightIcon } from "@phosphor-icons/react/dist/ssr"
 import { PROJECT_TYPE_ICON } from "@/lib/project-config"
 import { relativeTime } from "@/lib/format"
+import { ProjectMenu } from "@/components/dashboard/project-menu"
 import type { DashboardOther } from "@/lib/dashboard"
 
 export function OtherWritings({ others }: { others: DashboardOther[] }) {
@@ -22,9 +23,10 @@ export function OtherWritings({ others }: { others: DashboardOther[] }) {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.3, delay: 0.05 * i }}
           >
+            <div className="group flex items-center rounded-md hover:bg-muted/50">
             <Link
               href={`/projects/${project.id}`}
-              className="group flex items-center gap-2.5 rounded-md px-2 py-2 text-sm hover:bg-muted/50"
+              className="flex min-w-0 flex-1 items-center gap-2.5 px-2 py-2 text-sm"
             >
               <TypeIcon className="size-3.5 shrink-0 text-muted-foreground" />
               <span className="min-w-0 flex-1 truncate text-foreground">{project.title}</span>
@@ -33,6 +35,8 @@ export function OtherWritings({ others }: { others: DashboardOther[] }) {
               </span>
               <CaretRightIcon className="size-3 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
             </Link>
+            <ProjectMenu projectId={project.id} />
+            </div>
           </motion.div>
         )
       })}

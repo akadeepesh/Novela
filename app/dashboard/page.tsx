@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { FeatherIcon, PlusIcon } from "@phosphor-icons/react/dist/ssr"
+import { FeatherIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr"
 import { Button } from "@/components/ui/button"
 import { AvatarMenu } from "@/components/account/avatar-menu"
 import { Greeting } from "@/components/dashboard/greeting"
@@ -8,11 +8,16 @@ import { HeroCard } from "@/components/dashboard/hero-card"
 import { OtherWritings } from "@/components/dashboard/other-writings"
 import { auth } from "@/auth"
 import { getDashboardData } from "@/lib/dashboard"
+import { getTrashCount } from "@/lib/trash"
 
 export const metadata: Metadata = { title: "Your writings" }
 
 export default async function DashboardPage() {
-  const [session, { hero, others }] = await Promise.all([auth(), getDashboardData()])
+  const session = await auth()
+  const [{ hero, others }, trashCount] = await Promise.all([
+    getDashboardData(),
+    session?.user?.id ? getTrashCount(session.user.id) : Promise.resolve(0),
+  ])
   const firstName = session?.user?.name?.split(" ")[0]
 
   return (
@@ -23,6 +28,17 @@ export default async function DashboardPage() {
           <span className="font-heading text-sm font-semibold">KoraKagaj</span>
         </Link>
         <div className="flex items-center gap-3">
+          {trashCount > 0 ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              render={<Link href="/dashboard/trash" />}
+              nativeButton={false}
+            >
+              <TrashIcon />
+              Trash ({trashCount})
+            </Button>
+          ) : null}
           <Button
             size="sm"
             variant="ghost"

@@ -6,6 +6,7 @@ import { motion } from "motion/react"
 import { ArrowRightIcon } from "@phosphor-icons/react/dist/ssr"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { ProjectMenu } from "@/components/dashboard/project-menu"
 import { PROJECT_TYPE_ICON, projectTypeLabel } from "@/lib/project-config"
 import { relativeTime } from "@/lib/format"
 import type { DashboardHero } from "@/lib/dashboard"
@@ -39,8 +40,11 @@ export function HeroCard({ hero }: { hero: DashboardHero }) {
             router.push(overviewHref)
           }
         }}
-        className="glass-card items-center gap-4 py-10 text-center transition-colors hover:border-foreground/20 sm:py-14 dark:hover:border-foreground/30 cursor-pointer"
+        className="glass-card items-center gap-4 py-10 text-center transition-colors hover:border-foreground/20 sm:py-14 dark:hover:border-foreground/30 cursor-pointer relative"
       >
+        <div className="absolute right-3 top-3">
+          <ProjectMenu projectId={hero.id} />
+        </div>
         <div className="flex size-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
           <TypeIcon className="size-4" />
         </div>
