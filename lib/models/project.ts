@@ -25,6 +25,7 @@ const manuscriptSettingsSchema = new Schema(
 const projectSchema = new Schema(
   {
     ownerId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
+    deletedAt: { type: Date },
     title: { type: String, required: true, trim: true, maxlength: 200 },
     type: { type: String, enum: PROJECT_TYPE_VALUES, required: true },
     genre: { type: String, trim: true, maxlength: 60 },
@@ -63,5 +64,9 @@ const projectSchema = new Schema(
 );
 
 export type ProjectDoc = InferSchemaType<typeof projectSchema>;
+
+// Soft delete: a project with a deletedAt is in the Trash. It is restorable
+// until it is purged (see lib/trash.ts); every normal query filters it out.
+projectSchema.index({ ownerId: 1, deletedAt: 1 });
 
 export const Project = models.Project || model("Project", projectSchema);
