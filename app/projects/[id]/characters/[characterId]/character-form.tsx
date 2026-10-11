@@ -70,7 +70,15 @@ export function CharacterForm({ character }: { character: SerializedCharacter })
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="name">Name</Label>
-              <Input id="name" name="name" defaultValue={character.name} autoFocus={!character.id} />
+              <Input
+                id="name"
+                name="name"
+                defaultValue={character.name}
+                autoFocus={!character.id}
+                required
+                pattern=".*\S.*"
+                title="Give this a name"
+              />
             </div>
 
             <div className="flex flex-col gap-1.5">

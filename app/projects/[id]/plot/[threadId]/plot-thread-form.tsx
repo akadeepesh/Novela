@@ -45,7 +45,15 @@ export function PlotThreadForm({ thread }: { thread: SerializedPlotThread }) {
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-[1fr_auto]">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="title">Title</Label>
-              <Input id="title" name="title" defaultValue={thread.title} autoFocus={!thread.id} />
+              <Input
+                id="title"
+                name="title"
+                defaultValue={thread.title}
+                autoFocus={!thread.id}
+                required
+                pattern=".*\S.*"
+                title="Give this a title"
+              />
             </div>
 
             <div className="flex flex-col gap-1.5 sm:w-44">
