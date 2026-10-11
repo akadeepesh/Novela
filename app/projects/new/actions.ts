@@ -3,6 +3,7 @@
 import { connectDB } from "@/lib/db";
 import { Project } from "@/lib/models/project";
 import { requireUserId } from "@/lib/projects";
+import { LIMITS, limitMessage } from "@/lib/limits";
 import {
   PROJECT_TYPES,
   getDefaultSections,
@@ -26,7 +27,7 @@ function isProjectType(value: unknown): value is ProjectType {
 export async function createProjectAction(input: {
   title: string;
   type: string;
-}): Promise<{ projectId: string } | { error: "title-required" }> {
+}): Promise<{ projectId: string } | { error: "title-required" | "limit-reached" }> {
   const userId = await requireUserId();
 
   const type = isProjectType(input.type) ? input.type : "novel";
@@ -35,6 +36,9 @@ export async function createProjectAction(input: {
   const sections = getDefaultSections(type);
 
   await connectDB();
+  if ((await Project.countDocuments({ ownerId: userId })) >= LIMITS.projects) {
+    return { error: "limit-reached" };
+  }
   const project = await Project.create({ ownerId: userId, title, type, sections });
 
   return { projectId: String(project._id) };

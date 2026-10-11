@@ -12,6 +12,7 @@ import {
   type ProjectType,
 } from "@/lib/project-config"
 import { measureFlightStart, useTitleFlight } from "@/components/project/title-flight"
+import { limitMessage } from "@/lib/limits"
 import { createProjectAction } from "./actions"
 
 const TAGLINE: Record<ProjectType, string> = {
@@ -40,6 +41,7 @@ export function CreationCanvas() {
   const [committing, setCommitting] = useState(false)
   const [failed, setFailed] = useState(false)
   const [missingTitle, setMissingTitle] = useState(false)
+  const [limited, setLimited] = useState(false)
 
   const placeholder = "Give it a title"
 
@@ -76,8 +78,12 @@ export function CreationCanvas() {
       if ("error" in result) {
         flight.cancel()
         setCommitting(false)
-        setMissingTitle(true)
-        inputRef.current?.focus()
+        if (result.error === "limit-reached") {
+          setLimited(true)
+        } else {
+          setMissingTitle(true)
+          inputRef.current?.focus()
+        }
         return
       }
       // Opens the editor as a draft: no chapter exists until the first keystroke.
@@ -215,6 +221,11 @@ export function CreationCanvas() {
             {missingTitle ? (
               <p role="alert" className="text-xs text-destructive">
                 Give it a title to begin — you can change it any time.
+              </p>
+            ) : null}
+            {limited ? (
+              <p role="alert" className="max-w-sm text-xs text-destructive">
+                {limitMessage("projects")}
               </p>
             ) : null}
             {failed ? (
