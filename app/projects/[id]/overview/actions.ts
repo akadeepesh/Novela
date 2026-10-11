@@ -2,18 +2,9 @@
 
 import { z } from "zod";
 import { formString } from "@/lib/form";
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { connectDB } from "@/lib/db";
 import { Project } from "@/lib/models/project";
-import { Chapter } from "@/lib/models/chapter";
-import { ChapterVersion } from "@/lib/models/chapter-version";
-import { Character } from "@/lib/models/character";
-import { WorldEntry } from "@/lib/models/world-entry";
-import { PlotThread } from "@/lib/models/plot-thread";
-import { Note } from "@/lib/models/note";
-import { ResearchEntry } from "@/lib/models/research-entry";
-import { DailyStat } from "@/lib/models/daily-stat";
 import { requireUserId } from "@/lib/projects";
 import { uploadProjectImage, deleteProjectImage } from "@/lib/blob";
 import { CHAPTER_NUMBERING_STYLE_IDS } from "@/lib/chapter-numbering";
@@ -195,51 +186,6 @@ export const updateBackCoverBlurbAction = safeAction(
     revalidatePath(`/projects/${projectId}/overview`);
     revalidatePath(`/projects/${projectId}/export`);
     return { success: true };
-  },
-  () => ({ error: GENERIC_ERROR }),
-  { ids: [0] }
-);
-
-export type DeleteProjectState = {
-  error?: string;
-};
-
-export const deleteProjectAction = safeAction(
-  "deleteProjectAction",
-  async (projectId: string): Promise<DeleteProjectState> => {
-    const userId = await requireUserId();
-    await connectDB();
-
-    // findOneAndDelete both confirms ownership and removes the project in
-    // one step — if it doesn't match, either the id is wrong or it isn't
-    // this user's project, and either way there's nothing to cascade.
-    const deleted = await Project.findOneAndDelete({ _id: projectId, ownerId: userId });
-    if (!deleted) {
-      return { error: "Couldn't find this project." };
-    }
-
-    // Every other collection is scoped by both projectId and ownerId, same
-    // as everywhere else in the app — a project can only ever cascade its
-    // own owner's data.
-    await Promise.all([
-      Chapter.deleteMany({ projectId, ownerId: userId }),
-      ChapterVersion.deleteMany({ projectId, ownerId: userId }),
-      Character.deleteMany({ projectId, ownerId: userId }),
-      WorldEntry.deleteMany({ projectId, ownerId: userId }),
-      PlotThread.deleteMany({ projectId, ownerId: userId }),
-      Note.deleteMany({ projectId, ownerId: userId }),
-      ResearchEntry.deleteMany({ projectId, ownerId: userId }),
-      DailyStat.deleteMany({ projectId, ownerId: userId }),
-      deleteProjectImage(deleted.coverFrontUrl as string | undefined),
-      deleteProjectImage(deleted.coverBackUrl as string | undefined),
-      deleteProjectImage(
-        (deleted.manuscriptSettings as { backgroundImageUrl?: string } | undefined)
-          ?.backgroundImageUrl
-      ),
-    ]);
-
-    revalidatePath("/dashboard");
-    redirect("/dashboard");
   },
   () => ({ error: GENERIC_ERROR }),
   { ids: [0] }
