@@ -21,10 +21,6 @@ const nextConfig: NextConfig = {
     // and below Vercel's 4.5 MB request limit.
     serverActions: { bodySizeLimit: "4mb" },
   },
-  // pdf.js loads its worker and font/cmap data relative to its own files, so
-  // it has to run from node_modules as-is rather than being bundled (PDF
-  // import — lib/import/inspect-pdf.ts).
-  serverExternalPackages: ["pdfjs-dist"],
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
   },
