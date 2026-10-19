@@ -1,4 +1,4 @@
-import type { ExportBlock, ExportRun } from "@/lib/export/document-model"
+import { SCENE_BREAK_TEXT, type ExportBlock, type ExportRun } from "@/lib/export/document-model"
 
 /**
  * Renders ExportBlocks (the same intermediate representation Export uses)
@@ -23,21 +23,34 @@ function runsToHtml(runs: ExportRun[]): string {
       let html = escapeHtml(run.text)
       if (run.marks.includes("bold")) html = `<strong>${html}</strong>`
       if (run.marks.includes("italic")) html = `<em>${html}</em>`
+      if (run.marks.includes("underline")) html = `<u>${html}</u>`
+      if (run.marks.includes("strike")) html = `<s>${html}</s>`
       return html
     })
     .join("")
+}
+
+function alignStyle(align: string | undefined): string {
+  return align ? ` style="text-align:${align}"` : ""
 }
 
 export function blockToHtml(block: ExportBlock): string {
   const inner = runsToHtml(block.runs)
   if (block.kind === "heading") {
     const tag = `h${block.level}`
-    return `<${tag}>${inner}</${tag}>`
+    return `<${tag}${alignStyle(block.align)}>${inner}</${tag}>`
   }
   if (block.kind === "blockquote") {
     return `<blockquote>${inner}</blockquote>`
   }
-  return `<p>${inner}</p>`
+  if (block.kind === "sceneBreak") {
+    return `<p class="scene-break" style="text-align:center;text-indent:0">${SCENE_BREAK_TEXT}</p>`
+  }
+  if (block.kind === "listItem") {
+    const marker = block.ordered ? `${block.number}.` : "&#8226;"
+    return `<p class="list-item" style="text-indent:0;padding-left:${1.5 + block.depth * 1.5}em"><span style="display:inline-block;width:1.5em;margin-left:-1.5em">${marker}</span>${inner}</p>`
+  }
+  return `<p${alignStyle(block.align)}>${inner}</p>`
 }
 
 export function blocksToHtml(blocks: ExportBlock[]): string {

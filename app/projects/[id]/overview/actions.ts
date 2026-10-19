@@ -5,7 +5,7 @@ import { formString } from "@/lib/form";
 import { revalidatePath } from "next/cache";
 import { connectDB } from "@/lib/db";
 import { Project } from "@/lib/models/project";
-import { requireUserId } from "@/lib/projects";
+import { ownsActiveProject, requireUserId } from "@/lib/projects";
 import { uploadProjectImage, deleteProjectImage } from "@/lib/blob";
 import { CHAPTER_NUMBERING_STYLE_IDS } from "@/lib/chapter-numbering";
 import { TRIM_SIZE_IDS } from "@/lib/export-config";
@@ -41,7 +41,7 @@ export const updateOverviewAction = safeAction(
 
     await connectDB();
     const result = await Project.updateOne(
-      { _id: projectId, ownerId: userId },
+      { _id: projectId, ownerId: userId, deletedAt: null },
       { $set: parsed.data }
     );
 
@@ -58,6 +58,13 @@ export const updateOverviewAction = safeAction(
 );
 
 export type CoverSide = "front" | "back";
+
+// The cover shows on Book Settings, in the Read view and on the export page.
+function revalidateCover(projectId: string) {
+  revalidatePath(`/projects/${projectId}/overview`);
+  revalidatePath(`/projects/${projectId}/export`);
+  revalidatePath(`/read/${projectId}`, "layout");
+}
 export type UploadCoverState = { error?: string; url?: string };
 
 /** Uploads a front or back cover image, replacing (and cleaning up) any previous one. */
@@ -75,7 +82,11 @@ export const uploadCoverAction = safeAction(
       return { error: "Choose an image first." };
     }
 
+    // Ownership first: never store a file for a project that isn't the caller's.
+    if (!(await ownsActiveProject(userId, projectId))) return { error: "Couldn't find this project." };
+
     const result = await uploadProjectImage({
+      userId,
       projectId,
       kind: side === "front" ? "cover-front" : "cover-back",
       file,
@@ -83,16 +94,21 @@ export const uploadCoverAction = safeAction(
     if (!result.ok) return { error: result.error };
 
     const field = side === "front" ? "coverFrontUrl" : "coverBackUrl";
-    await connectDB();
-    const existing = await Project.findOne({ _id: projectId, ownerId: userId }).lean<
-      Record<string, string | undefined>
-    >();
-    if (!existing) return { error: "Couldn't find this project." };
+    // Swap in the new URL and read the old one in the same write, so two
+    // uploads racing each other can't both "replace" the same old image and
+    // leave one new image orphaned.
+    const previous = await Project.findOneAndUpdate(
+      { _id: projectId, ownerId: userId, deletedAt: null },
+      { $set: { [field]: result.url } },
+      { new: false, projection: field }
+    ).lean<Record<string, string | undefined>>();
+    if (!previous) {
+      await deleteProjectImage(userId, result.url);
+      return { error: "Couldn't find this project." };
+    }
+    await deleteProjectImage(userId, previous[field]);
 
-    await Project.updateOne({ _id: projectId, ownerId: userId }, { $set: { [field]: result.url } });
-    await deleteProjectImage(existing[field]);
-
-    revalidatePath(`/projects/${projectId}/overview`);
+    revalidateCover(projectId);
     return { url: result.url };
   },
   () => ({ error: GENERIC_ERROR }),
@@ -107,15 +123,15 @@ export const removeCoverAction = safeAction(
     const field = side === "front" ? "coverFrontUrl" : "coverBackUrl";
 
     await connectDB();
-    const existing = await Project.findOne({ _id: projectId, ownerId: userId }).lean<
-      Record<string, string | undefined>
-    >();
-    if (!existing) return { ok: false };
+    const previous = await Project.findOneAndUpdate(
+      { _id: projectId, ownerId: userId, deletedAt: null },
+      { $set: { [field]: "" } },
+      { new: false, projection: field }
+    ).lean<Record<string, string | undefined>>();
+    if (!previous) return { ok: false };
+    await deleteProjectImage(userId, previous[field]);
 
-    await Project.updateOne({ _id: projectId, ownerId: userId }, { $set: { [field]: "" } });
-    await deleteProjectImage(existing[field]);
-
-    revalidatePath(`/projects/${projectId}/overview`);
+    revalidateCover(projectId);
     return { ok: true };
   },
   () => ({ ok: false }),
@@ -139,7 +155,7 @@ export const updateStructureSettingsAction = safeAction(
 
     await connectDB();
     const result = await Project.updateOne(
-      { _id: projectId, ownerId: userId },
+      { _id: projectId, ownerId: userId, deletedAt: null },
       { $set: parsed.data }
     );
 
@@ -178,7 +194,7 @@ export const updateBackCoverBlurbAction = safeAction(
 
     await connectDB();
     const result = await Project.updateOne(
-      { _id: projectId, ownerId: userId },
+      { _id: projectId, ownerId: userId, deletedAt: null },
       { $set: { blurb: parsed.data.blurb ?? "" } }
     );
     if (result.matchedCount === 0) return { error: "Couldn't find this project." };

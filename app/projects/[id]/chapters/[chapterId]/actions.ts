@@ -6,18 +6,19 @@ import { revalidatePath } from "next/cache";
 import { connectDB } from "@/lib/db";
 import { Chapter } from "@/lib/models/chapter";
 import { Project } from "@/lib/models/project";
-import { requireUserId } from "@/lib/projects";
-import { BACKGROUND_IDS, CUSTOM_BACKGROUND_ID, LINE_WIDTHS } from "@/lib/manuscript-config";
+import { ownsActiveProject, requireUserId } from "@/lib/projects";
+import { BACKGROUND_IDS, CUSTOM_BACKGROUND_ID, FONT_FAMILIES, LINE_WIDTHS } from "@/lib/manuscript-config";
 import { uploadProjectImage, deleteProjectImage } from "@/lib/blob";
 import {
   snapshotBeforeSave,
   createManualSnapshot,
   restoreVersion,
   listVersionsForChapter,
-  requireVersionContent,
+  findVersionContent,
+  type SerializedVersion,
 } from "@/lib/versions";
 import { tiptapToBlocks, runsText } from "@/lib/export/document-model";
-import { diffWords } from "@/lib/text-diff";
+import { diffWords, type DiffPart } from "@/lib/text-diff";
 import { countWords } from "@/lib/word-count";
 import { safeAction, GENERIC_ERROR } from "@/lib/safe-action";
 
@@ -50,6 +51,8 @@ export const saveChapterAction = safeAction(
     const userId = await requireUserId();
     const parsed = saveSchema.safeParse(input);
     if (!parsed.success) return { ok: false, code: "invalid" };
+    // A trashed project is read-only until restored.
+    if (!(await ownsActiveProject(userId, projectId))) return { ok: false, code: "not_found" };
 
     // Rebuilt as a fresh plain object rather than passed straight through:
     // this is the exact value the Mongo driver's BSON layer will walk to
@@ -94,7 +97,7 @@ export const saveChapterAction = safeAction(
 
     // Only apply the save if nobody else has saved since the version this edit
     // was based on. `version: null` also matches chapters from before the field existed.
-    const filter: Record<string, unknown> = { _id: chapterId, projectId, ownerId: userId };
+    const filter: Record<string, unknown> = { _id: chapterId, projectId, ownerId: userId, deletedAt: null };
     if (!parsed.data.force && parsed.data.baseVersion !== undefined) {
       filter.version = parsed.data.baseVersion === 0 ? { $in: [0, null] } : parsed.data.baseVersion;
     }
@@ -112,7 +115,7 @@ export const saveChapterAction = safeAction(
     }
     if (!previous) {
       // Either the chapter is gone, or its version moved on since this edit started.
-      const exists = await Chapter.exists({ _id: chapterId, projectId, ownerId: userId });
+      const exists = await Chapter.exists({ _id: chapterId, projectId, ownerId: userId, deletedAt: null });
       return { ok: false, code: exists ? "conflict" : "not_found" };
     }
 
@@ -133,6 +136,13 @@ export const saveChapterAction = safeAction(
       }
     }
 
+    // A rename shows up in the chapter list and the sidebar search. Body
+    // saves (every ~second while typing) don't revalidate anything; pages
+    // reached by navigation are rendered fresh anyway.
+    if (update.title !== undefined && update.title !== previous.title) {
+      revalidatePath(`/projects/${projectId}`, "layout");
+    }
+
     return { ok: true, version: (previous.version ?? 0) + 1, wordCount: newWordCount };
   },
   () => ({ ok: false as const, code: "error" as const }),
@@ -141,7 +151,7 @@ export const saveChapterAction = safeAction(
 
 export const createVersionAction = safeAction(
   "createVersionAction",
-  async (projectId: string, chapterId: string, label?: string): Promise<{ ok: boolean }> => {
+  async (projectId: string, chapterId: string, label?: string): Promise<{ ok: boolean; error?: string }> => {
     return createManualSnapshot(projectId, chapterId, label);
   },
   () => ({ ok: false }),
@@ -161,44 +171,40 @@ export const restoreVersionAction = safeAction(
   { ids: [0, 1, 2] }
 );
 
-export async function listVersionsAction(projectId: string, chapterId: string) {
-  return listVersionsForChapter(projectId, chapterId);
-}
-
-export async function getVersionDiffAction(
-  projectId: string,
-  chapterId: string,
-  versionId: string,
-  currentContent: unknown
-) {
-  const version = await requireVersionContent(projectId, chapterId, versionId);
-  const oldText = runsText(tiptapToBlocks(version.content).flatMap((b) => b.runs));
-  const newText = runsText(tiptapToBlocks(currentContent).flatMap((b) => b.runs));
-  return {
-    title: version.title,
-    wordCount: version.wordCount,
-    diff: diffWords(oldText, newText),
-  };
-}
-
-const statusSchema = z.enum(["draft", "in-progress", "done"]);
-
-export const setChapterStatusAction = safeAction(
-  "setChapterStatusAction",
-  async (projectId: string, chapterId: string, status: string) => {
-    const userId = await requireUserId();
-    const parsed = statusSchema.safeParse(status);
-    if (!parsed.success) return;
-
-    await connectDB();
-    await Chapter.updateOne(
-      { _id: chapterId, projectId, ownerId: userId },
-      { $set: { status: parsed.data } }
-    );
-    revalidatePath(`/projects/${projectId}/chapters`);
+export const listVersionsAction = safeAction(
+  "listVersionsAction",
+  async (
+    projectId: string,
+    chapterId: string
+  ): Promise<{ ok: true; versions: SerializedVersion[] } | { ok: false }> => {
+    return { ok: true, versions: await listVersionsForChapter(projectId, chapterId) };
   },
-  () => undefined,
+  () => ({ ok: false as const }),
   { ids: [0, 1] }
+);
+
+export const getVersionDiffAction = safeAction(
+  "getVersionDiffAction",
+  async (
+    projectId: string,
+    chapterId: string,
+    versionId: string,
+    currentContent: unknown
+  ): Promise<{ ok: true; title: string; wordCount: number; diff: DiffPart[] } | { ok: false }> => {
+    // A missing version is an ordinary failure here, not a 404 page.
+    const version = await findVersionContent(projectId, chapterId, versionId);
+    if (!version) return { ok: false };
+    const oldText = runsText(tiptapToBlocks(version.content).flatMap((b) => b.runs));
+    const newText = runsText(tiptapToBlocks(currentContent).flatMap((b) => b.runs));
+    return {
+      ok: true,
+      title: version.title,
+      wordCount: version.wordCount,
+      diff: diffWords(oldText, newText),
+    };
+  },
+  () => ({ ok: false as const }),
+  { ids: [0, 1, 2] }
 );
 
 const manuscriptSettingsSchema = z.object({
@@ -210,6 +216,7 @@ const manuscriptSettingsSchema = z.object({
   fontSize: z.number().min(14).max(28).optional(),
   lineHeight: z.number().min(1.3).max(2.2).optional(),
   lineWidth: z.enum(LINE_WIDTHS).optional(),
+  fontFamily: z.enum(FONT_FAMILIES).optional(),
 });
 
 export type ManuscriptSettingsInput = z.infer<typeof manuscriptSettingsSchema>;
@@ -227,7 +234,7 @@ export const updateManuscriptSettingsAction = safeAction(
       set[`manuscriptSettings.${key}`] = value;
     }
 
-    const result = await Project.updateOne({ _id: projectId, ownerId: userId }, { $set: set });
+    const result = await Project.updateOne({ _id: projectId, ownerId: userId, deletedAt: null }, { $set: set });
 
     // ManuscriptSettingsCard (Book Settings) drives its swatches/inputs with
     // useOptimistic on top of the `settings` prop from this page's server
@@ -265,28 +272,30 @@ export const uploadManuscriptBackgroundAction = safeAction(
       return { error: "Choose an image first." };
     }
 
-    const result = await uploadProjectImage({ projectId, kind: "background", file });
+    // Ownership first: never store a file for a project that isn't the caller's.
+    if (!(await ownsActiveProject(userId, projectId))) return { error: "Couldn't find this project." };
+
+    const result = await uploadProjectImage({ userId, projectId, kind: "background", file });
     if (!result.ok) return { error: result.error };
 
-    await connectDB();
-    const existing = await Project.findOne({ _id: projectId, ownerId: userId }).lean<{
-      manuscriptSettings?: { backgroundImageUrl?: string };
-    }>();
-    if (!existing) return { error: "Couldn't find this project." };
-
-    await Project.updateOne(
-      { _id: projectId, ownerId: userId },
+    // Swap in the new URL and read the old one in the same write, so racing
+    // uploads can't orphan an image. Only after the new URL is saved is the
+    // old blob removed, so the project never points at a deleted image.
+    const previous = await Project.findOneAndUpdate(
+      { _id: projectId, ownerId: userId, deletedAt: null },
       {
         $set: {
           "manuscriptSettings.backgroundImageUrl": result.url,
           "manuscriptSettings.background": CUSTOM_BACKGROUND_ID,
         },
-      }
-    );
-    // Fire-and-forget-ish: only after the new URL is safely saved do we
-    // remove the old blob, so a mid-upload failure never leaves the project
-    // pointing at a deleted image.
-    await deleteProjectImage(existing.manuscriptSettings?.backgroundImageUrl);
+      },
+      { new: false, projection: "manuscriptSettings.backgroundImageUrl" }
+    ).lean<{ manuscriptSettings?: { backgroundImageUrl?: string } }>();
+    if (!previous) {
+      await deleteProjectImage(userId, result.url);
+      return { error: "Couldn't find this project." };
+    }
+    await deleteProjectImage(userId, previous.manuscriptSettings?.backgroundImageUrl);
 
     revalidatePath(`/projects/${projectId}/overview`);
     revalidatePath(`/projects/${projectId}/chapters`);
@@ -303,21 +312,18 @@ export const removeManuscriptBackgroundAction = safeAction(
     const userId = await requireUserId();
     await connectDB();
 
-    const existing = await Project.findOne({ _id: projectId, ownerId: userId }).lean<{
-      manuscriptSettings?: { backgroundImageUrl?: string };
-    }>();
-    if (!existing) return { ok: false };
-
-    await Project.updateOne(
-      { _id: projectId, ownerId: userId },
+    const previous = await Project.findOneAndUpdate(
+      { _id: projectId, ownerId: userId, deletedAt: null },
       {
         $set: {
           "manuscriptSettings.backgroundImageUrl": "",
           "manuscriptSettings.background": "paper",
         },
-      }
-    );
-    await deleteProjectImage(existing.manuscriptSettings?.backgroundImageUrl);
+      },
+      { new: false, projection: "manuscriptSettings.backgroundImageUrl" }
+    ).lean<{ manuscriptSettings?: { backgroundImageUrl?: string } }>();
+    if (!previous) return { ok: false };
+    await deleteProjectImage(userId, previous.manuscriptSettings?.backgroundImageUrl);
 
     revalidatePath(`/projects/${projectId}/overview`);
     revalidatePath(`/projects/${projectId}/chapters`);

@@ -29,6 +29,9 @@ export default function Home() {
             Sign in
           </Button>
         </div>
+        <Link href="/pricing" className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
+          Free to write. See pricing
+        </Link>
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 "use client"
 
-import { useOptimistic, useRef, useState, useTransition } from "react"
+import { useMemo, useOptimistic, useRef, useState, useTransition } from "react"
 import { cn } from "cn"
 import { ImageIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr"
 import {
@@ -10,7 +10,8 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+import { BoundedNumberInput, DebouncedInput } from "@/components/ui/committed-input"
+import { createActionQueue } from "@/lib/action-queue"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -38,6 +39,9 @@ export function ManuscriptSettingsCard({
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [backgroundBusy, setBackgroundBusy] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [saveFailed, setSaveFailed] = useState(false)
+  // One settings save at a time, in order (see lib/action-queue.ts).
+  const enqueue = useMemo(() => createActionQueue(), [])
 
   function patch(update: Partial<ManuscriptSettings>) {
     // setOptimisticSettings must run while a transition is pending — as the
@@ -47,7 +51,10 @@ export function ManuscriptSettingsCard({
     // transition/action" warning on every one of these settings.
     startTransition(async () => {
       setOptimisticSettings({ ...optimisticSettings, ...update })
-      await updateManuscriptSettingsAction(projectId, update as ManuscriptSettingsInput)
+      const result = await enqueue(() =>
+        updateManuscriptSettingsAction(projectId, update as ManuscriptSettingsInput)
+      ).catch(() => ({ ok: false }))
+      setSaveFailed(!result.ok)
     })
   }
 
@@ -191,27 +198,23 @@ export function ManuscriptSettingsCard({
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="fontSize">Font size</Label>
-            <Input
+            <BoundedNumberInput
               id="fontSize"
-              type="number"
               min={14}
               max={28}
               value={optimisticSettings.fontSize}
-              onChange={(e) => patch({ fontSize: Number(e.target.value) })}
-              disabled={isPending}
+              onValidChange={(fontSize) => patch({ fontSize })}
             />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="lineHeight">Line height</Label>
-            <Input
+            <BoundedNumberInput
               id="lineHeight"
-              type="number"
               step={0.05}
               min={1.3}
               max={2.2}
               value={optimisticSettings.lineHeight}
-              onChange={(e) => patch({ lineHeight: Number(e.target.value) })}
-              disabled={isPending}
+              onValidChange={(lineHeight) => patch({ lineHeight })}
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -248,11 +251,11 @@ export function ManuscriptSettingsCard({
               <span className="text-sm text-foreground">Show running header</span>
             </label>
             {optimisticSettings.showHeader ? (
-              <Input
+              <DebouncedInput
                 placeholder="Defaults to the chapter title"
                 value={optimisticSettings.headerText}
-                onChange={(e) => patch({ headerText: e.target.value })}
-                disabled={isPending}
+                maxLength={120}
+                onCommit={(headerText) => patch({ headerText })}
               />
             ) : null}
           </div>
@@ -267,15 +270,20 @@ export function ManuscriptSettingsCard({
               <span className="text-sm text-foreground">Show footer</span>
             </label>
             {optimisticSettings.showFooter ? (
-              <Input
+              <DebouncedInput
                 placeholder="e.g. your name, or a page note"
                 value={optimisticSettings.footerText}
-                onChange={(e) => patch({ footerText: e.target.value })}
-                disabled={isPending}
+                maxLength={120}
+                onCommit={(footerText) => patch({ footerText })}
               />
             ) : null}
           </div>
         </div>
+        {saveFailed ? (
+          <p role="alert" className="text-xs text-destructive">
+            Couldn&apos;t save your last change. It still applies here; change it again to retry.
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   )

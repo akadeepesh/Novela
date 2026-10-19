@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useTransition } from "react"
+import { useState, useTransition } from "react"
 import { cn } from "cn"
 import { DotsThreeIcon, GearSixIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr"
 import { Menu, MenuTrigger, MenuContent, MenuItem } from "@/components/ui/menu"
@@ -12,10 +12,16 @@ import { trashProjectAction } from "@/app/dashboard/trash/actions"
 export function ProjectMenu({ projectId, className }: { projectId: string; className?: string }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
+  const [error, setError] = useState<string | null>(null)
 
   function moveToTrash() {
+    setError(null)
     startTransition(async () => {
-      await trashProjectAction(projectId)
+      const result = await trashProjectAction(projectId)
+      if (!result.ok) {
+        setError(result.error ?? "Couldn't move this project to the Trash.")
+        return
+      }
       router.refresh()
     })
   }
@@ -46,6 +52,11 @@ export function ProjectMenu({ projectId, className }: { projectId: string; class
           </MenuItem>
         </MenuContent>
       </Menu>
+      {error ? (
+        <span role="alert" className="ml-1 text-xs text-destructive">
+          {error}
+        </span>
+      ) : null}
     </span>
   )
 }

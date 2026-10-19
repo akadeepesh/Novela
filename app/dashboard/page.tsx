@@ -1,6 +1,6 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { FeatherIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr"
+import { ChatTeardropTextIcon, FeatherIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr"
 import { Button } from "@/components/ui/button"
 import { AvatarMenu } from "@/components/account/avatar-menu"
 import { Greeting } from "@/components/dashboard/greeting"
@@ -9,14 +9,18 @@ import { OtherWritings } from "@/components/dashboard/other-writings"
 import { auth } from "@/auth"
 import { getDashboardData } from "@/lib/dashboard"
 import { getTrashCount } from "@/lib/trash"
+import { getEntitlements } from "@/lib/entitlements"
+import { getUnseenReaderComments } from "@/lib/dashboard"
 
 export const metadata: Metadata = { title: "Your writings" }
 
 export default async function DashboardPage() {
   const session = await auth()
-  const [{ hero, others }, trashCount] = await Promise.all([
+  const [{ hero, others }, trashCount, plan, readerComments] = await Promise.all([
     getDashboardData(),
     session?.user?.id ? getTrashCount(session.user.id) : Promise.resolve(0),
+    session?.user?.id ? getEntitlements(session.user.id).then((e) => e.plan) : Promise.resolve("free" as const),
+    session?.user?.id ? getUnseenReaderComments(session.user.id) : Promise.resolve(null),
   ])
   const firstName = session?.user?.name?.split(" ")[0]
 
@@ -28,6 +32,13 @@ export default async function DashboardPage() {
           <span className="font-heading text-sm font-semibold">KoraKagaj</span>
         </Link>
         <div className="flex items-center gap-3">
+          {plan === "pro" ? (
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">Pro</span>
+          ) : (
+            <Button size="sm" variant="ghost" render={<Link href="/pricing" />} nativeButton={false}>
+              Upgrade
+            </Button>
+          )}
           {trashCount > 0 ? (
             <Button
               size="sm"
@@ -55,6 +66,19 @@ export default async function DashboardPage() {
       <main className="flex flex-1 flex-col px-6 pb-24 sm:px-10">
         <div className="mx-auto w-full max-w-2xl">
           <Greeting firstName={firstName} />
+
+          {readerComments ? (
+            <Link
+              href={readerComments.href}
+              className="mb-6 flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-foreground hover:bg-primary/10"
+            >
+              <ChatTeardropTextIcon className="size-4 text-primary" />
+              {readerComments.count === 1
+                ? "A beta reader left you a comment."
+                : `Beta readers left you ${readerComments.count} new comments.`}
+              <span className="ml-auto text-xs text-primary">Read</span>
+            </Link>
+          ) : null}
 
           {hero ? (
             <>

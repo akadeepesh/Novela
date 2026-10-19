@@ -41,6 +41,15 @@ export const TRIM_SIZES = [
 export type TrimSizeId = (typeof TRIM_SIZES)[number]["id"]
 export const TRIM_SIZE_IDS = TRIM_SIZES.map((t) => t.id)
 
+/** Trim sizes on the Free plan: the trade-paperback standard and the manuscript/script standard. */
+export const FREE_TRIM_SIZES: readonly TrimSizeId[] = ["6x9", "8.5x11"]
+
+/** The trim size an export really uses: Pro-only sizes fall back to 6×9 on Free. */
+export function effectiveTrimSize(stored: string | undefined, allTrimSizes: boolean): TrimSizeId {
+  const id = (TRIM_SIZE_IDS as readonly string[]).includes(stored ?? "") ? (stored as TrimSizeId) : "6x9"
+  return allTrimSizes || FREE_TRIM_SIZES.includes(id) ? id : "6x9"
+}
+
 export function getTrimSize(id: string) {
   return TRIM_SIZES.find((t) => t.id === id) ?? TRIM_SIZES[0]
 }

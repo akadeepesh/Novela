@@ -1,13 +1,20 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ArrowSquareOutIcon, NotePencilIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { cn } from "cn"
+import { createActionQueue } from "@/lib/action-queue"
 import type { SerializedResearchEntrySummary } from "@/lib/research-entries"
 import { deleteResearchEntryAction, saveResearchEntryFieldsAction } from "./actions"
 
 const SAVE_DEBOUNCE_MS = 700
+// Match the server's limits (research/actions.ts) so an over-long entry is
+// stopped while typing instead of silently failing to save.
+const MAX_TITLE = 160
+const MAX_CONTENT = 8000
+
+type EntryPatch = { title?: string; content?: string }
 
 function hostnameOf(url: string): string {
   try {
@@ -39,7 +46,6 @@ export function ResearchEntryCard({
   onDeleted: (id: string) => void
 }) {
   const isLink = entry.type === "link"
-  const isNote = entry.type === "note"
   const [editing, setEditing] = useState(false)
   const [title, setTitle] = useState(entry.title)
   const [content, setContent] = useState(entry.content ?? "")
@@ -47,6 +53,9 @@ export function ResearchEntryCard({
   const [deletePending, setDeletePending] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [saveFailed, setSaveFailed] = useState(false)
+  // Saves run one at a time, in order (see lib/action-queue.ts).
+  const enqueue = useMemo(() => createActionQueue(), [])
 
   // Stay in sync with the server copy while not actively being edited.
   // Adjusting state directly during render (rather than in a useEffect)
@@ -59,23 +68,56 @@ export function ResearchEntryCard({
     setContent(entry.content ?? "")
   }
 
-  function persist(next: { title?: string; content?: string }) {
-    saveResearchEntryFieldsAction(projectId, entry.id, next).then((result) => {
-      if (result.ok) {
-        onSaved({ ...entry, title: next.title ?? title, content: next.content ?? content })
-      }
-    })
-  }
+  // Every field changed since the last save, merged, so a title edit and a
+  // content edit inside one debounce window are both sent.
+  const pending = useRef<EntryPatch>({})
+  const entryRef = useRef(entry)
+  const onSavedRef = useRef(onSaved)
+  useEffect(() => {
+    entryRef.current = entry
+    onSavedRef.current = onSaved
+  })
 
-  function scheduleSave(next: { title?: string; content?: string }) {
+  const flush = useCallback(() => {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current)
+      saveTimer.current = null
+    }
+    const patch = pending.current
+    if (Object.keys(patch).length === 0) return
+    pending.current = {}
+    void enqueue(() => saveResearchEntryFieldsAction(projectId, entryRef.current.id, patch))
+      .catch(() => ({ ok: false }))
+      .then((result) => {
+        if (result.ok) {
+          setSaveFailed(false)
+          onSavedRef.current({ ...entryRef.current, ...patch })
+        } else {
+          // Keep it pending (newer edits win) so the next change retries it.
+          pending.current = { ...patch, ...pending.current }
+          setSaveFailed(true)
+        }
+      })
+  }, [enqueue, projectId])
+
+  function scheduleSave(change: EntryPatch) {
+    pending.current = { ...pending.current, ...change }
     if (saveTimer.current) clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(() => persist(next), SAVE_DEBOUNCE_MS)
+    saveTimer.current = setTimeout(flush, SAVE_DEBOUNCE_MS)
   }
 
   function commitNow() {
-    if (saveTimer.current) clearTimeout(saveTimer.current)
-    persist(isNote ? { title, content } : { content })
+    flush()
   }
+
+  // Leaving the page or closing the tab mid-debounce still saves.
+  useEffect(() => {
+    window.addEventListener("pagehide", flush)
+    return () => {
+      window.removeEventListener("pagehide", flush)
+      flush()
+    }
+  }, [flush])
 
   function handleBlurCapture(e: React.FocusEvent<HTMLDivElement>) {
     const next = e.relatedTarget as Node | null
@@ -151,6 +193,7 @@ export function ResearchEntryCard({
               <input
                 className="w-full bg-transparent font-heading text-sm font-semibold text-card-foreground outline-none"
                 value={title}
+                maxLength={MAX_TITLE}
                 onChange={(e) => {
                   setTitle(e.target.value)
                   scheduleSave({ title: e.target.value })
@@ -182,6 +225,7 @@ export function ResearchEntryCard({
             className="w-full resize-none bg-transparent text-[15px] text-foreground outline-none placeholder:text-muted-foreground"
             rows={isLink ? 2 : 4}
             value={content}
+            maxLength={MAX_CONTENT}
             onChange={(e) => {
               setContent(e.target.value)
               scheduleSave({ content: e.target.value })
@@ -204,6 +248,12 @@ export function ResearchEntryCard({
           </p>
         )}
       </div>
+
+      {saveFailed ? (
+        <p role="alert" className="px-4 pb-3 text-[11px] text-destructive">
+          Couldn&apos;t save. Will retry on your next change.
+        </p>
+      ) : null}
 
       <DeleteConfirmDialog
         open={deleteOpen}

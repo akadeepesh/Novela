@@ -11,7 +11,20 @@ import {
   Footer,
   PageNumber,
 } from "docx";
-import type { ExportBlock, ExportDocument, ExportRun, ExportSection } from "./document-model";
+import {
+  SCENE_BREAK_TEXT,
+  type ExportAlign,
+  type ExportBlock,
+  type ExportDocument,
+  type ExportRun,
+  type ExportSection,
+} from "./document-model";
+
+const DOCX_ALIGN: Record<ExportAlign, (typeof AlignmentType)[keyof typeof AlignmentType]> = {
+  center: AlignmentType.CENTER,
+  right: AlignmentType.RIGHT,
+  justify: AlignmentType.JUSTIFIED,
+};
 
 function toTextRuns(runs: ExportRun[]): TextRun[] {
   const out: TextRun[] = [];
@@ -20,7 +33,13 @@ function toTextRuns(runs: ExportRun[]): TextRun[] {
       out.push(new TextRun({ text: "", break: 1 }));
     } else {
       out.push(
-        new TextRun({ text: run.text, bold: run.marks.includes("bold"), italics: run.marks.includes("italic") })
+        new TextRun({
+          text: run.text,
+          bold: run.marks.includes("bold"),
+          italics: run.marks.includes("italic"),
+          underline: run.marks.includes("underline") ? {} : undefined,
+          strike: run.marks.includes("strike"),
+        })
       );
     }
   }
@@ -36,8 +55,23 @@ function blockToParagraph(block: ExportBlock): Paragraph {
     }[block.level];
     return new Paragraph({
       heading: headingLevel,
+      alignment: block.align ? DOCX_ALIGN[block.align] : undefined,
       spacing: { before: 240, after: 120 },
       children: toTextRuns(block.runs),
+    });
+  }
+  if (block.kind === "sceneBreak") {
+    return new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { before: 240, after: 240 },
+      children: [new TextRun({ text: SCENE_BREAK_TEXT })],
+    });
+  }
+  if (block.kind === "listItem") {
+    return new Paragraph({
+      indent: { left: 720 + block.depth * 360, hanging: 360 },
+      spacing: { after: 80 },
+      children: [new TextRun({ text: `${block.ordered ? `${block.number}.` : "\u2022"}\t` }), ...toTextRuns(block.runs)],
     });
   }
   if (block.kind === "blockquote") {
@@ -47,7 +81,11 @@ function blockToParagraph(block: ExportBlock): Paragraph {
       children: toTextRuns(block.runs),
     });
   }
-  return new Paragraph({ spacing: { after: 160 }, children: toTextRuns(block.runs) });
+  return new Paragraph({
+    alignment: block.align ? DOCX_ALIGN[block.align] : undefined,
+    spacing: { after: 160 },
+    children: toTextRuns(block.runs),
+  });
 }
 
 function sectionToParagraphs(

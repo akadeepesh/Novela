@@ -19,7 +19,7 @@ const HTMLFlipBook = dynamic(() => import("react-pageflip"), { ssr: false })
 // Its published types don't model the children/ref contract precisely
 // enough for strict mode, and exactly how far off varies by the version
 // npm resolves — cast once here rather than relying on a line-specific
-// @ts-ignore that could itself go stale.
+// ts-ignore comment that could itself go stale.
 const FlipBook = HTMLFlipBook as unknown as React.ComponentType<Record<string, unknown>>
 
 // Fixed pixel budget for a page's own chrome (padding + optional running

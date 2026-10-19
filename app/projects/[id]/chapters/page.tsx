@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import { cookies } from "next/headers"
 import {
   PageShell,
   PageShellHeader,
@@ -9,7 +10,7 @@ import { EmptyState } from "@/components/ui/empty-state"
 import { NewLinkButton } from "@/components/ui/new-link-button"
 import { SECTION_DEFS, sectionLabel, sectionLabelSingular } from "@/lib/project-config"
 import { requireProjectSection } from "@/lib/require-project-section"
-import { listChaptersForProject } from "@/lib/chapters"
+import { listChaptersForProject, listTrashedChapters } from "@/lib/chapters"
 import { ChapterList } from "./chapter-list"
 
 export async function generateMetadata({
@@ -25,7 +26,12 @@ export async function generateMetadata({
 export default async function ChaptersPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const project = await requireProjectSection(id, "chapters")
-  const chapters = await listChaptersForProject(id)
+  const [chapters, trashed, cookieStore] = await Promise.all([
+    listChaptersForProject(id),
+    listTrashedChapters(id),
+    cookies(),
+  ])
+  const defaultView = cookieStore.get("chapters-view")?.value === "board" ? "board" : "list"
   const label = sectionLabel("chapters", project.type)
   const singular = sectionLabelSingular("chapters", project.type)
 
@@ -36,7 +42,7 @@ export default async function ChaptersPage({ params }: { params: Promise<{ id: s
         <PageShellDescription>Where {project.title} actually gets written.</PageShellDescription>
       </PageShellHeader>
 
-      {chapters.length === 0 ? (
+      {chapters.length === 0 && trashed.length === 0 ? (
         <EmptyState
           icon={SECTION_DEFS.chapters.icon}
           title={`No ${label.toLowerCase()} yet`}
@@ -49,6 +55,8 @@ export default async function ChaptersPage({ params }: { params: Promise<{ id: s
         <ChapterList
           projectId={id}
           chapters={chapters}
+          trashed={trashed}
+          defaultView={defaultView}
           label={label}
           singular={singular}
           projectType={project.type}

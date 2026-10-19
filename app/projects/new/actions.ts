@@ -1,9 +1,11 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { connectDB } from "@/lib/db";
 import { Project } from "@/lib/models/project";
 import { requireUserId } from "@/lib/projects";
-import { LIMITS } from "@/lib/limits";
+import { getLimit, keepWithinLimit } from "@/lib/entitlements";
+import { limitMessage } from "@/lib/plans";
 import {
   PROJECT_TYPES,
   getDefaultSections,
@@ -27,7 +29,9 @@ function isProjectType(value: unknown): value is ProjectType {
 export async function createProjectAction(input: {
   title: string;
   type: string;
-}): Promise<{ projectId: string } | { error: "title-required" | "limit-reached" }> {
+}): Promise<
+  { projectId: string } | { error: "title-required" } | { error: "limit-reached"; message: string }
+> {
   const userId = await requireUserId();
 
   const type = isProjectType(input.type) ? input.type : "novel";
@@ -36,10 +40,14 @@ export async function createProjectAction(input: {
   const sections = getDefaultSections(type);
 
   await connectDB();
-  if ((await Project.countDocuments({ ownerId: userId, deletedAt: null })) >= LIMITS.projects) {
-    return { error: "limit-reached" };
-  }
+  const { plan, limit } = await getLimit(userId, "projects");
+  const limited = { error: "limit-reached" as const, message: limitMessage("projects", plan) };
+  const active = { ownerId: userId, deletedAt: null };
+  if ((await Project.countDocuments(active)) >= limit) return limited;
   const project = await Project.create({ ownerId: userId, title, type, sections });
+  if (!(await keepWithinLimit(Project, active, project._id, limit))) return limited;
+
+  revalidatePath("/dashboard");
 
   return { projectId: String(project._id) };
 }

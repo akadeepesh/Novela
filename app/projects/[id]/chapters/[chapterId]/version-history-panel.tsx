@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { XIcon, ClockCounterClockwiseIcon, FloppyDiskIcon } from "@phosphor-icons/react/dist/ssr"
 import { cn } from "cn"
 import { Button } from "@/components/ui/button"
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import type { SerializedVersion } from "@/lib/versions"
 import type { DiffPart } from "@/lib/text-diff"
+import type { ActionQueue } from "@/lib/action-queue"
 import { createVersionAction, listVersionsAction, getVersionDiffAction, restoreVersionAction } from "./actions"
 
 const KIND_LABEL: Record<SerializedVersion["kind"], string> = {
@@ -37,6 +38,7 @@ export function VersionHistoryPanel({
   chapterId,
   getCurrentContent,
   flushPending,
+  enqueue,
   onClose,
 }: {
   projectId: string
@@ -46,6 +48,9 @@ export function VersionHistoryPanel({
   // false if that save failed. Versions are taken from the database, so this
   // must run first or they would miss the last few seconds of typing.
   flushPending: () => Promise<boolean>
+  // The editor's queue. Version actions run through it so they can never
+  // overtake a save that is still on its way.
+  enqueue: ActionQueue
   onClose: () => void
 }) {
   const [notice, setNotice] = useState<string | null>(null)
@@ -57,10 +62,18 @@ export function VersionHistoryPanel({
   const [diffLoading, setDiffLoading] = useState(false)
   const [restoringId, setRestoringId] = useState<string | null>(null)
   const [restoreTarget, setRestoreTarget] = useState<{ id: string; title: string } | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
+  // The diff the person is waiting for. A slower, older response is dropped.
+  const wantedDiff = useRef<string | null>(null)
 
   async function refresh() {
-    const list = await listVersionsAction(projectId, chapterId)
-    setVersions(list)
+    const result = await listVersionsAction(projectId, chapterId)
+    if (result.ok) {
+      setVersions(result.versions)
+      setLoadFailed(false)
+    } else {
+      setLoadFailed(true)
+    }
   }
 
   useEffect(() => {
@@ -81,24 +94,36 @@ export function VersionHistoryPanel({
       setSaving(false)
       return
     }
-    await createVersionAction(projectId, chapterId, label)
-    setLabel("")
+    const result = await enqueue(() => createVersionAction(projectId, chapterId, label))
     setSaving(false)
+    if (!result.ok) {
+      setNotice(result.error ?? "Couldn't save this version. Try again in a moment.")
+      return
+    }
+    setLabel("")
     await refresh()
   }
 
   async function handleToggleDiff(versionId: string) {
     if (openDiffId === versionId) {
+      wantedDiff.current = null
       setOpenDiffId(null)
       setDiff(null)
       return
     }
+    wantedDiff.current = versionId
     setOpenDiffId(versionId)
     setDiff(null)
     setDiffLoading(true)
     const result = await getVersionDiffAction(projectId, chapterId, versionId, getCurrentContent())
-    setDiff(result.diff)
+    if (wantedDiff.current !== versionId) return
     setDiffLoading(false)
+    if (result.ok) {
+      setDiff(result.diff)
+    } else {
+      setOpenDiffId(null)
+      setNotice("Couldn't compare with this version. It may have been removed.")
+    }
   }
 
   function handleRestoreClick(versionId: string, title: string) {
@@ -119,11 +144,12 @@ export function VersionHistoryPanel({
       setRestoringId(null)
       return
     }
-    const result = await restoreVersionAction(projectId, chapterId, versionId)
+    const result = await enqueue(() => restoreVersionAction(projectId, chapterId, versionId))
     if (result.ok) {
       window.location.reload()
     } else {
       setRestoringId(null)
+      setNotice("Couldn't restore this version. Your current text is unchanged.")
     }
   }
 
@@ -144,6 +170,7 @@ export function VersionHistoryPanel({
           value={label}
           onChange={(e) => setLabel(e.target.value)}
           placeholder="Label (optional)"
+          maxLength={120}
           className="h-8 text-xs"
         />
         <Button type="button" size="icon-sm" onClick={handleSaveVersion} disabled={saving} aria-label="Save version">
@@ -159,7 +186,9 @@ export function VersionHistoryPanel({
 
       <div className="flex-1 overflow-y-auto px-4 py-3">
         {versions === null ? (
-          <p className="text-xs text-muted-foreground">Loading…</p>
+          <p className="text-xs text-muted-foreground">
+            {loadFailed ? "Couldn't load version history. Close and reopen this panel to try again." : "Loading…"}
+          </p>
         ) : versions.length === 0 ? (
           <p className="text-xs text-muted-foreground">
             No versions yet — one is saved automatically every 15 minutes while you write, or click the

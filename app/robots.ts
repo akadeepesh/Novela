@@ -10,7 +10,8 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/dashboard", "/projects", "/settings", "/read", "/api"],
+      // /s/ is private beta-reader links (also marked noindex).
+      disallow: ["/dashboard", "/projects", "/settings", "/read", "/api", "/s/"],
     },
     sitemap: `${APP_URL}/sitemap.xml`,
   }

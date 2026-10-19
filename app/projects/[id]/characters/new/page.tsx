@@ -6,10 +6,11 @@ import { requireProjectSection } from "@/lib/require-project-section"
 import { connectDB } from "@/lib/db"
 import { Character } from "@/lib/models/character"
 import { requireUserId } from "@/lib/projects"
-import { LIMITS, limitMessage } from "@/lib/limits"
+import { getLimit } from "@/lib/entitlements"
+import { limitMessage } from "@/lib/plans"
 import { LimitReached } from "@/components/project/limit-reached"
 import type { SerializedCharacter } from "@/lib/characters"
-import { CharacterForm } from "./[characterId]/character-form"
+import { CharacterForm } from "../[characterId]/character-form"
 
 export async function generateMetadata({
   params,
@@ -31,10 +32,12 @@ export default async function NewCharacterPage({
   await requireProjectSection(id, "characters")
   const userId = await requireUserId()
   await connectDB()
-  if ((await Character.countDocuments({ projectId: id, ownerId: userId })) >= LIMITS.characters) {
+  const { plan, limit } = await getLimit(userId, "characters")
+  if ((await Character.countDocuments({ projectId: id, ownerId: userId })) >= limit) {
     return (
       <LimitReached
-        message={limitMessage("characters")}
+        showUpgrade={plan === "free"}
+        message={limitMessage("characters", plan)}
         backHref={`/projects/${id}/characters`}
         backLabel="Characters"
       />

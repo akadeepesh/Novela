@@ -4,14 +4,15 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { connectDB } from "@/lib/db";
 import { ResearchEntry } from "@/lib/models/research-entry";
-import { requireProject, requireUserId } from "@/lib/projects";
+import { ownsActiveProject, requireProject, requireUserId } from "@/lib/projects";
 import { fetchUrlPreview } from "@/lib/url-preview";
 import {
   serializeResearchEntrySummary,
   type SerializedResearchEntrySummary,
 } from "@/lib/research-entries";
 import { safeAction } from "@/lib/safe-action";
-import { LIMITS, limitMessage } from "@/lib/limits";
+import { getLimit, keepWithinLimit } from "@/lib/entitlements";
+import { limitMessage } from "@/lib/plans";
 
 const urlSchema = z.string().trim().min(1).max(2000);
 
@@ -34,8 +35,9 @@ export const createLinkEntryAction = safeAction(
 
     // Checked before fetching the page, so a full board costs nothing.
     await connectDB();
-    if ((await ResearchEntry.countDocuments({ projectId, ownerId: userId })) >= LIMITS.research) {
-      return { ok: false, error: limitMessage("research") };
+    const { plan, limit } = await getLimit(userId, "research");
+    if ((await ResearchEntry.countDocuments({ projectId, ownerId: userId })) >= limit) {
+      return { ok: false, error: limitMessage("research", plan) };
     }
 
     // A bare "example.com" with no scheme is still what most people paste —
@@ -58,6 +60,10 @@ export const createLinkEntryAction = safeAction(
       faviconUrl: preview.faviconUrl,
       siteName: preview.siteName,
     });
+    // Another create may have landed at the same moment (see keepWithinLimit).
+    if (!(await keepWithinLimit(ResearchEntry, { projectId, ownerId: userId }, entry._id, limit))) {
+      return { ok: false, error: limitMessage("research", plan) };
+    }
 
     revalidatePath(`/projects/${projectId}/research`);
     return { ok: true, entry: serializeResearchEntrySummary(entry.toObject()) };
@@ -89,8 +95,9 @@ export const createQuickNoteEntryAction = safeAction(
     if (!parsed.data.title?.trim() && !parsed.data.content?.trim()) return { ok: false };
 
     await connectDB();
-    if ((await ResearchEntry.countDocuments({ projectId, ownerId: userId })) >= LIMITS.research) {
-      return { ok: false, error: limitMessage("research") };
+    const { plan, limit } = await getLimit(userId, "research");
+    if ((await ResearchEntry.countDocuments({ projectId, ownerId: userId })) >= limit) {
+      return { ok: false, error: limitMessage("research", plan) };
     }
     const entry = await ResearchEntry.create({
       projectId,
@@ -99,6 +106,10 @@ export const createQuickNoteEntryAction = safeAction(
       type: "note",
       content: parsed.data.content?.trim() || "",
     });
+    // Another create may have landed at the same moment (see keepWithinLimit).
+    if (!(await keepWithinLimit(ResearchEntry, { projectId, ownerId: userId }, entry._id, limit))) {
+      return { ok: false, error: limitMessage("research", plan) };
+    }
 
     revalidatePath(`/projects/${projectId}/research`);
     return { ok: true, entry: serializeResearchEntrySummary(entry.toObject()) };
@@ -111,6 +122,7 @@ export const deleteResearchEntryAction = safeAction(
   "deleteResearchEntryAction",
   async (projectId: string, entryId: string) => {
     const userId = await requireUserId();
+    if (!(await ownsActiveProject(userId, projectId))) return;
     await connectDB();
     await ResearchEntry.deleteOne({ _id: entryId, projectId, ownerId: userId });
     revalidatePath(`/projects/${projectId}/research`);
@@ -145,6 +157,8 @@ export const saveResearchEntryFieldsAction = safeAction(
     const update: Record<string, unknown> = {};
     if (parsed.data.title !== undefined) update.title = parsed.data.title.trim() || "Untitled";
     if (parsed.data.content !== undefined) update.content = parsed.data.content;
+
+    if (!(await ownsActiveProject(userId, projectId))) return { ok: false };
 
     await connectDB();
     const result = await ResearchEntry.updateOne(

@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { cn } from "cn"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
+import { DebouncedInput } from "@/components/ui/committed-input"
+import { createActionQueue } from "@/lib/action-queue"
 import { Label } from "@/components/ui/label"
 import { CHAPTER_NUMBERING_STYLES } from "@/lib/chapter-numbering"
-import { TRIM_SIZES } from "@/lib/export-config"
+import { FREE_TRIM_SIZES, TRIM_SIZES } from "@/lib/export-config"
 import type { SerializedProject } from "@/lib/projects"
 import { CHAPTER_LABEL_SINGULAR } from "@/lib/project-config"
 import { updateStructureSettingsAction, type StructureInput } from "./actions"
@@ -31,7 +32,14 @@ function numberingExample(structure: Structure, singular: string): string {
   }
 }
 
-export function StructureSettingsCard({ project }: { project: SerializedProject }) {
+export function StructureSettingsCard({
+  project,
+  allTrimSizes,
+}: {
+  project: SerializedProject
+  /** False on Free: sizes other than FREE_TRIM_SIZES export at 6×9. */
+  allTrimSizes: boolean
+}) {
   // Plain local state, fired-and-forgotten to the server, deliberately NOT
   // useOptimistic — this is the same pattern the in-editor quick popover
   // already uses safely: local state can't "snap back" the way an
@@ -42,11 +50,15 @@ export function StructureSettingsCard({ project }: { project: SerializedProject 
     exportTrimSize: project.exportTrimSize,
   })
 
+  const [saveFailed, setSaveFailed] = useState(false)
+  // One save at a time, in order, so an older request can't land last.
+  const enqueue = useMemo(() => createActionQueue(), [])
+
   function patch(update: Partial<Structure>) {
     setStructure((prev) => ({ ...prev, ...update }))
-    updateStructureSettingsAction(project.id, update as StructureInput).catch(() => {
-      // Best-effort — the setting still applies locally for this session.
-    })
+    enqueue(() => updateStructureSettingsAction(project.id, update as StructureInput))
+      .catch(() => ({ ok: false }))
+      .then((result) => setSaveFailed(!result.ok))
   }
 
   const singular = CHAPTER_LABEL_SINGULAR[project.type]
@@ -90,11 +102,11 @@ export function StructureSettingsCard({ project }: { project: SerializedProject 
               <Label htmlFor="chapterPrefix" className="text-xs text-muted-foreground">
                 Prefix
               </Label>
-              <Input
+              <DebouncedInput
                 id="chapterPrefix"
                 placeholder={singular}
                 value={structure.chapterNumberingPrefix}
-                onChange={(e) => patch({ chapterNumberingPrefix: e.target.value })}
+                onCommit={(chapterNumberingPrefix) => patch({ chapterNumberingPrefix })}
                 maxLength={40}
               />
             </div>
@@ -133,11 +145,24 @@ export function StructureSettingsCard({ project }: { project: SerializedProject 
                   }}
                 />
                 <span className="text-xs font-medium text-foreground">{size.label}</span>
+                {!allTrimSizes && !FREE_TRIM_SIZES.includes(size.id) ? (
+                  <span className="rounded-full bg-primary/10 px-1.5 text-[10px] font-medium text-primary">Pro</span>
+                ) : null}
               </button>
             ))}
           </div>
-          <p className="text-xs text-muted-foreground">{trim.sublabel}</p>
+          <p className="text-xs text-muted-foreground">
+            {trim.sublabel}
+            {!allTrimSizes && !FREE_TRIM_SIZES.includes(trim.id) ? (
+              <> · On the Free plan this exports at 6 × 9. <a href="/pricing" className="underline underline-offset-2">Upgrade to Pro</a> to use it.</>
+            ) : null}
+          </p>
         </div>
+        {saveFailed ? (
+          <p role="alert" className="text-xs text-destructive">
+            Couldn&apos;t save your last change. It still applies here; change it again to retry.
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   )

@@ -215,7 +215,7 @@ export async function fetchUrlPreview(rawUrl: string): Promise<UrlPreview | null
     }
 
     return {
-      title: decodeHtmlEntities(rawTitle).slice(0, 200),
+      title: decodeHtmlEntities(rawTitle).slice(0, 160),
       description: decodeHtmlEntities(rawDescription).slice(0, 500),
       imageUrl,
       faviconUrl: faviconFor(url.hostname),

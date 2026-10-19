@@ -12,7 +12,6 @@ import {
   type ProjectType,
 } from "@/lib/project-config"
 import { measureFlightStart, useTitleFlight } from "@/components/project/title-flight"
-import { limitMessage } from "@/lib/limits"
 import { createProjectAction } from "./actions"
 
 const TAGLINE: Record<ProjectType, string> = {
@@ -41,7 +40,7 @@ export function CreationCanvas() {
   const [committing, setCommitting] = useState(false)
   const [failed, setFailed] = useState(false)
   const [missingTitle, setMissingTitle] = useState(false)
-  const [limited, setLimited] = useState(false)
+  const [limited, setLimited] = useState<string | null>(null)
 
   const placeholder = "Give it a title"
 
@@ -79,7 +78,7 @@ export function CreationCanvas() {
         flight.cancel()
         setCommitting(false)
         if (result.error === "limit-reached") {
-          setLimited(true)
+          setLimited(result.message)
         } else {
           setMissingTitle(true)
           inputRef.current?.focus()
@@ -225,7 +224,10 @@ export function CreationCanvas() {
             ) : null}
             {limited ? (
               <p role="alert" className="max-w-sm text-xs text-destructive">
-                {limitMessage("projects")}
+                {limited}{" "}
+                <Link href="/pricing" className="underline underline-offset-2">
+                  See plans
+                </Link>
               </p>
             ) : null}
             {failed ? (

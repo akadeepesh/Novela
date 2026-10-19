@@ -7,7 +7,8 @@ import { requireProjectSection } from "@/lib/require-project-section"
 import { listMentionablesForProject } from "@/lib/mentions"
 import { initialChapterContent } from "@/lib/script-scaffold"
 import { nextDefaultName } from "@/lib/default-name"
-import { LIMITS, limitMessage } from "@/lib/limits"
+import { getLimit } from "@/lib/entitlements"
+import { limitMessage } from "@/lib/plans"
 import { LimitReached } from "@/components/project/limit-reached"
 import type { SerializedChapter } from "@/lib/chapters"
 import { ManuscriptEditor } from "../[chapterId]/manuscript-editor"
@@ -35,15 +36,17 @@ export default async function NewChapterPage({
   const mentionables = await listMentionablesForProject(id)
 
   await connectDB()
-  const existing = await Chapter.find({ projectId: id, ownerId: userId })
+  const existing = await Chapter.find({ projectId: id, ownerId: userId, deletedAt: null })
     .select("title")
     .lean<{ title: string }[]>()
   const singular = sectionLabelSingular("chapters", project.type)
 
-  if (existing.length >= LIMITS.chapters) {
+  const { plan, limit } = await getLimit(userId, "chapters")
+  if (existing.length >= limit) {
     return (
       <LimitReached
-        message={limitMessage("chapters", `${singular.toLowerCase()}s`)}
+        showUpgrade={plan === "free"}
+        message={limitMessage("chapters", plan, `${singular.toLowerCase()}s`)}
         backHref={`/projects/${id}/chapters`}
         backLabel={`${singular}s`}
       />
@@ -60,6 +63,8 @@ export default async function NewChapterPage({
     order: existing.length,
     wordCount: 0,
     status: "draft",
+    synopsis: "",
+    label: "",
     updatedAt: "",
     content: initialChapterContent(project.type),
     version: 0,

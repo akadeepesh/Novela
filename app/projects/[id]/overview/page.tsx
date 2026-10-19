@@ -8,10 +8,13 @@ import {
 import { Card, CardContent } from "@/components/ui/card"
 import { SECTION_DEFS, sectionLabel } from "@/lib/project-config"
 import { requireProjectSection } from "@/lib/require-project-section"
+import { requireUserId } from "@/lib/projects"
+import { getEntitlements } from "@/lib/entitlements"
 import { OverviewForm } from "./overview-form"
 import { ManuscriptSettingsCard } from "./manuscript-settings-card"
 import { CoverSettingsCard } from "./cover-settings-card"
 import { StructureSettingsCard } from "./structure-settings-card"
+import { ShareCard } from "./share-card"
 import { DeleteProjectSection } from "./delete-project-section"
 
 export async function generateMetadata({
@@ -31,6 +34,7 @@ export default async function OverviewPage({
 }) {
   const { id } = await params
   const project = await requireProjectSection(id, "overview")
+  const { features } = await getEntitlements(await requireUserId())
 
   return (
     <PageShell width="prose">
@@ -42,7 +46,9 @@ export default async function OverviewPage({
       </PageShellHeader>
 
       <div className="flex flex-col gap-6">
-        <OverviewForm key={project.updatedAt} project={project} />
+        {/* Keyed on the project, not updatedAt: any other setting saved on this
+            page bumps updatedAt, and remounting would wipe unsaved typing. */}
+        <OverviewForm key={project.id} project={project} />
 
         <CoverSettingsCard
           projectId={id}
@@ -53,7 +59,9 @@ export default async function OverviewPage({
 
         <ManuscriptSettingsCard projectId={id} settings={project.manuscriptSettings} />
 
-        <StructureSettingsCard project={project} />
+        <StructureSettingsCard project={project} allTrimSizes={features.allTrimSizes} />
+
+        <ShareCard projectId={id} proFeatures={features.readerComments} />
 
         <Card>
           <CardContent className="flex flex-col gap-3">

@@ -64,6 +64,31 @@ export async function requireUserId(): Promise<string> {
   return session.user.id;
 }
 
+/** Shown when someone edits a project that was moved to the Trash in another tab. */
+export const TRASHED_PROJECT_ERROR = "This project is in the Trash. Restore it to make changes.";
+
+/**
+ * True if the project exists, belongs to `userId` and is NOT in the Trash.
+ * Every action that changes a project or anything inside it checks this
+ * first, so a tab left open on a trashed project can't keep writing to it.
+ */
+export async function ownsActiveProject(userId: string, projectId: string): Promise<boolean> {
+  if (!isObjectId(projectId)) return false;
+  await connectDB();
+  return Boolean(await Project.exists({ _id: projectId, ownerId: userId, deletedAt: null }));
+}
+
+/**
+ * Loads a live (not trashed) project by id WITHOUT checking who is asking.
+ * Only for share links, after the share token has been verified.
+ */
+export async function loadProjectById(id: string): Promise<SerializedProject | null> {
+  if (!isObjectId(id)) return null;
+  await connectDB();
+  const doc = await Project.findOne({ _id: id, deletedAt: null }).lean<Record<string, unknown>>();
+  return doc ? serializeProject(doc) : null;
+}
+
 /** Loads a project by id, 404s if missing/invalid, redirects to /login if not the owner's. */
 export const requireProject = cache(async (id: string): Promise<SerializedProject> => {
   const userId = await requireUserId();

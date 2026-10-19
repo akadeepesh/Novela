@@ -5,7 +5,8 @@ import { connectDB } from "@/lib/db";
 import { Project } from "@/lib/models/project";
 import { requireUserId } from "@/lib/projects";
 import { safeAction, GENERIC_ERROR } from "@/lib/safe-action";
-import { LIMITS, limitMessage } from "@/lib/limits";
+import { getLimit } from "@/lib/entitlements";
+import { limitMessage } from "@/lib/plans";
 import { findTrashedProject, purgeProject } from "@/lib/trash";
 
 export type TrashResult = { ok: boolean; error?: string };
@@ -40,14 +41,26 @@ export const restoreProjectAction = safeAction(
     const userId = await requireUserId();
     await connectDB();
     // Restoring counts as creating one: the account limit still applies.
-    const active = await Project.countDocuments({ ownerId: userId, deletedAt: null });
-    if (active >= LIMITS.projects) return { ok: false, error: limitMessage("projects") };
-    const result = await Project.updateOne(
+    const { plan, limit } = await getLimit(userId, "projects");
+    const limited = { ok: false, error: limitMessage("projects", plan) };
+    const active = { ownerId: userId, deletedAt: null };
+    if ((await Project.countDocuments(active)) >= limit) return limited;
+    const previous = await Project.findOneAndUpdate(
       { _id: projectId, ownerId: userId, deletedAt: { $ne: null } },
       { $unset: { deletedAt: "" } },
-      { timestamps: false }
-    );
-    if (result.matchedCount === 0) return { ok: false, error: "Couldn't find this project in the Trash." };
+      { timestamps: false, new: false, projection: "deletedAt" }
+    ).lean<{ deletedAt: Date }>();
+    if (!previous) return { ok: false, error: "Couldn't find this project in the Trash." };
+    // Another create/restore may have landed at the same moment. If that put
+    // the account over the limit, put this one back where it was.
+    if ((await Project.countDocuments(active)) > limit) {
+      await Project.updateOne(
+        { _id: projectId, ownerId: userId },
+        { $set: { deletedAt: previous.deletedAt } },
+        { timestamps: false }
+      );
+      return limited;
+    }
     refresh();
     return { ok: true };
   },

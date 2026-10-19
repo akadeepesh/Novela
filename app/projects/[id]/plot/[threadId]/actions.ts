@@ -6,10 +6,11 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { connectDB } from "@/lib/db";
 import { PlotThread } from "@/lib/models/plot-thread";
-import { requireProject, requireUserId } from "@/lib/projects";
+import { ownsActiveProject, TRASHED_PROJECT_ERROR, requireProject, requireUserId } from "@/lib/projects";
 import { PLOT_STATUSES, type PlotStatus } from "@/lib/plot-config";
 import { safeAction, GENERIC_ERROR } from "@/lib/safe-action";
-import { LIMITS, limitMessage } from "@/lib/limits";
+import { getLimit, keepWithinLimit } from "@/lib/entitlements";
+import { limitMessage } from "@/lib/plans";
 
 const STATUS_VALUES = PLOT_STATUSES.map((s) => s.value) as [PlotStatus, ...PlotStatus[]];
 
@@ -55,6 +56,8 @@ export const updatePlotThreadAction = safeAction(
           .map((a) => a.trim())
           .filter(Boolean)
       : [];
+
+    if (!(await ownsActiveProject(userId, projectId))) return { error: TRASHED_PROJECT_ERROR };
 
     await connectDB();
     const result = await PlotThread.updateOne(
@@ -109,10 +112,15 @@ export const createPlotThreadFromFormAction = safeAction(
       : [];
 
     await connectDB();
-    if ((await PlotThread.countDocuments({ projectId, ownerId: userId })) >= LIMITS.plotThreads) {
-      return { error: limitMessage("plotThreads") };
+    const { plan, limit } = await getLimit(userId, "plotThreads");
+    if ((await PlotThread.countDocuments({ projectId, ownerId: userId })) >= limit) {
+      return { error: limitMessage("plotThreads", plan) };
     }
     const created = await PlotThread.create({ projectId, ownerId: userId, ...rest, aliases: aliasList });
+    // Another create may have landed at the same moment (see keepWithinLimit).
+    if (!(await keepWithinLimit(PlotThread, { projectId, ownerId: userId }, created._id, limit))) {
+      return { error: limitMessage("plotThreads", plan) };
+    }
 
     revalidatePath(`/projects/${projectId}/plot`);
     redirect(`/projects/${projectId}/plot/${created._id}`);

@@ -1,7 +1,14 @@
 import "server-only";
 import { Fragment } from "react";
 import { Document, Page, Text, View, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
-import type { ExportBlock, ExportDocument, ExportRun, ExportSection } from "./document-model";
+import {
+  SCENE_BREAK_TEXT,
+  type ExportBlock,
+  type ExportDocument,
+  type ExportMark,
+  type ExportRun,
+  type ExportSection,
+} from "./document-model";
 import { trimSizePagePoints, trimSizeMarginPoints } from "@/lib/export-config";
 
 function buildStyles(trimSize: string) {
@@ -32,6 +39,10 @@ function buildStyles(trimSize: string) {
     paragraph: { marginBottom: 10, lineHeight: 1.5 },
     blockquote: { marginVertical: 8, marginHorizontal: 18 },
     blockquoteText: { fontFamily: "Times-Italic", lineHeight: 1.5 },
+    listItem: { flexDirection: "row", marginBottom: 6, lineHeight: 1.5 },
+    listMarker: { width: 18 },
+    listText: { flex: 1 },
+    sceneBreak: { textAlign: "center", marginVertical: 14 },
     tocEntry: { marginBottom: 6 },
     header: { position: "absolute", top: 28, left: margin.horizontal, right: margin.horizontal, fontSize: 9, textAlign: "center", color: "#666" },
     footer: { position: "absolute", bottom: 24, left: margin.horizontal, right: margin.horizontal, fontSize: 9, textAlign: "center", color: "#666" },
@@ -42,13 +53,22 @@ function buildStyles(trimSize: string) {
 
 type Styles = ReturnType<typeof buildStyles>;
 
-function fontFor(marks: ("bold" | "italic")[]): string {
+function fontFor(marks: ExportMark[]): string {
   const bold = marks.includes("bold");
   const italic = marks.includes("italic");
   if (bold && italic) return "Times-BoldItalic";
   if (bold) return "Times-Bold";
   if (italic) return "Times-Italic";
   return "Times-Roman";
+}
+
+function decorationFor(marks: ExportMark[]) {
+  const underline = marks.includes("underline");
+  const strike = marks.includes("strike");
+  if (underline && strike) return "underline line-through" as const;
+  if (underline) return "underline" as const;
+  if (strike) return "line-through" as const;
+  return undefined;
 }
 
 function Runs({ runs }: { runs: ExportRun[] }) {
@@ -58,7 +78,7 @@ function Runs({ runs }: { runs: ExportRun[] }) {
         "break" in run ? (
           <Text key={i}>{"\n"}</Text>
         ) : (
-          <Text key={i} style={{ fontFamily: fontFor(run.marks) }}>
+          <Text key={i} style={{ fontFamily: fontFor(run.marks), textDecoration: decorationFor(run.marks) }}>
             {run.text}
           </Text>
         )
@@ -71,9 +91,22 @@ function Block({ block, styles }: { block: ExportBlock; styles: Styles }) {
   if (block.kind === "heading") {
     const style = block.level === 1 ? styles.h1 : block.level === 2 ? styles.h2 : styles.h3;
     return (
-      <Text style={style}>
+      <Text style={[style, block.align ? { textAlign: block.align } : {}]}>
         <Runs runs={block.runs} />
       </Text>
+    );
+  }
+  if (block.kind === "sceneBreak") {
+    return <Text style={styles.sceneBreak}>{SCENE_BREAK_TEXT}</Text>;
+  }
+  if (block.kind === "listItem") {
+    return (
+      <View style={[styles.listItem, { marginLeft: block.depth * 18 }]} wrap={false}>
+        <Text style={styles.listMarker}>{block.ordered ? `${block.number}.` : "\u2022"}</Text>
+        <Text style={styles.listText}>
+          <Runs runs={block.runs} />
+        </Text>
+      </View>
     );
   }
   if (block.kind === "blockquote") {
@@ -86,7 +119,7 @@ function Block({ block, styles }: { block: ExportBlock; styles: Styles }) {
     );
   }
   return (
-    <Text style={styles.paragraph}>
+    <Text style={[styles.paragraph, block.align ? { textAlign: block.align } : {}]}>
       <Runs runs={block.runs} />
     </Text>
   );

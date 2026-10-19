@@ -4,34 +4,63 @@ import { useEditor, EditorContent, type Editor } from "@tiptap/react"
 import StarterKit from "@tiptap/starter-kit"
 import Placeholder from "@tiptap/extension-placeholder"
 import { CharacterCount } from "@tiptap/extension-character-count"
+import TextAlign from "@tiptap/extension-text-align"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import {
   ArrowLeftIcon,
+  ArrowCounterClockwiseIcon,
+  ArrowClockwiseIcon,
   TextBIcon,
   TextItalicIcon,
+  TextUnderlineIcon,
+  TextStrikethroughIcon,
+  TextHTwoIcon,
+  TextHThreeIcon,
   QuotesIcon,
+  ListBulletsIcon,
+  ListNumbersIcon,
+  AsteriskIcon,
+  TextAlignLeftIcon,
+  TextAlignCenterIcon,
+  TextAlignRightIcon,
+  MagnifyingGlassIcon,
+  ArrowsOutIcon,
+  ArrowsInIcon,
   GearSixIcon,
   BookOpenIcon,
   BookOpenTextIcon,
   ClockCounterClockwiseIcon,
+  ChatTeardropTextIcon,
+  TreeStructureIcon,
 } from "@phosphor-icons/react/dist/ssr"
 import { cn } from "cn"
 import { Button } from "@/components/ui/button"
 import type { SerializedChapter } from "@/lib/chapters"
-import { getBackgroundPreset, LINE_WIDTH_PX, type ManuscriptSettings } from "@/lib/manuscript-config"
+import {
+  FONT_FAMILY_CSS,
+  getBackgroundPreset,
+  LINE_WIDTH_PX,
+  type ManuscriptSettings,
+} from "@/lib/manuscript-config"
 import type { ProjectType } from "@/lib/project-config"
 import { FocusMode } from "@/components/editor/focus-mode-extension"
 import { MentionExtension } from "@/components/editor/mention-extension"
+import { FindReplace } from "@/components/editor/find-replace-extension"
+import { FindBar } from "@/components/editor/find-bar"
+import { CommentMark } from "@/components/editor/comment-mark"
+import { OutlinePanel } from "@/components/editor/outline-panel"
 import type { Mentionable } from "@/lib/mentions"
 import { estimateScriptRuntime } from "@/lib/script-scaffold"
 import { createActionQueue } from "@/lib/action-queue"
+import { useRegisterNavigationGuard } from "@/components/project/navigation-guard"
 import { countWords } from "@/lib/word-count"
 import { saveChapterAction, type SaveChapterInput, type SaveChapterResult } from "./actions"
 import { createChapterFromDraftAction } from "../actions"
 import { ManuscriptSettingsPanel } from "./manuscript-settings-panel"
 import { VersionHistoryPanel } from "./version-history-panel"
+import { CommentsPanel, type CommentDraft } from "./comments-panel"
 
 const SAVE_DEBOUNCE_MS = 900
 // Show a "consider splitting" hint from here (the server hard-limit is far higher).
@@ -42,9 +71,10 @@ type SaveFailure = Extract<SaveChapterResult, { ok: false }>["code"]
 const FAILURE_MESSAGE: Record<Exclude<SaveFailure, "conflict">, string> = {
   too_large:
     "This chapter is too large to save (over 3 MB). Split it into smaller chapters. Your text is still in this tab, so copy it somewhere safe before leaving.",
-  not_found: "This chapter no longer exists. It may have been deleted in another tab. Copy your text before leaving.",
+  not_found:
+    "This chapter can't be saved: it was deleted, or its project was moved to the Trash, in another tab. Copy your text before leaving.",
   limit:
-    "This project has reached its beta limit of chapters, so this one couldn't be saved. Your text is still in this tab. Copy it, then delete a chapter you no longer need.",
+    "This project has reached its plan limit of chapters, so this one couldn't be saved. Your text is still in this tab. Copy it, then delete a chapter you no longer need, or upgrade to Pro.",
   invalid: "Couldn't save this text. Copy it somewhere safe and let us know.",
   error: "Couldn't save. Your text is still in this tab and will be retried on your next change.",
 }
@@ -56,6 +86,8 @@ type Props = {
   chapterLabelSingular: string
   manuscriptSettings: ManuscriptSettings
   mentionables: Mentionable[]
+  /** Open with the comments panel showing (links from "new reader comments"). */
+  openComments?: boolean
 }
 
 export function ManuscriptEditor({
@@ -65,9 +97,27 @@ export function ManuscriptEditor({
   chapterLabelSingular,
   manuscriptSettings,
   mentionables,
+  openComments = false,
 }: Props) {
   const [title, setTitle] = useState(chapter.title)
   const [focusMode, setFocusMode] = useState(false)
+  // Keeps the line being typed at the middle of the screen.
+  const [typewriter, setTypewriter] = useState(false)
+  // Distraction-free: full screen, toolbar hidden until the pointer nears it.
+  const [zen, setZen] = useState(false)
+  const [findOpen, setFindOpen] = useState(false)
+  const [commentsOpen, setCommentsOpen] = useState(openComments)
+  const [outlineOpen, setOutlineOpen] = useState(false)
+  const [commentDraft, setCommentDraft] = useState<CommentDraft | null>(null)
+  const [selectionWords, setSelectionWords] = useState(0)
+  // Words at the start of this sitting, for the "+N this session" count.
+  const [sessionStart] = useState(chapter.wordCount)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const typewriterRef = useRef(false)
+  useEffect(() => {
+    typewriterRef.current = typewriter
+  }, [typewriter])
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [settings, setSettings] = useState(manuscriptSettings)
@@ -97,6 +147,10 @@ export function ManuscriptEditor({
   // While true, autosave is paused until the person chooses Keep mine / Load theirs.
   const conflictRef = useRef(false)
   const forceNext = useRef(false)
+  // The newest save that hasn't finished yet. Anything that must see the
+  // saved text (version history, leaving the page) waits on this, not just
+  // on "is anything still in the debounce window".
+  const inFlight = useRef<Promise<boolean> | null>(null)
 
   // Sends whatever is pending (title and/or body) as ONE save, right now.
   // Called by the debounce timer, before in-app navigation, and on unmount /
@@ -120,7 +174,9 @@ export function ManuscriptEditor({
       // Same function the server uses, so the footer matches the saved count.
       setWordCount(countWords(input.content))
     }
-    if (Object.keys(input).length === 0) return Promise.resolve(true)
+    // Nothing new to send, but an earlier save may still be on its way:
+    // callers must wait for that one, or they'd act on text not yet saved.
+    if (Object.keys(input).length === 0) return inFlight.current ?? Promise.resolve(true)
 
     if (forceNext.current) {
       input.force = true
@@ -141,7 +197,7 @@ export function ManuscriptEditor({
     }
     // baseVersion is read when the save actually runs (the queue may delay it
     // behind an earlier save that bumps the version).
-    return enqueue(async (): Promise<SaveChapterResult> => {
+    const save = enqueue(async (): Promise<SaveChapterResult> => {
       if (chapterIdRef.current) {
         return saveChapterAction(projectId, chapterIdRef.current, {
           ...input,
@@ -178,7 +234,19 @@ export function ManuscriptEditor({
         restore("error")
         return false
       })
+    inFlight.current = save
+    void save.finally(() => {
+      if (inFlight.current === save) inFlight.current = null
+    })
+    return save
   }, [projectId, enqueue])
+
+  const isPending = useCallback(
+    () => contentDirty.current || pendingTitle.current !== null || inFlight.current !== null,
+    []
+  )
+  const navigationGuard = useMemo(() => ({ isPending, flush }), [isPending, flush])
+  useRegisterNavigationGuard(navigationGuard)
 
   const scheduleSave = useCallback(() => {
     if (conflictRef.current) return
@@ -191,7 +259,7 @@ export function ManuscriptEditor({
   // (Read view, chapter list) always loads the latest text. If the save fails
   // we stay put, so the text isn't silently dropped.
   function leave(e: React.MouseEvent, href: string) {
-    if (!contentDirty.current && pendingTitle.current === null) return
+    if (!isPending()) return
     e.preventDefault()
     void flush().then((ok) => {
       if (ok) router.push(href)
@@ -222,6 +290,9 @@ export function ManuscriptEditor({
       CharacterCount,
       FocusMode,
       MentionExtension.configure({ mentionables }),
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
+      FindReplace,
+      CommentMark,
     ],
     content: (chapter.content as object | string | null) ?? "",
     onCreate: ({ editor }) => {
@@ -232,7 +303,56 @@ export function ManuscriptEditor({
       contentDirty.current = true
       scheduleSave()
     },
+    onSelectionUpdate: ({ editor }) => {
+      const { from, to, empty } = editor.state.selection
+      setSelectionWords(empty ? 0 : countPlainWords(editor.state.doc.textBetween(from, to, " ", " ")))
+      if (typewriterRef.current) centerCaret(editor, scrollRef.current)
+    },
   })
+
+  // Ctrl/Cmd+F opens find & replace while this page is open.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === "f") {
+        e.preventDefault()
+        setFindOpen(true)
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
+
+  // Leaving full screen with Esc (or the browser's own control) ends zen mode too.
+  useEffect(() => {
+    const onChange = () => {
+      if (!document.fullscreenElement) setZen(false)
+    }
+    document.addEventListener("fullscreenchange", onChange)
+    return () => document.removeEventListener("fullscreenchange", onChange)
+  }, [])
+
+  // Comment on the selected passage: opens the comments panel with a draft.
+  function startComment() {
+    const ed = editorRef.current
+    if (!ed) return
+    const { from, to, empty } = ed.state.selection
+    if (empty) return
+    setCommentDraft({ from, to, quote: ed.state.doc.textBetween(from, to, " ", " ") })
+    setHistoryOpen(false)
+    setOutlineOpen(false)
+    setCommentsOpen(true)
+  }
+
+  function toggleZen() {
+    if (zen) {
+      setZen(false)
+      if (document.fullscreenElement) void document.exitFullscreen()
+      return
+    }
+    setZen(true)
+    // Full screen where the browser allows it; zen styling works either way.
+    void rootRef.current?.requestFullscreen?.().catch(() => {})
+  }
 
   function handleTitleChange(value: string) {
     setTitle(value)
@@ -243,9 +363,10 @@ export function ManuscriptEditor({
 
   useEffect(() => {
     const onHide = () => void flush()
-    // Warn only while something is still unsaved (or a save failed).
+    // Warn while something is unsaved, a save failed, or a save is still
+    // in flight (closing the tab would abort it).
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (contentDirty.current || pendingTitle.current !== null) {
+      if (isPending()) {
         e.preventDefault()
         e.returnValue = ""
       }
@@ -257,15 +378,22 @@ export function ManuscriptEditor({
       window.removeEventListener("beforeunload", onBeforeUnload)
       void flush()
     }
-  }, [flush])
+  }, [flush, isPending])
 
   const bg = getBackgroundPreset(settings.background, settings.backgroundImageUrl)
   // A draft has no chapter yet, so Read opens the whole book instead.
   const readHref = chapterId ? `/read/${projectId}?chapter=${chapterId}` : `/read/${projectId}`
 
+  const sessionWords = Math.max(0, wordCount - sessionStart)
+
   return (
-    <div className="flex h-screen flex-col">
-      <div className="flex items-center justify-between border-b border-border px-4 py-2">
+    <div ref={rootRef} className={cn("flex h-screen flex-col bg-background", zen && "is-zen")}>
+      <div
+        className={cn(
+          "flex items-center justify-between gap-2 border-b border-border px-4 py-2",
+          zen && "opacity-0 transition-opacity duration-300 hover:opacity-100 focus-within:opacity-100"
+        )}
+      >
         <Link
           href={`/projects/${projectId}/chapters`}
           onClick={(e) => leave(e, `/projects/${projectId}/chapters`)}
@@ -275,34 +403,40 @@ export function ManuscriptEditor({
           Back
         </Link>
 
-        <div className="flex items-center gap-1">
-          {editor ? (
-            <>
-              <ToolbarButton
-                active={editor.isActive("bold")}
-                label="Bold"
-                onClick={() => editor.chain().focus().toggleBold().run()}
-              >
-                <TextBIcon />
-              </ToolbarButton>
-              <ToolbarButton
-                active={editor.isActive("italic")}
-                label="Italic"
-                onClick={() => editor.chain().focus().toggleItalic().run()}
-              >
-                <TextItalicIcon />
-              </ToolbarButton>
-              <ToolbarButton
-                active={editor.isActive("blockquote")}
-                label="Quote"
-                onClick={() => editor.chain().focus().toggleBlockquote().run()}
-              >
-                <QuotesIcon />
-              </ToolbarButton>
-            </>
-          ) : null}
+        <div className="flex min-w-0 items-center gap-1 overflow-x-auto">
+          {editor ? <FormattingToolbar editor={editor} /> : null}
 
-          <div className="mx-1 h-5 w-px bg-border" />
+          <div className="mx-1 h-5 w-px shrink-0 bg-border" />
+
+          <ToolbarButton label="Find and replace (Ctrl+F)" active={findOpen} onClick={() => setFindOpen((v) => !v)}>
+            <MagnifyingGlassIcon />
+          </ToolbarButton>
+          <ToolbarButton
+            label={selectionWords > 0 ? "Comment on selection" : "Comments"}
+            active={commentsOpen}
+            disabled={!chapterId}
+            onClick={() => {
+              if (selectionWords > 0) startComment()
+              else {
+                setHistoryOpen(false)
+                setOutlineOpen(false)
+                setCommentsOpen((v) => !v)
+              }
+            }}
+          >
+            <ChatTeardropTextIcon />
+          </ToolbarButton>
+          <ToolbarButton
+            label="Outline: scenes and headings"
+            active={outlineOpen}
+            onClick={() => {
+              setHistoryOpen(false)
+              setCommentsOpen(false)
+              setOutlineOpen((v) => !v)
+            }}
+          >
+            <TreeStructureIcon />
+          </ToolbarButton>
 
           <Button
             size="sm"
@@ -323,15 +457,39 @@ export function ManuscriptEditor({
             size="sm"
             variant={focusMode ? "secondary" : "ghost"}
             onClick={() => setFocusMode((v) => !v)}
+            title="Dim everything but the paragraph you're writing"
           >
             <BookOpenTextIcon />
             Focus
           </Button>
           <Button
             type="button"
+            size="sm"
+            variant={typewriter ? "secondary" : "ghost"}
+            onClick={() => setTypewriter((v) => !v)}
+            title="Keep the line you're typing in the middle of the screen"
+          >
+            Typewriter
+          </Button>
+          <Button
+            type="button"
+            size="icon-sm"
+            variant={zen ? "secondary" : "ghost"}
+            onClick={toggleZen}
+            aria-label={zen ? "Exit distraction-free mode" : "Distraction-free mode"}
+            title={zen ? "Exit distraction-free mode" : "Distraction-free mode"}
+          >
+            {zen ? <ArrowsInIcon /> : <ArrowsOutIcon />}
+          </Button>
+          <Button
+            type="button"
             size="icon-sm"
             variant={historyOpen ? "secondary" : "ghost"}
-            onClick={() => setHistoryOpen((v) => !v)}
+            onClick={() => {
+              setCommentsOpen(false)
+              setOutlineOpen(false)
+              setHistoryOpen((v) => !v)
+            }}
             disabled={!chapterId}
             aria-label="Version history"
           >
@@ -369,6 +527,8 @@ export function ManuscriptEditor({
         </div>
       ) : null}
 
+      {findOpen && editor ? <FindBar editor={editor} onClose={() => setFindOpen(false)} /> : null}
+
       {settingsOpen ? (
         <ManuscriptSettingsPanel
           projectId={projectId}
@@ -380,7 +540,7 @@ export function ManuscriptEditor({
       ) : null}
 
       <div className="flex flex-1 overflow-hidden">
-      <div className="flex-1 overflow-y-auto" style={bg.style}>
+      <div ref={scrollRef} className="flex-1 overflow-y-auto" style={bg.style}>
         <div
           className="mx-auto flex flex-col px-8 py-12"
           style={{ maxWidth: LINE_WIDTH_PX[settings.lineWidth] }}
@@ -405,7 +565,11 @@ export function ManuscriptEditor({
               projectType === "poetry" && "is-poetry",
               focusMode && "focus-mode"
             )}
-            style={{ fontSize: settings.fontSize, lineHeight: settings.lineHeight }}
+            style={{
+              fontSize: settings.fontSize,
+              lineHeight: settings.lineHeight,
+              fontFamily: FONT_FAMILY_CSS[settings.fontFamily] ?? FONT_FAMILY_CSS.serif,
+            }}
           />
 
           {settings.showFooter ? (
@@ -414,20 +578,45 @@ export function ManuscriptEditor({
         </div>
       </div>
 
+      {outlineOpen && editor ? <OutlinePanel editor={editor} onClose={() => setOutlineOpen(false)} /> : null}
+
+      {commentsOpen && editor && chapterId ? (
+        <CommentsPanel
+          editor={editor}
+          projectId={projectId}
+          chapterId={chapterId}
+          draft={commentDraft}
+          onDraftDone={() => setCommentDraft(null)}
+          enqueue={enqueue}
+          onClose={() => {
+            setCommentsOpen(false)
+            setCommentDraft(null)
+          }}
+        />
+      ) : null}
+
       {historyOpen && editor ? (
         <VersionHistoryPanel
           projectId={projectId}
           chapterId={chapterId}
           getCurrentContent={() => editor.getJSON()}
           flushPending={flush}
+          enqueue={enqueue}
           onClose={() => setHistoryOpen(false)}
         />
       ) : null}
       </div>
 
-      <div className="flex items-center justify-between border-t border-border px-4 py-1.5 text-xs text-muted-foreground">
+      <div
+        className={cn(
+          "flex items-center justify-between gap-4 border-t border-border px-4 py-1.5 text-xs text-muted-foreground",
+          zen && "border-transparent"
+        )}
+      >
         <span>
           {wordCount.toLocaleString()} words
+          {selectionWords > 0 ? ` · ${selectionWords.toLocaleString()} selected` : ""}
+          {sessionWords > 0 ? ` · +${sessionWords.toLocaleString()} this session` : ""}
           {projectType === "script-writing" ? ` · ${estimateScriptRuntime(wordCount)}` : ""}
           {wordCount >= LONG_CHAPTER_WORDS ? " · Very long. Consider splitting it into smaller chapters." : ""}
         </span>
@@ -449,11 +638,13 @@ export function ManuscriptEditor({
 
 function ToolbarButton({
   active,
+  disabled,
   label,
   onClick,
   children,
 }: {
   active?: boolean
+  disabled?: boolean
   label: string
   onClick: () => void
   children: React.ReactNode
@@ -464,9 +655,130 @@ function ToolbarButton({
       size="icon-sm"
       variant={active ? "secondary" : "ghost"}
       onClick={onClick}
+      disabled={disabled}
       aria-label={label}
+      aria-pressed={active}
+      title={label}
+      className="shrink-0"
     >
       {children}
     </Button>
   )
+}
+
+function countPlainWords(text: string): number {
+  return text.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length
+}
+
+/** Typewriter scrolling: put the caret's line at the vertical middle of the page. */
+function centerCaret(editor: Editor, container: HTMLElement | null) {
+  if (!container) return
+  const { head } = editor.state.selection
+  let caretTop: number
+  try {
+    caretTop = editor.view.coordsAtPos(head).top
+  } catch {
+    return
+  }
+  const box = container.getBoundingClientRect()
+  const offset = caretTop - (box.top + box.height / 2)
+  if (Math.abs(offset) > 4) container.scrollBy({ top: offset, behavior: "smooth" })
+}
+
+/** Formatting buttons. Each reflects whether it's applied at the cursor. */
+function FormattingToolbar({ editor }: { editor: Editor }) {
+  // Re-render on every transaction so active states follow the cursor.
+  const [, rerender] = useState(0)
+  useEffect(() => {
+    const update = () => rerender((n) => n + 1)
+    editor.on("transaction", update)
+    return () => {
+      editor.off("transaction", update)
+    }
+  }, [editor])
+
+  const chain = () => editor.chain().focus()
+  const isAligned = (align: string) => editor.isActive({ textAlign: align })
+
+  return (
+    <>
+      <ToolbarButton label="Undo (Ctrl+Z)" onClick={() => chain().undo().run()} disabled={!editor.can().undo()}>
+        <ArrowCounterClockwiseIcon />
+      </ToolbarButton>
+      <ToolbarButton label="Redo (Ctrl+Shift+Z)" onClick={() => chain().redo().run()} disabled={!editor.can().redo()}>
+        <ArrowClockwiseIcon />
+      </ToolbarButton>
+      <ToolbarDivider />
+      <ToolbarButton
+        label="Heading"
+        active={editor.isActive("heading", { level: 2 })}
+        onClick={() => chain().toggleHeading({ level: 2 }).run()}
+      >
+        <TextHTwoIcon />
+      </ToolbarButton>
+      <ToolbarButton
+        label="Subheading"
+        active={editor.isActive("heading", { level: 3 })}
+        onClick={() => chain().toggleHeading({ level: 3 }).run()}
+      >
+        <TextHThreeIcon />
+      </ToolbarButton>
+      <ToolbarDivider />
+      <ToolbarButton label="Bold (Ctrl+B)" active={editor.isActive("bold")} onClick={() => chain().toggleBold().run()}>
+        <TextBIcon />
+      </ToolbarButton>
+      <ToolbarButton label="Italic (Ctrl+I)" active={editor.isActive("italic")} onClick={() => chain().toggleItalic().run()}>
+        <TextItalicIcon />
+      </ToolbarButton>
+      <ToolbarButton
+        label="Underline (Ctrl+U)"
+        active={editor.isActive("underline")}
+        onClick={() => chain().toggleUnderline().run()}
+      >
+        <TextUnderlineIcon />
+      </ToolbarButton>
+      <ToolbarButton label="Strikethrough" active={editor.isActive("strike")} onClick={() => chain().toggleStrike().run()}>
+        <TextStrikethroughIcon />
+      </ToolbarButton>
+      <ToolbarDivider />
+      <ToolbarButton label="Quote" active={editor.isActive("blockquote")} onClick={() => chain().toggleBlockquote().run()}>
+        <QuotesIcon />
+      </ToolbarButton>
+      <ToolbarButton
+        label="Bulleted list"
+        active={editor.isActive("bulletList")}
+        onClick={() => chain().toggleBulletList().run()}
+      >
+        <ListBulletsIcon />
+      </ToolbarButton>
+      <ToolbarButton
+        label="Numbered list"
+        active={editor.isActive("orderedList")}
+        onClick={() => chain().toggleOrderedList().run()}
+      >
+        <ListNumbersIcon />
+      </ToolbarButton>
+      <ToolbarButton label="Scene break" onClick={() => chain().setHorizontalRule().run()}>
+        <AsteriskIcon />
+      </ToolbarButton>
+      <ToolbarDivider />
+      <ToolbarButton
+        label="Align left"
+        active={!isAligned("center") && !isAligned("right")}
+        onClick={() => chain().unsetTextAlign().run()}
+      >
+        <TextAlignLeftIcon />
+      </ToolbarButton>
+      <ToolbarButton label="Centre" active={isAligned("center")} onClick={() => chain().setTextAlign("center").run()}>
+        <TextAlignCenterIcon />
+      </ToolbarButton>
+      <ToolbarButton label="Align right" active={isAligned("right")} onClick={() => chain().setTextAlign("right").run()}>
+        <TextAlignRightIcon />
+      </ToolbarButton>
+    </>
+  )
+}
+
+function ToolbarDivider() {
+  return <div className="mx-0.5 h-5 w-px shrink-0 bg-border" />
 }

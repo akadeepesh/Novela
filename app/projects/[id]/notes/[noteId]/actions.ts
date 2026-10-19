@@ -5,7 +5,7 @@ import { formString } from "@/lib/form";
 import { revalidatePath } from "next/cache";
 import { connectDB } from "@/lib/db";
 import { Note } from "@/lib/models/note";
-import { requireUserId } from "@/lib/projects";
+import { ownsActiveProject, TRASHED_PROJECT_ERROR, requireUserId } from "@/lib/projects";
 import { safeAction, GENERIC_ERROR } from "@/lib/safe-action";
 
 const schema = z.object({
@@ -48,6 +48,8 @@ export const updateNoteAction = safeAction(
           .map((t) => t.trim())
           .filter(Boolean)
       : [];
+
+    if (!(await ownsActiveProject(userId, projectId))) return { error: TRASHED_PROJECT_ERROR };
 
     await connectDB();
     const result = await Note.updateOne(

@@ -4,12 +4,14 @@ import { connectDB } from "@/lib/db";
 import { isObjectId } from "@/lib/object-id";
 import { Project } from "@/lib/models/project";
 import { DEFAULT_MANUSCRIPT_SETTINGS, type ManuscriptSettings } from "@/lib/manuscript-config";
-import type { ProjectType, SectionId } from "@/lib/project-config";
+import { normalizeProjectType, type SectionId } from "@/lib/project-config";
 import type { SerializedProject } from "@/lib/projects";
 import { buildExportDocument } from "@/lib/export/build-document";
 import { renderDocx } from "@/lib/export/render-docx";
 import { renderEpub } from "@/lib/export/render-epub";
 import { renderPdf } from "@/lib/export/render-pdf";
+import { getEntitlements } from "@/lib/entitlements";
+import { effectiveTrimSize } from "@/lib/export-config";
 
 const VALID_SECTIONS: SectionId[] = ["characters", "world", "plot", "notes", "research"];
 const CONTENT_TYPES: Record<string, string> = {
@@ -60,16 +62,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     .filter((s): s is SectionId => (VALID_SECTIONS as string[]).includes(s));
 
   const rawSettings = (projectDoc.manuscriptSettings as Partial<ManuscriptSettings>) ?? {};
+  const { features } = await getEntitlements(userId);
   const project: SerializedProject = {
     id: String(projectDoc._id),
     title: projectDoc.title as string,
-    type: projectDoc.type as ProjectType,
+    type: normalizeProjectType(projectDoc.type as string),
     genre: (projectDoc.genre as string) || undefined,
     blurb: (projectDoc.blurb as string) || undefined,
-    authorName: (searchParams.get("author") || (projectDoc.authorName as string)) || undefined,
+    authorName: (searchParams.get("author")?.trim().slice(0, 120) || (projectDoc.authorName as string)) || undefined,
     chapterNumberingStyle: ((projectDoc.chapterNumberingStyle as string) || "numeral") as SerializedProject["chapterNumberingStyle"],
     chapterNumberingPrefix: (projectDoc.chapterNumberingPrefix as string) || undefined,
-    exportTrimSize: ((projectDoc.exportTrimSize as string) || "6x9") as SerializedProject["exportTrimSize"],
+    exportTrimSize: effectiveTrimSize(projectDoc.exportTrimSize as string, features.allTrimSizes),
     targetWordCount: (projectDoc.targetWordCount as number) || undefined,
     dailyWordGoal: (projectDoc.dailyWordGoal as number) ?? 300,
     sections: (projectDoc.sections as SectionId[]) ?? [],
@@ -81,7 +84,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   const exportDocument = await buildExportDocument(project, userId, {
     includeTitlePage: searchParams.get("titlePage") !== "off",
     includeTOC: searchParams.get("toc") !== "off",
-    dedication: searchParams.get("dedication") ?? undefined,
+    dedication: searchParams.get("dedication")?.slice(0, 2000) ?? undefined,
     includeSections,
   });
 

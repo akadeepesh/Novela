@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { ArrowLeftIcon } from "@phosphor-icons/react/dist/ssr"
+import { Button } from "@/components/ui/button"
 import {
   PageShell,
   PageShellHeader,
@@ -7,15 +8,17 @@ import {
   PageShellDescription,
 } from "@/components/layout/page-shell"
 
-/** Shown instead of a "new …" screen when the account is at a beta limit. */
+/** Shown instead of a "new …" screen when the account is at its plan limit. */
 export function LimitReached({
   message,
   backHref,
   backLabel,
+  showUpgrade = false,
 }: {
   message: string
   backHref: string
   backLabel: string
+  showUpgrade?: boolean
 }) {
   return (
     <PageShell width="prose">
@@ -30,6 +33,11 @@ export function LimitReached({
         <PageShellTitle>Limit reached</PageShellTitle>
         <PageShellDescription>{message}</PageShellDescription>
       </PageShellHeader>
+      {showUpgrade ? (
+        <Button className="mt-6 w-fit" render={<Link href="/pricing" />} nativeButton={false}>
+          See Pro plans
+        </Button>
+      ) : null}
     </PageShell>
   )
 }

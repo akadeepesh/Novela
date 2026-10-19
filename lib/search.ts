@@ -1,6 +1,6 @@
 import "server-only";
 import { connectDB } from "@/lib/db";
-import { Chapter } from "@/lib/models/chapter";
+import { Chapter, CHAPTER_ORDER } from "@/lib/models/chapter";
 import { Note } from "@/lib/models/note";
 import { ResearchEntry } from "@/lib/models/research-entry";
 import { requireUserId } from "@/lib/projects";
@@ -27,6 +27,11 @@ function extractPlainText(node: unknown, out: string[] = []): string[] {
   if (!node || typeof node !== "object") return out;
   const n = node as Record<string, unknown>;
   if (typeof n.text === "string") out.push(n.text);
+  // @-mentions store their visible name as an attribute, not as text.
+  if (n.type === "mention") {
+    const label = (n.attrs as { label?: unknown } | undefined)?.label;
+    if (typeof label === "string") out.push(label);
+  }
   if (Array.isArray(n.content)) {
     for (const child of n.content) extractPlainText(child, out);
   }
@@ -39,9 +44,9 @@ export async function listSearchIndexForProject(projectId: string): Promise<Sear
   await connectDB();
 
   const [chapters, notes, research] = await Promise.all([
-    Chapter.find({ projectId, ownerId: userId })
+    Chapter.find({ projectId, ownerId: userId, deletedAt: null })
       .select({ title: 1, content: 1, order: 1 })
-      .sort({ order: 1 })
+      .sort(CHAPTER_ORDER)
       .lean<Record<string, unknown>[]>(),
     Note.find({ projectId, ownerId: userId })
       .select({ title: 1, content: 1, tags: 1 })

@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
 import {
   MagnifyingGlassIcon,
   BookOpenIcon,
@@ -11,6 +10,7 @@ import {
 import { cn } from "cn"
 import { SECTION_DEFS, sectionLabel, sectionLabelSingular, type ProjectType, type SectionId } from "@/lib/project-config"
 import type { SearchItem, SearchItemKind } from "@/lib/search"
+import { useGuardedPush } from "./navigation-guard"
 
 const KIND_ICON: Record<SearchItemKind, typeof BookOpenIcon> = {
   chapter: BookOpenIcon,
@@ -41,7 +41,7 @@ export function CommandPalette({
   items: SearchItem[]
   hideTrigger?: boolean
 }) {
-  const router = useRouter()
+  const guardedPush = useGuardedPush()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -115,7 +115,7 @@ export function CommandPalette({
   }
 
   function go(entry: Entry) {
-    router.push(entry.href)
+    guardedPush(entry.href)
     setOpen(false)
   }
 
