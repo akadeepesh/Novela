@@ -3,7 +3,7 @@ import { connectDB } from "@/lib/db";
 import { Character } from "@/lib/models/character";
 import { WorldEntry } from "@/lib/models/world-entry";
 import { PlotThread } from "@/lib/models/plot-thread";
-import { Chapter } from "@/lib/models/chapter";
+import { Chapter, CHAPTER_ORDER } from "@/lib/models/chapter";
 import { requireUserId } from "@/lib/projects";
 import { characterRoleLabel, type CharacterRole } from "@/lib/character-config";
 import { worldEntryTypeLabel, type WorldEntryType } from "@/lib/world-config";
@@ -123,9 +123,9 @@ export async function listChaptersMentioning(
   const userId = await requireUserId();
   await connectDB();
 
-  const docs = await Chapter.find({ projectId, ownerId: userId })
+  const docs = await Chapter.find({ projectId, ownerId: userId, deletedAt: null })
     .select({ title: 1, order: 1, content: 1 })
-    .sort({ order: 1 })
+    .sort(CHAPTER_ORDER)
     .lean<Record<string, unknown>[]>();
 
   const matches: ChapterMentionRef[] = [];
