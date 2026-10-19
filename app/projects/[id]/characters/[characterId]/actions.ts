@@ -6,10 +6,11 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { connectDB } from "@/lib/db";
 import { Character } from "@/lib/models/character";
-import { requireProject, requireUserId } from "@/lib/projects";
+import { ownsActiveProject, TRASHED_PROJECT_ERROR, requireProject, requireUserId } from "@/lib/projects";
 import { CHARACTER_ROLES, type CharacterRole } from "@/lib/character-config";
 import { safeAction, GENERIC_ERROR } from "@/lib/safe-action";
-import { LIMITS, limitMessage } from "@/lib/limits";
+import { getLimit, keepWithinLimit } from "@/lib/entitlements";
+import { limitMessage } from "@/lib/plans";
 
 const ROLE_VALUES = CHARACTER_ROLES.map((r) => r.value) as [CharacterRole, ...CharacterRole[]];
 
@@ -61,6 +62,8 @@ export const updateCharacterAction = safeAction(
           .map((a) => a.trim())
           .filter(Boolean)
       : [];
+
+    if (!(await ownsActiveProject(userId, projectId))) return { error: TRASHED_PROJECT_ERROR };
 
     await connectDB();
     const result = await Character.updateOne(
@@ -118,10 +121,15 @@ export const createCharacterFromFormAction = safeAction(
       : [];
 
     await connectDB();
-    if ((await Character.countDocuments({ projectId, ownerId: userId })) >= LIMITS.characters) {
-      return { error: limitMessage("characters") };
+    const { plan, limit } = await getLimit(userId, "characters");
+    if ((await Character.countDocuments({ projectId, ownerId: userId })) >= limit) {
+      return { error: limitMessage("characters", plan) };
     }
     const created = await Character.create({ projectId, ownerId: userId, ...rest, aliases: aliasList });
+    // Another create may have landed at the same moment (see keepWithinLimit).
+    if (!(await keepWithinLimit(Character, { projectId, ownerId: userId }, created._id, limit))) {
+      return { error: limitMessage("characters", plan) };
+    }
 
     revalidatePath(`/projects/${projectId}/characters`);
     redirect(`/projects/${projectId}/characters/${created._id}`);

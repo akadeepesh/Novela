@@ -6,10 +6,11 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { connectDB } from "@/lib/db";
 import { WorldEntry } from "@/lib/models/world-entry";
-import { requireProject, requireUserId } from "@/lib/projects";
+import { ownsActiveProject, TRASHED_PROJECT_ERROR, requireProject, requireUserId } from "@/lib/projects";
 import { WORLD_ENTRY_TYPES, type WorldEntryType } from "@/lib/world-config";
 import { safeAction, GENERIC_ERROR } from "@/lib/safe-action";
-import { LIMITS, limitMessage } from "@/lib/limits";
+import { getLimit, keepWithinLimit } from "@/lib/entitlements";
+import { limitMessage } from "@/lib/plans";
 
 const TYPE_VALUES = WORLD_ENTRY_TYPES.map((t) => t.value) as [WorldEntryType, ...WorldEntryType[]];
 
@@ -57,6 +58,8 @@ export const updateWorldEntryAction = safeAction(
           .map((a) => a.trim())
           .filter(Boolean)
       : [];
+
+    if (!(await ownsActiveProject(userId, projectId))) return { error: TRASHED_PROJECT_ERROR };
 
     await connectDB();
     const result = await WorldEntry.updateOne(
@@ -112,10 +115,15 @@ export const createWorldEntryFromFormAction = safeAction(
       : [];
 
     await connectDB();
-    if ((await WorldEntry.countDocuments({ projectId, ownerId: userId })) >= LIMITS.worldEntries) {
-      return { error: limitMessage("worldEntries") };
+    const { plan, limit } = await getLimit(userId, "worldEntries");
+    if ((await WorldEntry.countDocuments({ projectId, ownerId: userId })) >= limit) {
+      return { error: limitMessage("worldEntries", plan) };
     }
     const created = await WorldEntry.create({ projectId, ownerId: userId, ...rest, aliases: aliasList });
+    // Another create may have landed at the same moment (see keepWithinLimit).
+    if (!(await keepWithinLimit(WorldEntry, { projectId, ownerId: userId }, created._id, limit))) {
+      return { error: limitMessage("worldEntries", plan) };
+    }
 
     revalidatePath(`/projects/${projectId}/world`);
     redirect(`/projects/${projectId}/world/${created._id}`);

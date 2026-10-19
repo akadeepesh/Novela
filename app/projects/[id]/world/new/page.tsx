@@ -6,10 +6,11 @@ import { requireProjectSection } from "@/lib/require-project-section"
 import { connectDB } from "@/lib/db"
 import { WorldEntry } from "@/lib/models/world-entry"
 import { requireUserId } from "@/lib/projects"
-import { LIMITS, limitMessage } from "@/lib/limits"
+import { getLimit } from "@/lib/entitlements"
+import { limitMessage } from "@/lib/plans"
 import { LimitReached } from "@/components/project/limit-reached"
 import type { SerializedWorldEntry } from "@/lib/world-entries"
-import { WorldEntryForm } from "./[entryId]/world-entry-form"
+import { WorldEntryForm } from "../[entryId]/world-entry-form"
 
 export async function generateMetadata({
   params,
@@ -31,10 +32,12 @@ export default async function NewWorldEntryPage({
   await requireProjectSection(id, "world")
   const userId = await requireUserId()
   await connectDB()
-  if ((await WorldEntry.countDocuments({ projectId: id, ownerId: userId })) >= LIMITS.worldEntries) {
+  const { plan, limit } = await getLimit(userId, "worldEntries")
+  if ((await WorldEntry.countDocuments({ projectId: id, ownerId: userId })) >= limit) {
     return (
       <LimitReached
-        message={limitMessage("worldEntries")}
+        showUpgrade={plan === "free"}
+        message={limitMessage("worldEntries", plan)}
         backHref={`/projects/${id}/world`}
         backLabel="World"
       />

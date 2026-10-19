@@ -4,10 +4,11 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { connectDB } from "@/lib/db";
 import { Note } from "@/lib/models/note";
-import { requireProject, requireUserId } from "@/lib/projects";
+import { ownsActiveProject, requireProject, requireUserId } from "@/lib/projects";
 import { serializeNoteSummary, type SerializedNoteSummary } from "@/lib/notes";
 import { safeAction } from "@/lib/safe-action";
-import { LIMITS, limitMessage } from "@/lib/limits";
+import { getLimit, keepWithinLimit } from "@/lib/entitlements";
+import { limitMessage } from "@/lib/plans";
 
 const createSchema = z.object({
   title: z.string().trim().max(160).optional(),
@@ -37,8 +38,9 @@ export const createNoteInlineAction = safeAction(
     }
 
     await connectDB();
-    if ((await Note.countDocuments({ projectId, ownerId: userId })) >= LIMITS.notes) {
-      return { ok: false, error: limitMessage("notes") };
+    const { plan, limit } = await getLimit(userId, "notes");
+    if ((await Note.countDocuments({ projectId, ownerId: userId })) >= limit) {
+      return { ok: false, error: limitMessage("notes", plan) };
     }
     const note = await Note.create({
       projectId,
@@ -46,6 +48,10 @@ export const createNoteInlineAction = safeAction(
       title: parsed.data.title?.trim() || "Untitled Note",
       content: parsed.data.content?.trim() || "",
     });
+    // Another create may have landed at the same moment (see keepWithinLimit).
+    if (!(await keepWithinLimit(Note, { projectId, ownerId: userId }, note._id, limit))) {
+      return { ok: false, error: limitMessage("notes", plan) };
+    }
 
     revalidatePath(`/projects/${projectId}/notes`);
     return { ok: true, note: serializeNoteSummary(note.toObject()) };
@@ -79,6 +85,8 @@ export const saveNoteAction = safeAction(
     if (parsed.data.content !== undefined) update.content = parsed.data.content;
     if (parsed.data.tags !== undefined) update.tags = parsed.data.tags;
 
+    if (!(await ownsActiveProject(userId, projectId))) return { ok: false };
+
     await connectDB();
     const result = await Note.updateOne(
       { _id: noteId, projectId, ownerId: userId },
@@ -96,6 +104,7 @@ export const deleteNoteAction = safeAction(
   "deleteNoteAction",
   async (projectId: string, noteId: string) => {
     const userId = await requireUserId();
+    if (!(await ownsActiveProject(userId, projectId))) return;
     await connectDB();
     await Note.deleteOne({ _id: noteId, projectId, ownerId: userId });
     revalidatePath(`/projects/${projectId}/notes`);
@@ -108,6 +117,7 @@ export const togglePinNoteAction = safeAction(
   "togglePinNoteAction",
   async (projectId: string, noteId: string, pinned: boolean) => {
     const userId = await requireUserId();
+    if (!(await ownsActiveProject(userId, projectId))) return;
     await connectDB();
     await Note.updateOne({ _id: noteId, projectId, ownerId: userId }, { $set: { pinned } });
     revalidatePath(`/projects/${projectId}/notes`);

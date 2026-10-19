@@ -6,10 +6,11 @@ import { requireProjectSection } from "@/lib/require-project-section"
 import { connectDB } from "@/lib/db"
 import { PlotThread } from "@/lib/models/plot-thread"
 import { requireUserId } from "@/lib/projects"
-import { LIMITS, limitMessage } from "@/lib/limits"
+import { getLimit } from "@/lib/entitlements"
+import { limitMessage } from "@/lib/plans"
 import { LimitReached } from "@/components/project/limit-reached"
 import type { SerializedPlotThread } from "@/lib/plot-threads"
-import { PlotThreadForm } from "./[threadId]/plot-thread-form"
+import { PlotThreadForm } from "../[threadId]/plot-thread-form"
 
 export async function generateMetadata({
   params,
@@ -31,10 +32,12 @@ export default async function NewPlotThreadPage({
   await requireProjectSection(id, "plot")
   const userId = await requireUserId()
   await connectDB()
-  if ((await PlotThread.countDocuments({ projectId: id, ownerId: userId })) >= LIMITS.plotThreads) {
+  const { plan, limit } = await getLimit(userId, "plotThreads")
+  if ((await PlotThread.countDocuments({ projectId: id, ownerId: userId })) >= limit) {
     return (
       <LimitReached
-        message={limitMessage("plotThreads")}
+        showUpgrade={plan === "free"}
+        message={limitMessage("plotThreads", plan)}
         backHref={`/projects/${id}/plot`}
         backLabel="Plot"
       />

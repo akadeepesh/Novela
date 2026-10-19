@@ -104,7 +104,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       const isLoggedIn = !!auth?.user;
       const { pathname } = request.nextUrl;
       const isProtected =
-        pathname.startsWith("/dashboard") || pathname.startsWith("/projects");
+        pathname.startsWith("/dashboard") ||
+        pathname.startsWith("/projects") ||
+        pathname.startsWith("/settings");
 
       if (isProtected && !isLoggedIn) {
         const loginUrl = new URL("/login", request.nextUrl.origin);
