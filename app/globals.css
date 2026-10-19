@@ -246,6 +246,60 @@
   font-style: italic;
 }
 
+/* Tailwind's reset strips list markers; manuscripts need them back. */
+.manuscript-prose .ProseMirror ul,
+.manuscript-prose .ProseMirror ol {
+  padding-left: 1.6em;
+}
+.manuscript-prose .ProseMirror ul {
+  list-style: disc;
+}
+.manuscript-prose .ProseMirror ol {
+  list-style: decimal;
+}
+.manuscript-prose .ProseMirror li > p + p {
+  margin-top: 0.4em;
+}
+
+/* Scene break: shown as the same "* * *" every export prints. */
+.manuscript-prose .ProseMirror hr {
+  border: none;
+  margin: 1.6em 0;
+  text-align: center;
+  overflow: visible;
+  height: auto;
+}
+.manuscript-prose .ProseMirror hr::after {
+  content: "*   *   *";
+  white-space: pre;
+  opacity: 0.7;
+}
+.manuscript-prose .ProseMirror hr.ProseMirror-selectednode::after {
+  outline: 2px solid var(--ring);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+/* Find & replace highlights */
+.manuscript-prose .search-match {
+  background: oklch(0.88 0.12 90 / 0.55);
+  border-radius: 2px;
+}
+.manuscript-prose .search-match-current {
+  background: oklch(0.8 0.16 70 / 0.8);
+}
+
+/* Margin comments: the passage a note is about */
+.manuscript-prose .comment-highlight {
+  background: oklch(0.85 0.1 85 / 0.35);
+  border-bottom: 2px solid oklch(0.75 0.14 75 / 0.8);
+}
+
+/* Distraction-free mode */
+.is-zen .manuscript-prose .ProseMirror {
+  min-height: 80vh;
+}
+
 .manuscript-prose .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;

@@ -1,6 +1,6 @@
 import "server-only";
 import { connectDB } from "@/lib/db";
-import { Chapter } from "@/lib/models/chapter";
+import { Chapter, CHAPTER_ORDER } from "@/lib/models/chapter";
 import { Character } from "@/lib/models/character";
 import { WorldEntry } from "@/lib/models/world-entry";
 import { PlotThread } from "@/lib/models/plot-thread";
@@ -42,8 +42,8 @@ export async function buildExportDocument(
 ): Promise<ExportDocument> {
   await connectDB();
 
-  const chapters = await Chapter.find({ projectId: project.id, ownerId: userId })
-    .sort({ order: 1 })
+  const chapters = await Chapter.find({ projectId: project.id, ownerId: userId, deletedAt: null })
+    .sort(CHAPTER_ORDER)
     .lean<Record<string, unknown>[]>();
 
   const manuscript: ExportSection[] = chapters.map((c, index) => ({

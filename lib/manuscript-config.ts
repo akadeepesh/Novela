@@ -90,6 +90,23 @@ export const LINE_WIDTH_PX: Record<LineWidth, string> = {
   wide: "56rem",
 }
 
+// The writing face. Serif is the default long-form face; Typewriter is the
+// Courier look screenwriters expect.
+export const FONT_FAMILIES = ["serif", "sans", "typewriter"] as const
+export type FontFamily = (typeof FONT_FAMILIES)[number]
+
+export const FONT_FAMILY_LABEL: Record<FontFamily, string> = {
+  serif: "Serif",
+  sans: "Sans",
+  typewriter: "Typewriter",
+}
+
+export const FONT_FAMILY_CSS: Record<FontFamily, string> = {
+  serif: "var(--font-serif), ui-serif, Georgia, serif",
+  sans: "var(--font-sans), ui-sans-serif, system-ui, sans-serif",
+  typewriter: '"Courier Prime", "Courier New", Courier, ui-monospace, monospace',
+}
+
 export type ManuscriptSettings = {
   background: BackgroundId
   backgroundImageUrl: string
@@ -100,6 +117,7 @@ export type ManuscriptSettings = {
   fontSize: number
   lineHeight: number
   lineWidth: LineWidth
+  fontFamily: FontFamily
 }
 
 export const DEFAULT_MANUSCRIPT_SETTINGS: ManuscriptSettings = {
@@ -112,4 +130,5 @@ export const DEFAULT_MANUSCRIPT_SETTINGS: ManuscriptSettings = {
   fontSize: 18,
   lineHeight: 1.75,
   lineWidth: "medium",
+  fontFamily: "serif",
 }

@@ -1,7 +1,7 @@
 import "server-only";
 import JSZip from "jszip";
 import { randomUUID } from "node:crypto";
-import type { ExportBlock, ExportDocument, ExportRun, ExportSection } from "./document-model";
+import { SCENE_BREAK_TEXT, type ExportBlock, type ExportDocument, type ExportRun, type ExportSection } from "./document-model";
 
 function escapeXml(text: string): string {
   return text
@@ -22,21 +22,36 @@ function runsToHtml(runs: ExportRun[]): string {
     let piece = escapeXml(run.text);
     if (run.marks.includes("bold")) piece = `<strong>${piece}</strong>`;
     if (run.marks.includes("italic")) piece = `<em>${piece}</em>`;
+    if (run.marks.includes("underline")) piece = `<u>${piece}</u>`;
+    if (run.marks.includes("strike")) piece = `<s>${piece}</s>`;
     html += piece;
   }
   return html;
+}
+
+function alignAttr(align: string | undefined): string {
+  return align ? ` style="text-align: ${align}"` : "";
 }
 
 function blockToHtml(block: ExportBlock): string {
   if (block.kind === "heading") {
     // h1 is reserved for the chapter/section title itself.
     const tag = `h${block.level + 1}`;
-    return `<${tag}>${runsToHtml(block.runs)}</${tag}>`;
+    return `<${tag}${alignAttr(block.align)}>${runsToHtml(block.runs)}</${tag}>`;
   }
   if (block.kind === "blockquote") {
     return `<blockquote><p>${runsToHtml(block.runs)}</p></blockquote>`;
   }
-  return `<p>${runsToHtml(block.runs)}</p>`;
+  if (block.kind === "sceneBreak") {
+    return `<p class="scene-break">${SCENE_BREAK_TEXT}</p>`;
+  }
+  if (block.kind === "listItem") {
+    // Items are flattened (see tiptapToBlocks), so the marker is written out
+    // rather than rebuilding nested <ul>/<ol> elements.
+    const marker = block.ordered ? `${block.number}.` : "&#8226;";
+    return `<p class="list-item" style="margin-left: ${1.5 + block.depth * 1.5}em">${marker} ${runsToHtml(block.runs)}</p>`;
+  }
+  return `<p${alignAttr(block.align)}>${runsToHtml(block.runs)}</p>`;
 }
 
 function sectionToXhtml(
@@ -68,6 +83,8 @@ h2 { font-size: 1.3em; }
 h3 { font-size: 1.1em; }
 p { margin: 0 0 1em 0; text-indent: 0; }
 blockquote { margin: 1em 2em; font-style: italic; }
+.scene-break { text-align: center; text-indent: 0; margin: 1.5em 0; }
+.list-item { text-indent: -1.2em; margin-top: 0.2em; margin-bottom: 0.2em; }
 body.poem p { white-space: pre-wrap; margin: 0 0 0.4em 0; }
 .title-page { text-align: center; margin-top: 30%; }
 .title-page h1 { font-size: 2em; }

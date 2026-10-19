@@ -1,15 +1,19 @@
 "use client"
 
+import { useState } from "react"
 import { XIcon } from "@phosphor-icons/react/dist/ssr"
 import { cn } from "cn"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { BoundedNumberInput, DebouncedInput } from "@/components/ui/committed-input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import type { ActionQueue } from "@/lib/action-queue"
 import {
   BACKGROUND_PRESETS,
   CUSTOM_BACKGROUND_ID,
+  FONT_FAMILIES,
+  FONT_FAMILY_CSS,
+  FONT_FAMILY_LABEL,
   LINE_WIDTHS,
   type ManuscriptSettings,
 } from "@/lib/manuscript-config"
@@ -30,15 +34,14 @@ export function ManuscriptSettingsPanel({
   // and an in-progress autosave are never both in flight at once.
   enqueue: ActionQueue
 }) {
+  const [saveFailed, setSaveFailed] = useState(false)
+
   function patch(update: Partial<ManuscriptSettings>) {
     const next = { ...settings, ...update }
     onChange(next)
-    enqueue(() => updateManuscriptSettingsAction(projectId, update as ManuscriptSettingsInput)).catch(
-      () => {
-        // Best-effort: the setting still applies locally for this session;
-        // it'll be retried the next time anything here changes.
-      }
-    )
+    enqueue(() => updateManuscriptSettingsAction(projectId, update as ManuscriptSettingsInput))
+      .catch(() => ({ ok: false }))
+      .then((result) => setSaveFailed(!result.ok))
   }
 
   return (
@@ -103,29 +106,48 @@ export function ManuscriptSettingsPanel({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="fontSize">Font size</Label>
-            <Input
+            <BoundedNumberInput
               id="fontSize"
-              type="number"
               min={14}
               max={28}
               value={settings.fontSize}
-              onChange={(e) => patch({ fontSize: Number(e.target.value) })}
+              onValidChange={(fontSize) => patch({ fontSize })}
             />
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="lineHeight">Line height</Label>
-            <Input
+            <BoundedNumberInput
               id="lineHeight"
-              type="number"
               step={0.05}
               min={1.3}
               max={2.2}
               value={settings.lineHeight}
-              onChange={(e) => patch({ lineHeight: Number(e.target.value) })}
+              onValidChange={(lineHeight) => patch({ lineHeight })}
             />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label>Typeface</Label>
+            <div className="flex gap-1">
+              {FONT_FAMILIES.map((family) => (
+                <button
+                  key={family}
+                  type="button"
+                  onClick={() => patch({ fontFamily: family })}
+                  style={{ fontFamily: FONT_FAMILY_CSS[family] }}
+                  className={cn(
+                    "flex-1 rounded-md border px-2 py-1.5 text-xs transition-colors",
+                    settings.fontFamily === family
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {FONT_FAMILY_LABEL[family]}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="flex flex-col gap-1.5">
             <Label>Line width</Label>
@@ -159,10 +181,11 @@ export function ManuscriptSettingsPanel({
               <span className="text-sm text-foreground">Show running header</span>
             </label>
             {settings.showHeader ? (
-              <Input
+              <DebouncedInput
                 placeholder="Defaults to the chapter title"
                 value={settings.headerText}
-                onChange={(e) => patch({ headerText: e.target.value })}
+                maxLength={120}
+                onCommit={(headerText) => patch({ headerText })}
               />
             ) : null}
           </div>
@@ -176,14 +199,21 @@ export function ManuscriptSettingsPanel({
               <span className="text-sm text-foreground">Show footer</span>
             </label>
             {settings.showFooter ? (
-              <Input
+              <DebouncedInput
                 placeholder="e.g. your name, or a page note"
                 value={settings.footerText}
-                onChange={(e) => patch({ footerText: e.target.value })}
+                maxLength={120}
+                onCommit={(footerText) => patch({ footerText })}
               />
             ) : null}
           </div>
         </div>
+
+        {saveFailed ? (
+          <p role="alert" className="text-xs text-destructive">
+            Couldn&apos;t save your last change. It still applies here; change it again to retry.
+          </p>
+        ) : null}
 
         <p className="text-xs text-muted-foreground">
           Applies to every {" "}

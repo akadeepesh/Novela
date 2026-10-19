@@ -1,6 +1,6 @@
 import { Schema, model, models, type InferSchemaType } from "mongoose";
 import { PROJECT_TYPES, SECTION_DEFS } from "@/lib/project-config";
-import { BACKGROUND_IDS, LINE_WIDTHS } from "@/lib/manuscript-config";
+import { BACKGROUND_IDS, FONT_FAMILIES, LINE_WIDTHS } from "@/lib/manuscript-config";
 import { CHAPTER_NUMBERING_STYLE_IDS } from "@/lib/chapter-numbering";
 import { TRIM_SIZE_IDS } from "@/lib/export-config";
 
@@ -18,6 +18,7 @@ const manuscriptSettingsSchema = new Schema(
     fontSize: { type: Number, min: 14, max: 28, default: 18 },
     lineHeight: { type: Number, min: 1.3, max: 2.2, default: 1.75 },
     lineWidth: { type: String, enum: LINE_WIDTHS, default: "medium" },
+    fontFamily: { type: String, enum: FONT_FAMILIES, default: "serif" },
   },
   { _id: false }
 );
