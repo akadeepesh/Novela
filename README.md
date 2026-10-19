@@ -46,3 +46,34 @@ rather than one generic template stretched over everything.
 | Editor | Tiptap |
 | UI | Base UI primitives + Tailwind CSS v4, Phosphor icons |
 | Export | `@react-pdf/renderer` (PDF), `docx` (DOCX), `jszip` (EPUB) |
+
+## Configuration
+
+Set these in `.env.local` (env files are git-ignored).
+
+| Variable | Purpose |
+|---|---|
+| `MONGODB_URI` | MongoDB connection string |
+| `AUTH_SECRET` | Auth.js session secret |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google sign-in |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob, for covers and backgrounds |
+| `NEXT_PUBLIC_APP_URL` | Public origin, e.g. `https://korakagaj.com` (used for payment return URLs) |
+
+### Payments (Pro plan)
+
+Rupee prices are charged through **Razorpay** (UPI Autopay, cards, netbanking);
+dollar prices through **Stripe**. A provider stays switched off, and its
+checkout shows "Payments aren't available", until all of its variables are set.
+
+| Variable | Where to get it |
+|---|---|
+| `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | Razorpay Dashboard → API Keys |
+| `RAZORPAY_PLAN_MONTHLY`, `RAZORPAY_PLAN_YEARLY` | Subscriptions → Plans: create ₹249/month and ₹2,399/year plans, copy their `plan_…` ids |
+| `RAZORPAY_WEBHOOK_SECRET` | Webhooks → add `https://<your-domain>/api/billing/webhooks/razorpay` with the `subscription.*` events |
+| `STRIPE_SECRET_KEY` | Stripe Dashboard → Developers → API keys |
+| `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_YEARLY` | Product catalog: a "Pro" product with $5/month and $48/year recurring prices (`price_…` ids) |
+| `STRIPE_WEBHOOK_SECRET` | Webhooks → add `https://<your-domain>/api/billing/webhooks/stripe` with `checkout.session.completed`, `customer.subscription.*` and `invoice.*` events (or `stripe listen --forward-to localhost:3000/api/billing/webhooks/stripe` locally) |
+
+The prices shown on `/pricing` come from `PRO_PRICES` in `lib/plans.ts`. Keep
+them in step with the provider plans; what each plan allows is in `PLANS` in
+the same file.
