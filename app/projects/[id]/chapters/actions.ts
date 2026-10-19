@@ -2,45 +2,19 @@
 
 import { createHash } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { Types } from "mongoose";
+import { z } from "zod";
 import { connectDB } from "@/lib/db";
 import { Chapter } from "@/lib/models/chapter";
 import { ChapterVersion } from "@/lib/models/chapter-version";
-import { requireProject, requireUserId } from "@/lib/projects";
+import { Comment } from "@/lib/models/comment";
+import { ownsActiveProject, requireProject, requireUserId } from "@/lib/projects";
 import { sectionLabelSingular } from "@/lib/project-config";
 import { nextDefaultName } from "@/lib/default-name";
 import { countWords } from "@/lib/word-count";
-import { LIMITS } from "@/lib/limits";
+import { getLimit, keepWithinLimit } from "@/lib/entitlements";
 import { safeAction } from "@/lib/safe-action";
-
-// Rewrites `order` to 0..n-1 so positions are always unique and gap-free.
-// Optionally moves one chapter up/down first. Running this also heals projects
-// that already have duplicate or gappy orders from earlier deletes.
-// timestamps: false — reordering isn't writing, so it shouldn't move a chapter
-// to the top of the dashboard's "Last worked on".
-async function repackOrders(
-  projectId: string,
-  userId: string,
-  move?: { chapterId: string; direction: "up" | "down" }
-) {
-  const chapters = await Chapter.find({ projectId, ownerId: userId })
-    .sort({ order: 1, createdAt: 1 })
-    .select("order")
-    .lean<{ _id: Types.ObjectId; order: number }[]>();
-
-  if (move) {
-    const index = chapters.findIndex((c) => String(c._id) === move.chapterId);
-    const target = move.direction === "up" ? index - 1 : index + 1;
-    if (index !== -1 && target >= 0 && target < chapters.length) {
-      [chapters[index], chapters[target]] = [chapters[target], chapters[index]];
-    }
-  }
-
-  const ops = chapters.flatMap((c, i) =>
-    c.order === i ? [] : [{ updateOne: { filter: { _id: c._id }, update: { $set: { order: i } } } }]
-  );
-  if (ops.length > 0) await Chapter.bulkWrite(ops, { timestamps: false });
-}
+import { limitMessage } from "@/lib/plans";
+import { CHAPTER_LABELS } from "@/lib/chapter-config";
 
 export type CreateChapterResult =
   | { ok: true; id: string; version: number }
@@ -74,10 +48,11 @@ export const createChapterFromDraftAction = safeAction(
     }
 
     await connectDB();
-    const existing = await Chapter.find({ projectId, ownerId: userId })
+    const existing = await Chapter.find({ projectId, ownerId: userId, deletedAt: null })
       .select("title order")
       .lean<{ title: string; order: number }[]>();
-    if (existing.length >= LIMITS.chapters) return { ok: false, code: "limit" };
+    const { limit } = await getLimit(userId, "chapters");
+    if (existing.length >= limit) return { ok: false, code: "limit" };
     const label = sectionLabelSingular("chapters", project.type);
 
     // Next position after the current last one (not "how many exist", which
@@ -100,6 +75,10 @@ export const createChapterFromDraftAction = safeAction(
       wordCount: countWords(content),
       contentHash: createHash("sha256").update(json).digest("hex"),
     });
+    // Another create may have landed at the same moment (see keepWithinLimit).
+    if (!(await keepWithinLimit(Chapter, { projectId, ownerId: userId, deletedAt: null }, chapter._id, limit))) {
+      return { ok: false, code: "limit" };
+    }
 
     revalidatePath(`/projects/${projectId}/chapters`);
     return { ok: true, id: String(chapter._id), version: chapter.version ?? 0 };
@@ -108,32 +87,150 @@ export const createChapterFromDraftAction = safeAction(
   { ids: [0] }
 );
 
-export const deleteChapterAction = safeAction(
-  "deleteChapterAction",
-  async (projectId: string, chapterId: string) => {
+function revalidateChapters(projectId: string) {
+  // The list, the sidebar search and the Read view all show chapter order/titles.
+  revalidatePath(`/projects/${projectId}`, "layout");
+  revalidatePath(`/read/${projectId}`, "layout");
+}
+
+/**
+ * Saves a new reading order. `orderedIds` must be exactly the project's
+ * current chapters, each once; anything else (a chapter added or trashed in
+ * another tab since the list loaded) is refused, so the page reloads the
+ * real list instead of writing a stale order.
+ */
+export const reorderChaptersAction = safeAction(
+  "reorderChaptersAction",
+  async (projectId: string, orderedIds: string[]): Promise<{ ok: boolean }> => {
     const userId = await requireUserId();
-    await connectDB();
-    const result = await Chapter.deleteOne({ _id: chapterId, projectId, ownerId: userId });
-    if (result.deletedCount > 0) {
-      // Versions of a deleted chapter would otherwise be orphaned, unreachable
-      // from the UI but still taking up storage.
-      await ChapterVersion.deleteMany({ chapterId, projectId, ownerId: userId });
-      await repackOrders(projectId, userId);
+    if (!Array.isArray(orderedIds) || !(await ownsActiveProject(userId, projectId))) return { ok: false };
+
+    const current = await Chapter.find({ projectId, ownerId: userId, deletedAt: null })
+      .select("_id")
+      .lean<{ _id: unknown }[]>();
+    const known = new Set(current.map((c) => String(c._id)));
+    const unique = new Set(orderedIds);
+    if (unique.size !== orderedIds.length || unique.size !== known.size || orderedIds.some((id) => !known.has(id))) {
+      return { ok: false };
     }
-    revalidatePath(`/projects/${projectId}/chapters`);
+
+    // timestamps: false — reordering isn't writing, so it shouldn't move a
+    // chapter to the top of the dashboard's "Last worked on".
+    await Chapter.bulkWrite(
+      orderedIds.map((id, order) => ({
+        updateOne: { filter: { _id: id, projectId, ownerId: userId }, update: { $set: { order } } },
+      })),
+      { timestamps: false }
+    );
+    revalidateChapters(projectId);
+    return { ok: true };
   },
-  () => undefined,
+  () => ({ ok: false }),
+  { ids: [0] }
+);
+
+const metaSchema = z.object({
+  status: z.enum(["draft", "in-progress", "done"]).optional(),
+  synopsis: z.string().trim().max(1000).optional(),
+  label: z.enum(CHAPTER_LABELS).optional(),
+});
+
+export type ChapterMetaInput = z.infer<typeof metaSchema>;
+
+/** Status, synopsis and colour label: the outline-board details. */
+export const updateChapterMetaAction = safeAction(
+  "updateChapterMetaAction",
+  async (projectId: string, chapterId: string, input: ChapterMetaInput): Promise<{ ok: boolean }> => {
+    const userId = await requireUserId();
+    const parsed = metaSchema.safeParse(input);
+    if (!parsed.success || !(await ownsActiveProject(userId, projectId))) return { ok: false };
+    const result = await Chapter.updateOne(
+      { _id: chapterId, projectId, ownerId: userId, deletedAt: null },
+      { $set: parsed.data },
+      { timestamps: false }
+    );
+    revalidateChapters(projectId);
+    return { ok: result.matchedCount > 0 };
+  },
+  () => ({ ok: false }),
   { ids: [0, 1] }
 );
 
-export const moveChapterAction = safeAction(
-  "moveChapterAction",
-  async (projectId: string, chapterId: string, direction: "up" | "down") => {
+/** Moves a chapter to the Trash. Nothing is deleted; it can be restored for 30 days. */
+export const trashChapterAction = safeAction(
+  "trashChapterAction",
+  async (projectId: string, chapterId: string): Promise<{ ok: boolean }> => {
     const userId = await requireUserId();
-    await connectDB();
-    await repackOrders(projectId, userId, { chapterId, direction });
-    revalidatePath(`/projects/${projectId}/chapters`);
+    if (!(await ownsActiveProject(userId, projectId))) return { ok: false };
+    const result = await Chapter.updateOne(
+      { _id: chapterId, projectId, ownerId: userId, deletedAt: null },
+      { $set: { deletedAt: new Date() } },
+      { timestamps: false }
+    );
+    revalidateChapters(projectId);
+    return { ok: result.matchedCount > 0 };
   },
-  () => undefined,
+  () => ({ ok: false }),
   { ids: [0, 1] }
 );
+
+/** Brings a chapter back from the Trash, at the end of the book. Counts as creating one. */
+export const restoreChapterAction = safeAction(
+  "restoreChapterAction",
+  async (projectId: string, chapterId: string): Promise<{ ok: true } | { ok: false; error: string }> => {
+    const userId = await requireUserId();
+    if (!(await ownsActiveProject(userId, projectId))) return { ok: false, error: "Couldn't find this project." };
+
+    const active = { projectId, ownerId: userId, deletedAt: null };
+    const { plan, limit } = await getLimit(userId, "chapters");
+    const limited = { ok: false as const, error: limitMessage("chapters", plan) };
+    if ((await Chapter.countDocuments(active)) >= limit) return limited;
+
+    const last = await Chapter.findOne(active).sort({ order: -1 }).select("order").lean<{ order: number }>();
+    const previous = await Chapter.findOneAndUpdate(
+      { _id: chapterId, projectId, ownerId: userId, deletedAt: { $ne: null } },
+      { $unset: { deletedAt: "" }, $set: { order: (last?.order ?? -1) + 1 } },
+      { timestamps: false, new: false, projection: "deletedAt" }
+    ).lean<{ deletedAt: Date }>();
+    if (!previous) return { ok: false, error: "Couldn't find this chapter in the Trash." };
+    // A create or restore at the same moment may have filled the last slot.
+    if ((await Chapter.countDocuments(active)) > limit) {
+      await Chapter.updateOne(
+        { _id: chapterId, projectId, ownerId: userId },
+        { $set: { deletedAt: previous.deletedAt } },
+        { timestamps: false }
+      );
+      return limited;
+    }
+    revalidateChapters(projectId);
+    return { ok: true };
+  },
+  () => ({ ok: false as const, error: "Couldn't restore it just now. Please try again." }),
+  { ids: [0, 1] }
+);
+
+/** Permanently deletes a chapter that is already in the Trash, with its versions and comments. */
+export const deleteChapterForeverAction = safeAction(
+  "deleteChapterForeverAction",
+  async (projectId: string, chapterId: string): Promise<{ ok: boolean }> => {
+    const userId = await requireUserId();
+    if (!(await ownsActiveProject(userId, projectId))) return { ok: false };
+    const trashed = await Chapter.exists({ _id: chapterId, projectId, ownerId: userId, deletedAt: { $ne: null } });
+    if (!trashed) return { ok: false };
+    await purgeChapter(projectId, chapterId, userId);
+    revalidateChapters(projectId);
+    return { ok: true };
+  },
+  () => ({ ok: false }),
+  { ids: [0, 1] }
+);
+
+// Children first, then the chapter: if this stops halfway, the chapter is
+// still in the Trash and deleting it again finishes the job.
+async function purgeChapter(projectId: string, chapterId: string, userId: string) {
+  await Promise.all([
+    ChapterVersion.deleteMany({ chapterId, projectId, ownerId: userId }),
+    Comment.deleteMany({ chapterId, projectId, ownerId: userId }),
+  ]);
+  await Chapter.deleteOne({ _id: chapterId, projectId, ownerId: userId });
+}

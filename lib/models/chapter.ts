@@ -1,4 +1,5 @@
 import { Schema, model, models, type InferSchemaType } from "mongoose";
+import { CHAPTER_LABELS } from "@/lib/chapter-config";
 
 const chapterSchema = new Schema(
   {
@@ -27,14 +28,28 @@ const chapterSchema = new Schema(
       enum: ["draft", "in-progress", "done"],
       default: "draft",
     },
+    // A line or two on what happens here, shown on the outline board.
+    synopsis: { type: String, trim: true, maxlength: 1000, default: "" },
+    // Optional colour tag for the outline board (e.g. one per POV character).
+    label: { type: String, enum: CHAPTER_LABELS, default: "" },
+    // Soft delete: a chapter with a deletedAt is in the Trash, restorable
+    // until purged (see lib/trash.ts). Every normal query filters it out.
+    deletedAt: { type: Date },
   },
   { timestamps: true }
 );
 
-chapterSchema.index({ projectId: 1, order: 1 });
+chapterSchema.index({ projectId: 1, deletedAt: 1, order: 1 });
 // Serves the dashboard's "most recently edited chapter" lookup.
 chapterSchema.index({ ownerId: 1, updatedAt: -1 });
 
 export type ChapterDoc = InferSchemaType<typeof chapterSchema>;
+
+/**
+ * The one reading order for chapters, used by every list, export, the Read
+ * view and reordering. `createdAt` breaks ties, so two chapters that ended up
+ * with the same `order` still come out the same way everywhere.
+ */
+export const CHAPTER_ORDER = { order: 1, createdAt: 1 } as const;
 
 export const Chapter = models.Chapter || model("Chapter", chapterSchema);
