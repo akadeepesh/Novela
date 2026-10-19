@@ -18,10 +18,13 @@ export async function generateMetadata({
 
 export default async function ChapterEditorPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string; chapterId: string }>
+  searchParams: Promise<{ comments?: string }>
 }) {
   const { id, chapterId } = await params
+  const { comments } = await searchParams
   const project = await requireProjectSection(id, "chapters")
   const chapter = await requireChapter(id, chapterId)
   const mentionables = await listMentionablesForProject(id)
@@ -36,6 +39,7 @@ export default async function ChapterEditorPage({
       chapterLabelSingular={singular}
       manuscriptSettings={project.manuscriptSettings}
       mentionables={mentionables}
+      openComments={comments === "1"}
     />
   )
 }

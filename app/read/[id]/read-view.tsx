@@ -161,6 +161,7 @@ export function ReadView({
   coverBackUrl,
   initialChapterId,
   backHref,
+  renderExtra,
 }: {
   doc: ExportDocument
   projectType: ProjectType
@@ -168,7 +169,10 @@ export function ReadView({
   coverFrontUrl?: string
   coverBackUrl?: string
   initialChapterId?: string
-  backHref: string
+  /** Where "Back" goes. Omitted for readers on a share link, who have nowhere to go back to. */
+  backHref?: string
+  /** Extra controls for the top bar (the reader's "Comment" button), told which chapter is open. */
+  renderExtra?: (current: { chapterId: string; title: string } | null) => React.ReactNode
 }) {
   const trim = getTrimSize(doc.trimSize)
   const W0 = trim.widthIn * POINTS_PER_INCH
@@ -418,15 +422,25 @@ export function ReadView({
     )
   }
 
+  // The chapter the reader is in: the last one that starts at or before this page.
+  let currentChapter: { chapterId: string; title: string } | null = null
+  for (const s of book?.sections ?? []) {
+    if (s.leaf <= pageIndex + (layout?.spread ? 1 : 0)) currentChapter = { chapterId: s.id, title: s.label }
+  }
+
   return (
     <div className="flex h-screen flex-col bg-muted/40">
       <style>{BOOK_CSS}</style>
 
       <div className="relative flex items-center justify-between border-b border-border bg-background px-4 py-2">
-        <Link href={backHref} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeftIcon className="size-3.5" />
-          Back
-        </Link>
+        {backHref ? (
+          <Link href={backHref} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+            <ArrowLeftIcon className="size-3.5" />
+            Back
+          </Link>
+        ) : (
+          <span className="w-12" />
+        )}
 
         <div className="flex items-center gap-3">
           <p className="max-w-64 truncate text-sm font-medium text-foreground">{doc.title}</p>
@@ -442,9 +456,12 @@ export function ReadView({
           ) : null}
         </div>
 
-        <span className="w-28 text-right text-xs text-muted-foreground">
-          {book ? pageLabel(pageIndex) : ""}
-        </span>
+        <div className="flex items-center gap-3">
+          {renderExtra ? renderExtra(currentChapter) : null}
+          <span className="w-28 text-right text-xs text-muted-foreground">
+            {book ? pageLabel(pageIndex) : ""}
+          </span>
+        </div>
 
         {menuOpen && book ? (
           <div className="absolute top-full left-1/2 z-50 mt-1 max-h-80 w-72 -translate-x-1/2 overflow-y-auto rounded-lg border border-border bg-popover p-1 shadow-lg">

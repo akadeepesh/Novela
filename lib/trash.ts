@@ -9,6 +9,8 @@ import { PlotThread } from "@/lib/models/plot-thread";
 import { Note } from "@/lib/models/note";
 import { ResearchEntry } from "@/lib/models/research-entry";
 import { DailyStat } from "@/lib/models/daily-stat";
+import { Comment } from "@/lib/models/comment";
+import { ShareLink } from "@/lib/models/share-link";
 import { deleteProjectImage } from "@/lib/blob";
 import { normalizeProjectType, type ProjectType } from "@/lib/project-config";
 import { TRASH_DAYS } from "@/lib/trash-config";
@@ -41,14 +43,16 @@ export async function purgeProject(project: PurgeableProject, userId: string) {
     Note.deleteMany({ projectId, ownerId: userId }),
     ResearchEntry.deleteMany({ projectId, ownerId: userId }),
     DailyStat.deleteMany({ projectId, ownerId: userId }),
-    deleteProjectImage(project.coverFrontUrl),
-    deleteProjectImage(project.coverBackUrl),
-    deleteProjectImage(project.manuscriptSettings?.backgroundImageUrl),
+    Comment.deleteMany({ projectId, ownerId: userId }),
+    ShareLink.deleteMany({ projectId, ownerId: userId }),
+    deleteProjectImage(userId, project.coverFrontUrl),
+    deleteProjectImage(userId, project.coverBackUrl),
+    deleteProjectImage(userId, project.manuscriptSettings?.backgroundImageUrl),
   ]);
   await Project.deleteOne({ _id: projectId, ownerId: userId });
 }
 
-/** Deletes this person's projects that have been in the Trash longer than TRASH_DAYS. */
+/** Deletes this person's projects and chapters that have been in the Trash longer than TRASH_DAYS. */
 export async function purgeExpiredTrash(userId: string) {
   await connectDB();
   const cutoff = new Date(Date.now() - TRASH_DAYS * DAY_MS);
@@ -56,6 +60,18 @@ export async function purgeExpiredTrash(userId: string) {
     .select(PURGE_FIELDS)
     .lean<PurgeableProject[]>();
   for (const project of expired) await purgeProject(project, userId);
+
+  const expiredChapters = await Chapter.find({ ownerId: userId, deletedAt: { $lt: cutoff } })
+    .select("_id")
+    .lean<{ _id: unknown }[]>();
+  if (expiredChapters.length > 0) {
+    const chapterIds = expiredChapters.map((c) => c._id);
+    await Promise.all([
+      ChapterVersion.deleteMany({ chapterId: { $in: chapterIds }, ownerId: userId }),
+      Comment.deleteMany({ chapterId: { $in: chapterIds }, ownerId: userId }),
+    ]);
+    await Chapter.deleteMany({ _id: { $in: chapterIds }, ownerId: userId });
+  }
 }
 
 /** Finds one trashed project of this person (for restore / delete forever). */

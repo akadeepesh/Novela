@@ -3,6 +3,7 @@ import { Types } from "mongoose";
 import { connectDB } from "@/lib/db";
 import { Project } from "@/lib/models/project";
 import { Chapter } from "@/lib/models/chapter";
+import { Comment } from "@/lib/models/comment";
 import { requireUserId } from "@/lib/projects";
 import type { ProjectType } from "@/lib/project-config";
 import { normalizeProjectType } from "@/lib/project-config";
@@ -47,7 +48,7 @@ export async function getDashboardData(): Promise<DashboardData> {
     title: string;
     updatedAt: Date;
   }>([
-    { $match: { ownerId: new Types.ObjectId(userId) } },
+    { $match: { ownerId: new Types.ObjectId(userId), deletedAt: null } },
     { $sort: { updatedAt: -1 } },
     {
       $group: {
@@ -91,4 +92,44 @@ export async function getDashboardData(): Promise<DashboardData> {
   }));
 
   return { hero, others };
+}
+
+/**
+ * Reader comments the writer hasn't opened yet, on chapters and books that
+ * are still live (not in the Trash), with a link to the newest one.
+ */
+export async function getUnseenReaderComments(
+  userId: string
+): Promise<{ count: number; href: string } | null> {
+  await connectDB();
+  const unseen = await Comment.find({ ownerId: userId, authorKind: "reader", seenByOwner: false })
+    .sort({ createdAt: -1 })
+    .select("projectId chapterId")
+    .limit(200)
+    .lean<{ projectId: Types.ObjectId; chapterId: Types.ObjectId }[]>();
+  if (unseen.length === 0) return null;
+
+  const live = await Chapter.find({
+    _id: { $in: [...new Set(unseen.map((c) => String(c.chapterId)))] },
+    ownerId: userId,
+    deletedAt: null,
+  })
+    .select("projectId")
+    .lean<{ _id: Types.ObjectId; projectId: Types.ObjectId }[]>();
+  const liveProjects = new Set(
+    (
+      await Project.find({ _id: { $in: live.map((c) => c.projectId) }, ownerId: userId, deletedAt: null })
+        .select("_id")
+        .lean<{ _id: Types.ObjectId }[]>()
+    ).map((p) => String(p._id))
+  );
+  const liveChapters = new Set(live.filter((c) => liveProjects.has(String(c.projectId))).map((c) => String(c._id)));
+
+  const visible = unseen.filter((c) => liveChapters.has(String(c.chapterId)));
+  if (visible.length === 0) return null;
+  const newest = visible[0];
+  return {
+    count: visible.length,
+    href: `/projects/${newest.projectId}/chapters/${newest.chapterId}?comments=1`,
+  };
 }
