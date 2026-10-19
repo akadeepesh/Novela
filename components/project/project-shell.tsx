@@ -1,6 +1,5 @@
 "use client"
 
-import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import { ArrowLeftIcon, SidebarSimpleIcon } from "@phosphor-icons/react/dist/ssr"
@@ -9,6 +8,7 @@ import { SECTION_DEFS, sectionLabel, projectTypeLabel } from "@/lib/project-conf
 import type { SerializedProject } from "@/lib/projects"
 import type { SearchItem } from "@/lib/search"
 import { CommandPalette } from "./command-palette"
+import { GuardedLink, NavigationGuardProvider } from "./navigation-guard"
 import { AddSectionControl } from "./add-section-control"
 import { titleTargetStyle, useTitleTarget } from "./title-flight"
 
@@ -44,13 +44,13 @@ function SidebarNav({
   return (
     <>
       <div className="flex items-center justify-between px-3 pt-3">
-        <Link
+        <GuardedLink
           href="/dashboard"
           className="inline-flex w-fit items-center gap-1 text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground"
         >
           <ArrowLeftIcon className="size-3" />
           All projects
-        </Link>
+        </GuardedLink>
         <button
           type="button"
           onClick={onToggle}
@@ -90,7 +90,7 @@ function SidebarNav({
           const isActive = pathname === href
 
           return (
-            <Link
+            <GuardedLink
               key={sectionId}
               href={href}
               className={cn(
@@ -105,7 +105,7 @@ function SidebarNav({
                 weight={isActive || project.type === "novel" ? "fill" : "regular"}
               />
               {sectionLabel(sectionId, project.type)}
-            </Link>
+            </GuardedLink>
           )
         })}
       </nav>
@@ -184,6 +184,7 @@ export function ProjectShell({
   }
 
   return (
+    <NavigationGuardProvider>
     <div className="flex flex-1">
       {!collapsed ? (
         <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar">
@@ -263,5 +264,6 @@ export function ProjectShell({
         <main className="min-w-0 flex-1">{children}</main>
       </div>
     </div>
+    </NavigationGuardProvider>
   )
 }

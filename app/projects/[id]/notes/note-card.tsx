@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { PushPinIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { ChipInput } from "@/components/ui/chip-input"
@@ -10,6 +10,12 @@ import type { SerializedNoteSummary } from "@/lib/notes"
 import { saveNoteAction, deleteNoteAction, togglePinNoteAction } from "./actions"
 
 const SAVE_DEBOUNCE_MS = 700
+// Match the server's limits (notes/actions.ts) so an over-long note is
+// stopped while typing instead of silently failing to save.
+const MAX_TITLE = 160
+const MAX_CONTENT = 20_000
+
+type NotePatch = { title?: string; content?: string; tags?: string[] }
 
 /**
  * A note, editable in place. Click anywhere in the body and the title and
@@ -32,7 +38,7 @@ export function NoteCard({
   const [title, setTitle] = useState(note.title)
   const [content, setContent] = useState(note.content ?? "")
   const [tags, setTags] = useState(note.tags)
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle")
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle")
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deletePending, setDeletePending] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -54,31 +60,58 @@ export function NoteCard({
     setTags(note.tags)
   }
 
-  function persist(next: { title?: string; content?: string; tags?: string[] }) {
-    return enqueue(() => saveNoteAction(projectId, note.id, next)).then((result) => {
-      setSaveState(result.ok ? "saved" : "idle")
-      if (result.ok) {
-        onSaved({
-          ...note,
-          title: next.title ?? title,
-          content: next.content ?? content,
-          tags: next.tags ?? tags,
-        })
-      }
-      return result
-    })
-  }
+  // Every field changed since the last save, merged. Editing the title and
+  // then the content within one debounce window sends both, not just the last.
+  const pending = useRef<NotePatch>({})
+  const noteRef = useRef(note)
+  const onSavedRef = useRef(onSaved)
+  useEffect(() => {
+    noteRef.current = note
+    onSavedRef.current = onSaved
+  })
 
-  function scheduleSave(next: { title?: string; content?: string; tags?: string[] }) {
+  const flush = useCallback(() => {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current)
+      saveTimer.current = null
+    }
+    const patch = pending.current
+    if (Object.keys(patch).length === 0) return
+    pending.current = {}
+    setSaveState("saving")
+    void enqueue(() => saveNoteAction(projectId, noteRef.current.id, patch))
+      .catch(() => ({ ok: false }))
+      .then((result) => {
+        if (result.ok) {
+          setSaveState("saved")
+          onSavedRef.current({ ...noteRef.current, ...patch })
+        } else {
+          // Keep it pending (newer edits win) so the next change retries it.
+          pending.current = { ...patch, ...pending.current }
+          setSaveState("error")
+        }
+      })
+  }, [enqueue, projectId])
+
+  function scheduleSave(change: NotePatch) {
+    pending.current = { ...pending.current, ...change }
     setSaveState("saving")
     if (saveTimer.current) clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(() => persist(next), SAVE_DEBOUNCE_MS)
+    saveTimer.current = setTimeout(flush, SAVE_DEBOUNCE_MS)
   }
 
   function commitNow() {
-    if (saveTimer.current) clearTimeout(saveTimer.current)
-    persist({ title, content, tags })
+    flush()
   }
+
+  // Leaving the page or closing the tab mid-debounce still saves.
+  useEffect(() => {
+    window.addEventListener("pagehide", flush)
+    return () => {
+      window.removeEventListener("pagehide", flush)
+      flush()
+    }
+  }, [flush])
 
   function handleBlurCapture(e: React.FocusEvent<HTMLDivElement>) {
     const next = e.relatedTarget as Node | null
@@ -137,6 +170,7 @@ export function NoteCard({
           <input
             className="w-full bg-transparent pr-14 font-heading text-base font-semibold text-card-foreground outline-none"
             value={title}
+            maxLength={MAX_TITLE}
             onChange={(e) => {
               setTitle(e.target.value)
               scheduleSave({ title: e.target.value })
@@ -156,6 +190,7 @@ export function NoteCard({
             className="w-full resize-none bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
             rows={5}
             value={content}
+            maxLength={MAX_CONTENT}
             onChange={(e) => {
               setContent(e.target.value)
               scheduleSave({ content: e.target.value })
@@ -170,7 +205,7 @@ export function NoteCard({
         )}
       </div>
 
-      {editing || tags.length > 0 ? (
+      {editing || tags.length > 0 || saveState === "error" ? (
         <div className="flex items-center justify-between gap-2 px-5">
           <ChipInput
             tags={tags}
@@ -180,7 +215,11 @@ export function NoteCard({
             }}
             editing={editing}
           />
-          {editing && saveState === "saving" ? (
+          {saveState === "error" ? (
+            <span role="alert" className="shrink-0 text-[11px] text-destructive">
+              Couldn&apos;t save. Will retry on your next change.
+            </span>
+          ) : editing && saveState === "saving" ? (
             <span className="shrink-0 text-[11px] text-muted-foreground">Saving…</span>
           ) : null}
         </div>

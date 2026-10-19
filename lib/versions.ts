@@ -1,10 +1,10 @@
 import "server-only";
 import { createHash } from "node:crypto";
-import { notFound } from "next/navigation";
 import { connectDB } from "@/lib/db";
 import { Chapter } from "@/lib/models/chapter";
 import { ChapterVersion } from "@/lib/models/chapter-version";
-import { requireUserId } from "@/lib/projects";
+import { ownsActiveProject, requireUserId } from "@/lib/projects";
+import { getEntitlements } from "@/lib/entitlements";
 
 // Don't snapshot more than once per this window while someone is actively
 // writing — autosave fires every ~900ms, but a version every 900ms would
@@ -18,8 +18,9 @@ const BIG_DELETE_RATIO = 0.2;
 const BIG_DELETE_MIN_WORDS = 100;
 const BIG_DELETE_COOLDOWN_MS = 60 * 1000;
 
-// Retention for automatic versions: count only, never age. Manual versions and restore points are kept.
-const MAX_AUTO_VERSIONS_PER_CHAPTER = 50;
+// Matches the ChapterVersion `label` maxlength.
+const MAX_LABEL_LENGTH = 120;
+
 
 export type SerializedVersion = {
   id: string;
@@ -53,25 +54,21 @@ export async function listVersionsForChapter(
   return docs.map(serializeVersion);
 }
 
-export async function requireVersionContent(
+/** The stored text of one version, or null if it doesn't exist or isn't the caller's. */
+export async function findVersionContent(
   projectId: string,
   chapterId: string,
   versionId: string
-): Promise<{ title: string; content: unknown; wordCount: number }> {
+): Promise<{ title: string; content: unknown; wordCount: number } | null> {
   const userId = await requireUserId();
   await connectDB();
-  let doc: Record<string, unknown> | null;
-  try {
-    doc = await ChapterVersion.findOne({
-      _id: versionId,
-      projectId,
-      chapterId,
-      ownerId: userId,
-    }).lean<Record<string, unknown>>();
-  } catch {
-    notFound();
-  }
-  if (!doc) notFound();
+  const doc = await ChapterVersion.findOne({
+    _id: versionId,
+    projectId,
+    chapterId,
+    ownerId: userId,
+  }).lean<Record<string, unknown>>();
+  if (!doc) return null;
   return {
     title: doc.title as string,
     content: doc.content ?? null,
@@ -83,11 +80,12 @@ export function hashContent(content: unknown): string {
   return createHash("sha256").update(JSON.stringify(content ?? null)).digest("hex");
 }
 
-/** Keeps only the newest MAX_AUTO_VERSIONS_PER_CHAPTER auto versions. Manual versions and restore points are never touched. Age is deliberately not a factor: a writer may return after months. */
+/** Keeps only the newest auto versions the plan allows. Manual versions and restore points are never touched. Age is deliberately not a factor: a writer may return after months. */
 async function pruneAutoVersions(userId: string, chapterId: string): Promise<void> {
+  const { features } = await getEntitlements(userId);
   const extra = await ChapterVersion.find({ chapterId, ownerId: userId, kind: "auto" })
     .sort({ createdAt: -1 })
-    .skip(MAX_AUTO_VERSIONS_PER_CHAPTER)
+    .skip(features.autoVersions)
     .select("_id")
     .lean<{ _id: unknown }[]>();
   if (extra.length > 0) {
@@ -173,14 +171,29 @@ export async function createManualSnapshot(
   projectId: string,
   chapterId: string,
   label?: string
-): Promise<{ ok: boolean }> {
+): Promise<{ ok: boolean; error?: string }> {
   const userId = await requireUserId();
-  await connectDB();
+  if (!(await ownsActiveProject(userId, projectId))) return { ok: false };
+
+  const { plan, features } = await getEntitlements(userId);
+  if (
+    features.manualVersions !== null &&
+    (await ChapterVersion.countDocuments({ chapterId, ownerId: userId, kind: "manual" })) >= features.manualVersions
+  ) {
+    return {
+      ok: false,
+      error:
+        plan === "free"
+          ? `The Free plan keeps ${features.manualVersions} saved versions per chapter. Upgrade to Pro for unlimited, or keep relying on autosaved versions.`
+          : "You've saved the maximum number of versions for this chapter.",
+    };
+  }
 
   const chapter = await Chapter.findOne({
     _id: chapterId,
     projectId,
     ownerId: userId,
+    deletedAt: null,
   }).lean<Record<string, unknown>>();
   if (!chapter) return { ok: false };
 
@@ -193,7 +206,7 @@ export async function createManualSnapshot(
     wordCount: chapter.wordCount ?? 0,
     contentHash: hashContent(chapter.content),
     kind: "manual",
-    label: label?.trim() || undefined,
+    label: label?.trim().slice(0, MAX_LABEL_LENGTH) || undefined,
   });
 
   return { ok: true };
@@ -205,10 +218,10 @@ export async function restoreVersion(
   versionId: string
 ): Promise<{ ok: boolean }> {
   const userId = await requireUserId();
-  await connectDB();
+  if (!(await ownsActiveProject(userId, projectId))) return { ok: false };
 
   const [chapter, version] = await Promise.all([
-    Chapter.findOne({ _id: chapterId, projectId, ownerId: userId }).lean<Record<string, unknown>>(),
+    Chapter.findOne({ _id: chapterId, projectId, ownerId: userId, deletedAt: null }).lean<Record<string, unknown>>(),
     ChapterVersion.findOne({
       _id: versionId,
       chapterId,

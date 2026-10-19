@@ -25,6 +25,9 @@ export function NoteComposer({
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  // A ref, not the `pending` state: a second blur can fire before React
+  // re-renders, and must not create the same note twice.
+  const creating = useRef(false)
 
   function reset() {
     setError(null)
@@ -34,22 +37,27 @@ export function NoteComposer({
   }
 
   function commit() {
+    if (creating.current) return
     if (!title.trim() && !content.trim()) {
       reset()
       return
     }
+    creating.current = true
     setPending(true)
     setError(null)
-    createNoteInlineAction(projectId, { title, content }).then((result) => {
-      setPending(false)
-      if (result.ok && result.note) {
-        onCreated(result.note)
-        reset()
-      } else {
-        // Keep what was typed: a failed save must never throw the note away.
-        setError(result.error ?? "Couldn't save the note. Try again.")
-      }
-    })
+    createNoteInlineAction(projectId, { title, content })
+      .catch(() => ({ ok: false as const, note: undefined, error: undefined }))
+      .then((result) => {
+        creating.current = false
+        setPending(false)
+        if (result.ok && result.note) {
+          onCreated(result.note)
+          reset()
+        } else {
+          // Keep what was typed: a failed save must never throw the note away.
+          setError(result.error ?? "Couldn't save the note. Try again.")
+        }
+      })
   }
 
   function handleBlurCapture(e: React.FocusEvent<HTMLDivElement>) {
@@ -72,6 +80,7 @@ export function NoteComposer({
           className="mb-2 w-full bg-transparent font-heading text-sm font-semibold text-foreground outline-none placeholder:font-normal placeholder:text-muted-foreground"
           placeholder="Title"
           value={title}
+          maxLength={160}
           onChange={(e) => setTitle(e.target.value)}
           autoFocus
         />
@@ -81,6 +90,7 @@ export function NoteComposer({
         className="w-full resize-none bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
         placeholder="Take a note…"
         value={content}
+        maxLength={20_000}
         onFocus={() => setExpanded(true)}
         onChange={(e) => {
           setContent(e.target.value)
