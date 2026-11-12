@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
 import { PlusIcon } from "@phosphor-icons/react/dist/ssr"
 import {
   ADDABLE_SECTIONS,
@@ -25,7 +24,6 @@ export function AddSectionControl({
   projectType: ProjectType
   sections: SectionId[]
 }) {
-  const router = useRouter()
   const [open, setOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
 
@@ -36,7 +34,6 @@ export function AddSectionControl({
     startTransition(async () => {
       await addProjectSectionAction(projectId, sectionId)
       setOpen(false)
-      router.refresh()
     })
   }
 

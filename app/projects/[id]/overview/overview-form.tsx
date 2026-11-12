@@ -12,7 +12,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import type { SerializedProject } from "@/lib/projects"
+import type { SerializedProject } from "@/lib/store/projects"
 import { updateOverviewAction, type UpdateOverviewState } from "./actions"
 
 const initialState: UpdateOverviewState = {}

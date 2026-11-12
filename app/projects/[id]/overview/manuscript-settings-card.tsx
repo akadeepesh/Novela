@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card"
 import { BoundedNumberInput, DebouncedInput } from "@/components/ui/committed-input"
 import { createActionQueue } from "@/lib/action-queue"
+import { useImageUrl } from "@/lib/store/use-image-url"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -89,7 +90,7 @@ export function ManuscriptSettingsCard({
     })
   }
 
-  const customBackgroundUrl = optimisticSettings.backgroundImageUrl
+  const customBackgroundUrl = useImageUrl(optimisticSettings.backgroundImageUrl)
   const isCustomBackground = optimisticSettings.background === CUSTOM_BACKGROUND_ID
 
   return (

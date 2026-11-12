@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { cn } from "cn"
+import { useImageUrl } from "@/lib/store/use-image-url"
 import {
   uploadCoverAction,
   removeCoverAction,
@@ -54,7 +55,7 @@ function CoverSlot({
   // over the server-rendered prop until the page next revalidates, so the
   // preview updates the moment the upload finishes rather than waiting on
   // a full round trip back through the parent.
-  const previewUrl = state.url ?? url
+  const previewUrl = useImageUrl(url)
   const busy = uploading || removing
   const error = localError ?? state.error
 
