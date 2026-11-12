@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { cn } from "cn"
 import { DotsThreeIcon, GearSixIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr"
@@ -10,7 +9,6 @@ import { trashProjectAction } from "@/app/dashboard/trash/actions"
 
 /** "⋯" menu on a dashboard project. Moving to the Trash is undoable, so no confirmation. */
 export function ProjectMenu({ projectId, className }: { projectId: string; className?: string }) {
-  const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
@@ -20,9 +18,7 @@ export function ProjectMenu({ projectId, className }: { projectId: string; class
       const result = await trashProjectAction(projectId)
       if (!result.ok) {
         setError(result.error ?? "Couldn't move this project to the Trash.")
-        return
       }
-      router.refresh()
     })
   }
 

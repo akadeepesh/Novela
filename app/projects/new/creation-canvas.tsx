@@ -40,7 +40,6 @@ export function CreationCanvas() {
   const [committing, setCommitting] = useState(false)
   const [failed, setFailed] = useState(false)
   const [missingTitle, setMissingTitle] = useState(false)
-  const [limited, setLimited] = useState<string | null>(null)
 
   const placeholder = "Give it a title"
 
@@ -77,12 +76,8 @@ export function CreationCanvas() {
       if ("error" in result) {
         flight.cancel()
         setCommitting(false)
-        if (result.error === "limit-reached") {
-          setLimited(result.message)
-        } else {
-          setMissingTitle(true)
-          inputRef.current?.focus()
-        }
+        setMissingTitle(true)
+        inputRef.current?.focus()
         return
       }
       // Opens the editor as a draft: no chapter exists until the first keystroke.
@@ -220,14 +215,6 @@ export function CreationCanvas() {
             {missingTitle ? (
               <p role="alert" className="text-xs text-destructive">
                 Give it a title to begin — you can change it any time.
-              </p>
-            ) : null}
-            {limited ? (
-              <p role="alert" className="max-w-sm text-xs text-destructive">
-                {limited}{" "}
-                <Link href="/pricing" className="underline underline-offset-2">
-                  See plans
-                </Link>
               </p>
             ) : null}
             {failed ? (
