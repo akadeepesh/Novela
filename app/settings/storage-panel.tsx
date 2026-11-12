@@ -1,12 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
 import { useLiveQuery } from "dexie-react-hooks"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { db } from "@/lib/store/db"
 import { isStoragePersisted, requestPersistentStorage } from "@/lib/store/persist"
+import { BackupPanel } from "@/components/backup/backup-panel"
 
 const MB = 1024 * 1024
 
@@ -97,20 +97,7 @@ export function StoragePanel() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Backups</CardTitle>
-          <CardDescription>
-            Full backups and project files are coming next. Until then, export each book from its{" "}
-            <span className="font-medium text-foreground">Export</span> page to keep a copy.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button size="sm" variant="outline" render={<Link href="/dashboard" />} nativeButton={false}>
-            Go to your books
-          </Button>
-        </CardContent>
-      </Card>
+      <BackupPanel />
     </div>
   )
 }
