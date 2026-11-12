@@ -31,49 +31,63 @@ rather than one generic template stretched over everything.
 - **Book Settings** — front/back cover art, a back-cover blurb, chapter
   numbering styles, and export trim size; leave the cover blank and a
   clean typeset cover is generated from the title and author instead.
-- **Export** — PDF, EPUB, and DOCX, built from the same document model so
-  what you see in the editor is what ships.
-- **Auth** — email/password and Google OAuth, via Auth.js (NextAuth v5).
+- **Export** — PDF, EPUB, and DOCX, built in the browser from the same
+  document model, so what you see in the editor is what ships.
+- **Local-first and private** — no account and no database. Everything is
+  stored in your browser (IndexedDB) on your own device, and the app is an
+  installable PWA that opens offline.
 
 ## Tech stack
 
 | Layer | Choice |
 |---|---|
 | Framework | Next.js (App Router) + TypeScript |
-| Database | MongoDB via Mongoose |
-| Auth | Auth.js (NextAuth v5) — credentials + Google OAuth |
-| File storage | Vercel Blob (cover art, custom manuscript backgrounds) |
+| Storage | IndexedDB in the browser, via Dexie (`lib/store/`) |
 | Editor | Tiptap |
 | UI | Base UI primitives + Tailwind CSS v4, Phosphor icons |
-| Export | `@react-pdf/renderer` (PDF), `docx` (DOCX), `jszip` (EPUB) |
+| Export | `@react-pdf/renderer` (PDF), `docx` (DOCX), `jszip` (EPUB), all client-side |
+| Offline | Hand-written service worker (`public/sw.js`), production builds only |
+
+## Where data lives
+
+All projects, chapters, versions, story-bible entries, notes, research,
+comments and uploaded images live in the browser's IndexedDB, in a database
+defined in `lib/store/db.ts`. Each table has typed repository functions in
+`lib/store/`, and `lib/store/hooks.ts` wraps them in live React hooks that
+re-render on any change, in any tab.
+
+To change the stored shape, add a new entry to `migrations` in
+`lib/store/db.ts` with the next version number (and an `upgrade` function if
+old records need rewriting). Never edit an entry that has shipped.
+
+The only server call that involves anything the writer typed is the Research
+link preview: the pasted URL is sent to `app/actions/url-preview.ts`, which
+fetches the page's title, image and icon. Nothing is stored on the server.
+
+Because data is per browser, clearing site data deletes it. The app asks
+for persistent storage (`navigator.storage.persist()`); backups and project
+files are planned next.
 
 ## Configuration
 
-Set these in `.env.local` (env files are git-ignored).
+No environment variables are required to run the app.
 
 | Variable | Purpose |
 |---|---|
-| `MONGODB_URI` | MongoDB connection string |
-| `AUTH_SECRET` | Auth.js session secret |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Google sign-in |
-| `BLOB_READ_WRITE_TOKEN` | Vercel Blob, for covers and backgrounds |
-| `NEXT_PUBLIC_APP_URL` | Public origin, e.g. `https://korakagaj.com` (used for payment return URLs) |
+| `NEXT_PUBLIC_APP_URL` | Optional. Public origin, e.g. `https://example.com`, for metadata, the sitemap and robots.txt |
 
-### Payments (Pro plan)
+The product name, tagline and domain are placeholders in `lib/brand.ts`
+until the final name is chosen.
 
-Rupee prices are charged through **Razorpay** (UPI Autopay, cards, netbanking);
-dollar prices through **Stripe**. A provider stays switched off, and its
-checkout shows "Payments aren't available", until all of its variables are set.
+## Development
 
-| Variable | Where to get it |
-|---|---|
-| `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET` | Razorpay Dashboard → API Keys |
-| `RAZORPAY_PLAN_MONTHLY`, `RAZORPAY_PLAN_YEARLY` | Subscriptions → Plans: create ₹249/month and ₹2,399/year plans, copy their `plan_…` ids |
-| `RAZORPAY_WEBHOOK_SECRET` | Webhooks → add `https://<your-domain>/api/billing/webhooks/razorpay` with the `subscription.*` events |
-| `STRIPE_SECRET_KEY` | Stripe Dashboard → Developers → API keys |
-| `STRIPE_PRICE_MONTHLY`, `STRIPE_PRICE_YEARLY` | Product catalog: a "Pro" product with $5/month and $48/year recurring prices (`price_…` ids) |
-| `STRIPE_WEBHOOK_SECRET` | Webhooks → add `https://<your-domain>/api/billing/webhooks/stripe` with `checkout.session.completed`, `customer.subscription.*` and `invoice.*` events (or `stripe listen --forward-to localhost:3000/api/billing/webhooks/stripe` locally) |
+```bash
+npm install
+npm run dev        # http://localhost:3000
+npm run typecheck
+npm run lint
+npm run build
+```
 
-The prices shown on `/pricing` come from `PRO_PRICES` in `lib/plans.ts`. Keep
-them in step with the provider plans; what each plan allows is in `PLANS` in
-the same file.
+The service worker is only registered in production builds (`npm run build`
+then `npm start`), so development always serves fresh code.
