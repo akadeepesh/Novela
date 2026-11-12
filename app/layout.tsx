@@ -3,6 +3,9 @@ import { Public_Sans, Manrope, Literata } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Providers } from "./providers";
+import { APP_NAME, DESCRIPTION, TAGLINE } from "@/lib/brand";
+
+const FULL_TITLE = `${APP_NAME} — ${TAGLINE}`;
 
 // Headings — used in app chrome (sidebar, dashboard, dialogs), not in manuscripts
 const manropeHeading = Manrope({ subsets: ["latin"], variable: "--font-heading" });
@@ -22,23 +25,20 @@ const literataSerif = Literata({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
   title: {
-    default: "KoraKagaj — a calmer place to write your book",
-    template: "%s — KoraKagaj",
+    default: FULL_TITLE,
+    template: `%s — ${APP_NAME}`,
   },
-  description:
-    "A focused writing workspace for novelists, poets, and storytellers — manuscript, characters, world, and plot, all in one place.",
+  description: DESCRIPTION,
   openGraph: {
-    title: "KoraKagaj — a calmer place to write your book",
-    description:
-      "A focused writing workspace for novelists, poets, and storytellers — manuscript, characters, world, and plot, all in one place.",
-    siteName: "KoraKagaj",
+    title: FULL_TITLE,
+    description: DESCRIPTION,
+    siteName: APP_NAME,
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "KoraKagaj — a calmer place to write your book",
-    description:
-      "A focused writing workspace for novelists, poets, and storytellers — manuscript, characters, world, and plot, all in one place.",
+    title: FULL_TITLE,
+    description: DESCRIPTION,
   },
 };
 

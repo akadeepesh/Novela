@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { ChatTeardropTextIcon, FeatherIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr"
 import { Button } from "@/components/ui/button"
+import { APP_NAME } from "@/lib/brand"
 import { AvatarMenu } from "@/components/account/avatar-menu"
 import { Greeting } from "@/components/dashboard/greeting"
 import { HeroCard } from "@/components/dashboard/hero-card"
@@ -29,7 +30,7 @@ export default async function DashboardPage() {
       <header className="flex items-center justify-between px-6 py-5 sm:px-10">
         <Link href="/dashboard" className="flex items-center gap-2 text-foreground">
           <FeatherIcon className="size-4 text-primary" weight="duotone" />
-          <span className="font-heading text-sm font-semibold">KoraKagaj</span>
+          <span className="font-heading text-sm font-semibold">{APP_NAME}</span>
         </Link>
         <div className="flex items-center gap-3">
           {plan === "pro" ? (

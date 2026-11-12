@@ -1,11 +1,12 @@
 // app/manifest.ts
 import type { MetadataRoute } from "next"
+import { APP_NAME, DESCRIPTION } from "@/lib/brand"
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "KoraKagaj",
-    short_name: "KoraKagaj",
-    description: "A focused writing workspace for novelists, poets, and storytellers.",
+    name: APP_NAME,
+    short_name: APP_NAME,
+    description: DESCRIPTION,
     start_url: "/",
     display: "standalone",
     background_color: "#fcfaf7",

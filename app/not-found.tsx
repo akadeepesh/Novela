@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import Link from "next/link"
 import { CompassIcon } from "@phosphor-icons/react/dist/ssr"
 import { Button } from "@/components/ui/button"
+import { APP_NAME } from "@/lib/brand"
 
 export const metadata: Metadata = { title: "Page not found" }
 
@@ -23,7 +24,7 @@ export default function NotFound() {
         </p>
 
         <Button render={<Link href="/" />} nativeButton={false}>
-          Back to KoraKagaj
+          Back to {APP_NAME}
         </Button>
       </div>
     </div>

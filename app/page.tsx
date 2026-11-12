@@ -1,6 +1,7 @@
 import { BookOpenTextIcon, FeatherIcon } from "@phosphor-icons/react/dist/ssr"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { APP_NAME } from "@/lib/brand"
 
 export default function Home() {
   return (
@@ -15,7 +16,7 @@ export default function Home() {
         </h1>
 
         <p className="font-serif text-lg leading-relaxed text-muted-foreground">
-          KoraKagaj is a focused workspace for novels, poetry, and everything
+          {APP_NAME} is a focused workspace for novels, poetry, and everything
           in between — manuscript, characters, world, and plot, all in one
           quiet place.
         </p>
