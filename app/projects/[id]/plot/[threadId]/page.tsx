@@ -1,5 +1,7 @@
-import type { Metadata } from "next"
+"use client"
+
 import Link from "next/link"
+import { useParams } from "next/navigation"
 import { ArrowLeftIcon } from "@phosphor-icons/react/dist/ssr"
 import {
   PageShell,
@@ -8,37 +10,28 @@ import {
 } from "@/components/layout/page-shell"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
-import { requireProjectSection } from "@/lib/require-project-section"
-import { requirePlotThread } from "@/lib/plot-threads"
 import { plotStatusLabel } from "@/lib/plot-config"
-import { listChaptersMentioning } from "@/lib/mentions"
 import { AppearsIn } from "@/components/project/appears-in"
 import { PlotThreadForm } from "./plot-thread-form"
 import { DeletePlotThreadButton } from "./delete-plot-thread-button"
+import { useProjectSection } from "@/components/project/project-context"
+import { LoadingView, NotFoundView } from "@/components/store/status-views"
+import { usePlotThread, useChaptersMentioning } from "@/lib/store/hooks"
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string; threadId: string }>
-}): Promise<Metadata> {
-  const { id, threadId } = await params
-  const project = await requireProjectSection(id, "plot")
-  const thread = await requirePlotThread(id, threadId)
-  return { title: `${thread.title} — ${project.title}` }
-}
-
-export default async function PlotThreadDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string; threadId: string }>
-}) {
-  const { id, threadId } = await params
-  const project = await requireProjectSection(id, "plot")
-  const thread = await requirePlotThread(id, threadId)
-  const mentionedIn = await listChaptersMentioning(id, "plot", threadId)
+export default function Page() {
+  const project = useProjectSection("plot")
+  const { threadId } = useParams<{ id: string; threadId: string }>()
+  const projectId = project?.id ?? ""
+  const thread = usePlotThread(projectId, threadId)
+  const mentionedIn = useChaptersMentioning(projectId, "plot", threadId)
+  if (!project) return <NotFoundView />
+  const id = project.id
+  if (thread === undefined) return <LoadingView />
+  if (thread === null) return <NotFoundView backHref={`/projects/${id}/plot`} backLabel="Back to Plot" />
 
   return (
     <PageShell width="prose">
+      <title>{`${thread.title} — ${project.title}`}</title>
       <Link
         href={`/projects/${id}/plot`}
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
@@ -57,7 +50,7 @@ export default async function PlotThreadDetailPage({
         <DeletePlotThreadButton projectId={id} threadId={threadId} title={thread.title} />
       </PageShellHeader>
 
-      <PlotThreadForm key={thread.updatedAt} thread={thread} />
+      <PlotThreadForm key={thread.id} thread={thread} />
 
       <Card className="mt-6">
         <CardHeader>
@@ -65,7 +58,7 @@ export default async function PlotThreadDetailPage({
           <CardDescription>Chapters that @mention this thread.</CardDescription>
         </CardHeader>
         <CardContent>
-          <AppearsIn projectId={id} projectType={project.type} chapters={mentionedIn} />
+          <AppearsIn projectId={id} projectType={project.type} chapters={mentionedIn ?? []} />
         </CardContent>
       </Card>
     </PageShell>

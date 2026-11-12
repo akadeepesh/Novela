@@ -1,4 +1,5 @@
-import type { Metadata } from "next"
+"use client"
+
 import {
   PageShell,
   PageShellHeader,
@@ -8,33 +9,26 @@ import {
 import { EmptyState } from "@/components/ui/empty-state"
 import { NewLinkButton } from "@/components/ui/new-link-button"
 import { SECTION_DEFS } from "@/lib/project-config"
-import { requireProjectSection } from "@/lib/require-project-section"
-import { listPlotThreadsForProject } from "@/lib/plot-threads"
 import { PlotThreadList } from "./plot-thread-list"
+import { useProjectSection } from "@/components/project/project-context"
+import { NotFoundView } from "@/components/store/status-views"
+import { usePlotThreads } from "@/lib/store/hooks"
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}): Promise<Metadata> {
-  const { id } = await params
-  const project = await requireProjectSection(id, "plot")
-  return { title: `Plot — ${project.title}` }
-}
-
-export default async function PlotPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const project = await requireProjectSection(id, "plot")
-  const threads = await listPlotThreadsForProject(id)
+export default function Page() {
+  const project = useProjectSection("plot")
+  const threads = usePlotThreads(project?.id ?? "")
+  if (!project) return <NotFoundView />
+  const id = project.id
 
   return (
     <PageShell>
+      <title>{`Plot — ${project.title}`}</title>
       <PageShellHeader>
         <PageShellTitle>Plot</PageShellTitle>
         <PageShellDescription>The threads and arcs running through {project.title}.</PageShellDescription>
       </PageShellHeader>
 
-      {threads.length === 0 ? (
+      {threads === undefined ? null : threads.length === 0 ? (
         <EmptyState
           icon={SECTION_DEFS.plot.icon}
           title="No plot threads yet"

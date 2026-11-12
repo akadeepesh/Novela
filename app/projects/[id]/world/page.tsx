@@ -1,4 +1,5 @@
-import type { Metadata } from "next"
+"use client"
+
 import {
   PageShell,
   PageShellHeader,
@@ -8,27 +9,20 @@ import {
 import { EmptyState } from "@/components/ui/empty-state"
 import { NewLinkButton } from "@/components/ui/new-link-button"
 import { SECTION_DEFS } from "@/lib/project-config"
-import { requireProjectSection } from "@/lib/require-project-section"
-import { listWorldEntriesForProject } from "@/lib/world-entries"
 import { WorldEntryGrid } from "./world-entry-grid"
+import { useProjectSection } from "@/components/project/project-context"
+import { NotFoundView } from "@/components/store/status-views"
+import { useWorldEntries } from "@/lib/store/hooks"
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}): Promise<Metadata> {
-  const { id } = await params
-  const project = await requireProjectSection(id, "world")
-  return { title: `World — ${project.title}` }
-}
-
-export default async function WorldPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const project = await requireProjectSection(id, "world")
-  const entries = await listWorldEntriesForProject(id)
+export default function Page() {
+  const project = useProjectSection("world")
+  const entries = useWorldEntries(project?.id ?? "")
+  if (!project) return <NotFoundView />
+  const id = project.id
 
   return (
     <PageShell>
+      <title>{`World — ${project.title}`}</title>
       <PageShellHeader>
         <PageShellTitle>World</PageShellTitle>
         <PageShellDescription>
@@ -36,7 +30,7 @@ export default async function WorldPage({ params }: { params: Promise<{ id: stri
         </PageShellDescription>
       </PageShellHeader>
 
-      {entries.length === 0 ? (
+      {entries === undefined ? null : entries.length === 0 ? (
         <EmptyState
           icon={SECTION_DEFS.world.icon}
           title="No world entries yet"

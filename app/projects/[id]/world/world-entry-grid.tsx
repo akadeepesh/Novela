@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { TrashIcon } from "@phosphor-icons/react/dist/ssr"
 import { NewLinkButton } from "@/components/ui/new-link-button"
@@ -9,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { worldEntryTypeLabel, worldEntryTypeIcon } from "@/lib/world-config"
-import type { SerializedWorldEntrySummary } from "@/lib/world-entries"
+import type { SerializedWorldEntrySummary } from "@/lib/store/bible"
 import { deleteWorldEntryAction } from "./actions"
 
 export function WorldEntryGrid({
@@ -19,7 +18,6 @@ export function WorldEntryGrid({
   projectId: string
   entries: SerializedWorldEntrySummary[]
 }) {
-  const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
 
@@ -28,7 +26,6 @@ export function WorldEntryGrid({
     startTransition(async () => {
       await deleteWorldEntryAction(projectId, deleteTarget.id)
       setDeleteTarget(null)
-      router.refresh()
     })
   }
 

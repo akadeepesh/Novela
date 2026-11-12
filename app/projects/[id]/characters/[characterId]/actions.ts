@@ -1,18 +1,10 @@
-"use server";
+import { z } from "zod"
+import { formString } from "@/lib/form"
+import { createCharacter, updateCharacter, type CharacterFields } from "@/lib/store/bible"
+import { TRASHED_PROJECT_ERROR } from "@/lib/store/projects"
+import { CHARACTER_ROLES, type CharacterRole } from "@/lib/character-config"
 
-import { z } from "zod";
-import { formString } from "@/lib/form";
-import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
-import { connectDB } from "@/lib/db";
-import { Character } from "@/lib/models/character";
-import { ownsActiveProject, TRASHED_PROJECT_ERROR, requireProject, requireUserId } from "@/lib/projects";
-import { CHARACTER_ROLES, type CharacterRole } from "@/lib/character-config";
-import { safeAction, GENERIC_ERROR } from "@/lib/safe-action";
-import { getLimit, keepWithinLimit } from "@/lib/entitlements";
-import { limitMessage } from "@/lib/plans";
-
-const ROLE_VALUES = CHARACTER_ROLES.map((r) => r.value) as [CharacterRole, ...CharacterRole[]];
+const ROLE_VALUES = CHARACTER_ROLES.map((r) => r.value) as [CharacterRole, ...CharacterRole[]]
 
 const schema = z.object({
   name: z.string().trim().min(1, "Give this character a name").max(120),
@@ -23,117 +15,75 @@ const schema = z.object({
   personality: z.string().trim().max(4000).optional(),
   backstory: z.string().trim().max(4000).optional(),
   notes: z.string().trim().max(4000).optional(),
-});
+})
 
 export type UpdateCharacterState = {
-  error?: string;
-  success?: boolean;
-};
+  error?: string
+  success?: boolean
+  /** Set after creating: the page to open next. */
+  redirectTo?: string
+}
 
-export const updateCharacterAction = safeAction(
-  "updateCharacterAction",
-  async (
-    projectId: string,
-    characterId: string,
-    _prevState: UpdateCharacterState,
-    formData: FormData
-  ): Promise<UpdateCharacterState> => {
-    const userId = await requireUserId();
+function splitList(value: string | undefined): string[] {
+  return value
+    ? value
+        .split(",")
+        .map((a) => a.trim())
+        .filter(Boolean)
+    : []
+}
 
-    const parsed = schema.safeParse({
-      name: formData.get("name"),
-      role: formData.get("role"),
-      aliases: formString(formData, "aliases"),
-      imageUrl: formString(formData, "imageUrl"),
-      appearance: formString(formData, "appearance"),
-      personality: formString(formData, "personality"),
-      backstory: formString(formData, "backstory"),
-      notes: formString(formData, "notes"),
-    });
+function parse(formData: FormData): { ok: true; fields: CharacterFields } | { ok: false; error: string } {
+  const parsed = schema.safeParse({
+    name: formData.get("name"),
+    role: formData.get("role"),
+    aliases: formString(formData, "aliases"),
+    imageUrl: formString(formData, "imageUrl"),
+    appearance: formString(formData, "appearance"),
+    personality: formString(formData, "personality"),
+    backstory: formString(formData, "backstory"),
+    notes: formString(formData, "notes"),
+  })
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the fields and try again." }
+  const d = parsed.data
+  return {
+    ok: true,
+    fields: {
+      name: d.name,
+      role: d.role,
+      aliases: splitList(d.aliases),
+      imageUrl: d.imageUrl ?? "",
+      appearance: d.appearance ?? "",
+      personality: d.personality ?? "",
+      backstory: d.backstory ?? "",
+      notes: d.notes ?? "",
+    },
+  }
+}
 
-    if (!parsed.success) {
-      return { error: parsed.error.issues[0]?.message ?? "Check the fields and try again." };
-    }
-
-    const { aliases, ...rest } = parsed.data;
-    const aliasList = aliases
-      ? aliases
-          .split(",")
-          .map((a) => a.trim())
-          .filter(Boolean)
-      : [];
-
-    if (!(await ownsActiveProject(userId, projectId))) return { error: TRASHED_PROJECT_ERROR };
-
-    await connectDB();
-    const result = await Character.updateOne(
-      { _id: characterId, projectId, ownerId: userId },
-      { $set: { ...rest, aliases: aliasList } }
-    );
-
-    if (result.matchedCount === 0) {
-      return { error: "Couldn't find this character." };
-    }
-
-    revalidatePath(`/projects/${projectId}/characters`);
-    revalidatePath(`/projects/${projectId}/characters/${characterId}`);
-    return { success: true };
-  },
-  () => ({ error: GENERIC_ERROR }),
-  { ids: [0, 1] }
-);
+export async function updateCharacterAction(
+  projectId: string,
+  characterId: string,
+  _prevState: UpdateCharacterState,
+  formData: FormData
+): Promise<UpdateCharacterState> {
+  const parsed = parse(formData)
+  if (!parsed.ok) return { error: parsed.error }
+  return (await updateCharacter(projectId, characterId, parsed.fields)) ? { success: true } : { error: TRASHED_PROJECT_ERROR }
+}
 
 /**
- * Creates the record from the blank "new" form. Nothing exists in the database
- * until this runs, so opening the form and walking away leaves no stray record.
+ * Creates the record from the blank "new" form. Nothing exists until this
+ * runs, so opening the form and walking away leaves no stray record.
  */
-export const createCharacterFromFormAction = safeAction(
-  "createCharacterFromFormAction",
-  async (
-    projectId: string,
-    _prevState: UpdateCharacterState,
-    formData: FormData
-  ): Promise<UpdateCharacterState> => {
-    await requireProject(projectId);
-    const userId = await requireUserId();
-
-    const parsed = schema.safeParse({
-      name: formData.get("name"),
-      role: formData.get("role"),
-      aliases: formString(formData, "aliases"),
-      imageUrl: formString(formData, "imageUrl"),
-      appearance: formString(formData, "appearance"),
-      personality: formString(formData, "personality"),
-      backstory: formString(formData, "backstory"),
-      notes: formString(formData, "notes"),
-    });
-
-    if (!parsed.success) {
-      return { error: parsed.error.issues[0]?.message ?? "Check the fields and try again." };
-    }
-
-    const { aliases, ...rest } = parsed.data;
-    const aliasList = aliases
-      ? aliases
-          .split(",")
-          .map((a) => a.trim())
-          .filter(Boolean)
-      : [];
-
-    await connectDB();
-    const { plan, limit } = await getLimit(userId, "characters");
-    if ((await Character.countDocuments({ projectId, ownerId: userId })) >= limit) {
-      return { error: limitMessage("characters", plan) };
-    }
-    const created = await Character.create({ projectId, ownerId: userId, ...rest, aliases: aliasList });
-    // Another create may have landed at the same moment (see keepWithinLimit).
-    if (!(await keepWithinLimit(Character, { projectId, ownerId: userId }, created._id, limit))) {
-      return { error: limitMessage("characters", plan) };
-    }
-
-    revalidatePath(`/projects/${projectId}/characters`);
-    redirect(`/projects/${projectId}/characters/${created._id}`);
-  },
-  () => ({ error: GENERIC_ERROR }),
-  { ids: [0] }
-);
+export async function createCharacterFromFormAction(
+  projectId: string,
+  _prevState: UpdateCharacterState,
+  formData: FormData
+): Promise<UpdateCharacterState> {
+  const parsed = parse(formData)
+  if (!parsed.ok) return { error: parsed.error }
+  const id = await createCharacter(projectId, parsed.fields)
+  if (!id) return { error: TRASHED_PROJECT_ERROR }
+  return { redirectTo: `/projects/${projectId}/characters/${id}` }
+}

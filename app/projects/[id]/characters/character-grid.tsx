@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { TrashIcon, UserCircleIcon } from "@phosphor-icons/react/dist/ssr"
 import { NewLinkButton } from "@/components/ui/new-link-button"
@@ -9,7 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { characterRoleLabel } from "@/lib/character-config"
-import type { SerializedCharacterSummary } from "@/lib/characters"
+import type { SerializedCharacterSummary } from "@/lib/store/bible"
 import { deleteCharacterAction } from "./actions"
 
 export function CharacterGrid({
@@ -19,7 +18,6 @@ export function CharacterGrid({
   projectId: string
   characters: SerializedCharacterSummary[]
 }) {
-  const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
 
@@ -28,7 +26,6 @@ export function CharacterGrid({
     startTransition(async () => {
       await deleteCharacterAction(projectId, deleteTarget.id)
       setDeleteTarget(null)
-      router.refresh()
     })
   }
 
