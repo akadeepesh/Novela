@@ -1,4 +1,3 @@
-import "server-only";
 import {
   Document,
   Paragraph,
@@ -114,7 +113,7 @@ function sectionToParagraphs(
   return paragraphs;
 }
 
-export async function renderDocx(doc: ExportDocument): Promise<Buffer> {
+export async function renderDocx(doc: ExportDocument): Promise<Blob> {
   const children: Paragraph[] = [];
 
   if (doc.includeTitlePage) {
@@ -232,5 +231,5 @@ export async function renderDocx(doc: ExportDocument): Promise<Buffer> {
     ],
   });
 
-  return Packer.toBuffer(document);
+  return Packer.toBlob(document);
 }

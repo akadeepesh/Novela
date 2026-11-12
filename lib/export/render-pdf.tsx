@@ -1,6 +1,5 @@
-import "server-only";
 import { Fragment } from "react";
-import { Document, Page, Text, View, StyleSheet, renderToBuffer } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, pdf } from "@react-pdf/renderer";
 import {
   SCENE_BREAK_TEXT,
   type ExportBlock,
@@ -231,6 +230,6 @@ function ExportPdfDocument({ doc }: { doc: ExportDocument }) {
   );
 }
 
-export async function renderPdf(doc: ExportDocument): Promise<Buffer> {
-  return renderToBuffer(<ExportPdfDocument doc={doc} />);
+export async function renderPdf(doc: ExportDocument): Promise<Blob> {
+  return pdf(<ExportPdfDocument doc={doc} />).toBlob();
 }

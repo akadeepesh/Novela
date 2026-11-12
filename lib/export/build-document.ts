@@ -1,18 +1,13 @@
-import "server-only";
-import { connectDB } from "@/lib/db";
-import { Chapter, CHAPTER_ORDER } from "@/lib/models/chapter";
-import { Character } from "@/lib/models/character";
-import { WorldEntry } from "@/lib/models/world-entry";
-import { PlotThread } from "@/lib/models/plot-thread";
-import { Note } from "@/lib/models/note";
-import { ResearchEntry } from "@/lib/models/research-entry";
-import { characterRoleLabel, type CharacterRole } from "@/lib/character-config";
-import { worldEntryTypeLabel, type WorldEntryType } from "@/lib/world-config";
-import { plotStatusLabel, type PlotStatus } from "@/lib/plot-config";
+import { listChapterRecords } from "@/lib/store/chapters";
+import { listCharacterRecords, listPlotThreadRecords, listWorldEntryRecords } from "@/lib/store/bible";
+import { listNotesForProject, listResearchEntriesForProject } from "@/lib/store/notes";
+import { characterRoleLabel } from "@/lib/character-config";
+import { worldEntryTypeLabel } from "@/lib/world-config";
+import { plotStatusLabel } from "@/lib/plot-config";
 import { CHAPTER_LABEL_SINGULAR } from "@/lib/project-config";
 import { chapterNumberLabel } from "@/lib/chapter-numbering";
 import type { SectionId } from "@/lib/project-config";
-import type { SerializedProject } from "@/lib/projects";
+import type { SerializedProject } from "@/lib/store/projects";
 import {
   tiptapToBlocks,
   plainTextToBlocks,
@@ -37,18 +32,13 @@ function joinBlocks(...groups: ExportBlock[][]): ExportBlock[] {
 
 export async function buildExportDocument(
   project: SerializedProject,
-  userId: string,
   options: ExportOptions
 ): Promise<ExportDocument> {
-  await connectDB();
-
-  const chapters = await Chapter.find({ projectId: project.id, ownerId: userId, deletedAt: null })
-    .sort(CHAPTER_ORDER)
-    .lean<Record<string, unknown>[]>();
+  const chapters = await listChapterRecords(project.id);
 
   const manuscript: ExportSection[] = chapters.map((c, index) => ({
-    id: String(c._id),
-    title: (c.title as string) || "Untitled",
+    id: c.id,
+    title: c.title || "Untitled",
     numberLabel: chapterNumberLabel({
       style: project.chapterNumberingStyle,
       prefix: project.chapterNumberingPrefix,
@@ -62,111 +52,101 @@ export async function buildExportDocument(
   const want = (id: SectionId) => options.includeSections.includes(id);
 
   if (want("characters")) {
-    const docs = await Character.find({ projectId: project.id, ownerId: userId })
-      .sort({ name: 1 })
-      .lean<Record<string, unknown>[]>();
+    const docs = await listCharacterRecords(project.id);
     appendices.push({
       heading: "Characters",
       sections: docs.map((c) => ({
-        id: String(c._id),
-        title: c.name as string,
+        id: c.id,
+        title: c.name,
         blocks: joinBlocks(
           [
             {
               kind: "paragraph",
               runs: [
                 {
-                  text: characterRoleLabel((c.role as CharacterRole) ?? "supporting"),
+                  text: characterRoleLabel(c.role ?? "supporting"),
                   marks: ["italic"],
                 },
               ],
             },
           ],
-          plainTextToBlocks(c.appearance as string),
-          plainTextToBlocks(c.personality as string),
-          plainTextToBlocks(c.backstory as string)
+          plainTextToBlocks(c.appearance),
+          plainTextToBlocks(c.personality),
+          plainTextToBlocks(c.backstory)
         ),
       })),
     });
   }
 
   if (want("world")) {
-    const docs = await WorldEntry.find({ projectId: project.id, ownerId: userId })
-      .sort({ name: 1 })
-      .lean<Record<string, unknown>[]>();
+    const docs = await listWorldEntryRecords(project.id);
     appendices.push({
       heading: "World",
       sections: docs.map((w) => ({
-        id: String(w._id),
-        title: w.name as string,
+        id: w.id,
+        title: w.name,
         blocks: joinBlocks(
           [
             {
               kind: "paragraph",
               runs: [
                 {
-                  text: worldEntryTypeLabel((w.type as WorldEntryType) ?? "location"),
+                  text: worldEntryTypeLabel(w.type ?? "location"),
                   marks: ["italic"],
                 },
               ],
             },
           ],
-          plainTextToBlocks(w.description as string)
+          plainTextToBlocks(w.description)
         ),
       })),
     });
   }
 
   if (want("plot")) {
-    const docs = await PlotThread.find({ projectId: project.id, ownerId: userId })
-      .sort({ title: 1 })
-      .lean<Record<string, unknown>[]>();
+    const docs = await listPlotThreadRecords(project.id);
     appendices.push({
       heading: "Plot",
       sections: docs.map((p) => ({
-        id: String(p._id),
-        title: p.title as string,
+        id: p.id,
+        title: p.title,
         blocks: joinBlocks(
           [
             {
               kind: "paragraph",
               runs: [
-                { text: plotStatusLabel((p.status as PlotStatus) ?? "planned"), marks: ["italic"] },
+                { text: plotStatusLabel(p.status ?? "planned"), marks: ["italic"] },
               ],
             },
           ],
-          plainTextToBlocks(p.description as string)
+          plainTextToBlocks(p.description)
         ),
       })),
     });
   }
 
   if (want("notes")) {
-    const docs = await Note.find({ projectId: project.id, ownerId: userId })
-      .sort({ pinned: -1, updatedAt: -1 })
-      .lean<Record<string, unknown>[]>();
+    const docs = await listNotesForProject(project.id);
     appendices.push({
       heading: "Notes",
       sections: docs.map((n) => ({
-        id: String(n._id),
-        title: (n.title as string) || "Untitled Note",
-        blocks: plainTextToBlocks(n.content as string),
+        id: n.id,
+        title: n.title || "Untitled Note",
+        blocks: plainTextToBlocks(n.content),
       })),
     });
   }
 
   if (want("research")) {
-    const docs = await ResearchEntry.find({ projectId: project.id, ownerId: userId })
-      .sort({ updatedAt: -1 })
-      .lean<Record<string, unknown>[]>();
+    const docs = await listResearchEntriesForProject(project.id);
     appendices.push({
       heading: "Research",
       sections: docs.map((r) => ({
-        id: String(r._id),
-        title: r.title as string,
+        id: r.id,
+        title: r.title,
         blocks: joinBlocks(
-          r.url ? [{ kind: "paragraph", runs: [{ text: r.url as string, marks: ["italic"] }] }] : [],
-          plainTextToBlocks(r.content as string)
+          r.url ? [{ kind: "paragraph", runs: [{ text: r.url, marks: ["italic"] }] }] : [],
+          plainTextToBlocks(r.content)
         ),
       })),
     });

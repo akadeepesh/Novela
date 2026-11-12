@@ -1,37 +1,26 @@
-import type { Metadata } from "next"
-import { requireProjectSection } from "@/lib/require-project-section"
-import { listChaptersForProject, requireChapter } from "@/lib/chapters"
+"use client"
+
+import { useParams } from "next/navigation"
+import { useChapter, useChapters, useProject } from "@/lib/store/hooks"
 import { sectionLabelSingular, CHAPTER_LABEL_SINGULAR } from "@/lib/project-config"
 import { chapterNumberLabel } from "@/lib/chapter-numbering"
 import { tiptapToBlocks } from "@/lib/export/document-model"
+import { LoadingView, NotFoundView } from "@/components/store/status-views"
 import { ReadView } from "./read-view"
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string; chapterId: string }>
-}): Promise<Metadata> {
-  const { id, chapterId } = await params
-  const project = await requireProjectSection(id, "chapters")
-  const chapter = await requireChapter(id, chapterId)
-  return { title: `Reading ${chapter.title} — ${project.title}` }
-}
+export default function ReadPage() {
+  const { id, chapterId } = useParams<{ id: string; chapterId: string }>()
+  const project = useProject(id)
+  const chapter = useChapter(id, chapterId)
+  const chapters = useChapters(id)
 
-export default async function ReadPage({
-  params,
-}: {
-  params: Promise<{ id: string; chapterId: string }>
-}) {
-  const { id, chapterId } = await params
-  const project = await requireProjectSection(id, "chapters")
-  const chapter = await requireChapter(id, chapterId)
-  const chapters = await listChaptersForProject(id)
+  if (project === undefined || chapter === undefined || chapters === undefined) return <LoadingView />
+  if (!project || !project.sections.includes("chapters") || !chapter) return <NotFoundView />
 
   const index = Math.max(
     0,
     chapters.findIndex((c) => c.id === chapterId)
   )
-
   const numberLabel = chapterNumberLabel({
     style: project.chapterNumberingStyle,
     prefix: project.chapterNumberingPrefix,
@@ -40,15 +29,18 @@ export default async function ReadPage({
   })
 
   return (
-    <ReadView
-      projectId={id}
-      chapterId={chapterId}
-      title={chapter.title}
-      numberLabel={numberLabel}
-      chapterLabelSingular={sectionLabelSingular("chapters", project.type)}
-      blocks={tiptapToBlocks(chapter.content)}
-      manuscriptSettings={project.manuscriptSettings}
-      projectType={project.type}
-    />
+    <>
+      <title>{`Reading ${chapter.title} — ${project.title}`}</title>
+      <ReadView
+        projectId={id}
+        chapterId={chapterId}
+        title={chapter.title}
+        numberLabel={numberLabel}
+        chapterLabelSingular={sectionLabelSingular("chapters", project.type)}
+        blocks={tiptapToBlocks(chapter.content)}
+        manuscriptSettings={project.manuscriptSettings}
+        projectType={project.type}
+      />
+    </>
   )
 }

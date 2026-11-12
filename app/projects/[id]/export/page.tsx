@@ -1,4 +1,5 @@
-import type { Metadata } from "next"
+"use client"
+
 import {
   PageShell,
   PageShellHeader,
@@ -6,46 +7,35 @@ import {
   PageShellDescription,
 } from "@/components/layout/page-shell"
 import { sectionLabel, type SectionId } from "@/lib/project-config"
-import { requireProjectSection } from "@/lib/require-project-section"
-import { requireUserId } from "@/lib/projects"
-import { getEntitlements } from "@/lib/entitlements"
-import { effectiveTrimSize } from "@/lib/export-config"
+import { useProjectSection } from "@/components/project/project-context"
+import { NotFoundView } from "@/components/store/status-views"
 import { ExportForm } from "./export-form"
 
 const OPTIONAL_SECTIONS: SectionId[] = ["characters", "world", "plot", "notes", "research"]
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}): Promise<Metadata> {
-  const { id } = await params
-  const project = await requireProjectSection(id, "export")
-  return { title: `Export — ${project.title}` }
-}
+export default function ExportPage() {
+  const project = useProjectSection("export")
+  if (!project) return <NotFoundView />
 
-export default async function ExportPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const project = await requireProjectSection(id, "export")
-  const { features } = await getEntitlements(await requireUserId())
-
-  const availableSections = OPTIONAL_SECTIONS.filter((s) => project.sections.includes(s)).map(
-    (id) => ({ id, label: sectionLabel(id, project.type) })
-  )
+  const availableSections = OPTIONAL_SECTIONS.filter((s) => project.sections.includes(s)).map((id) => ({
+    id,
+    label: sectionLabel(id, project.type),
+  }))
 
   return (
     <PageShell width="prose">
+      <title>{`Export — ${project.title}`}</title>
       <PageShellHeader>
         <PageShellTitle>Export</PageShellTitle>
         <PageShellDescription>Turn {project.title} into a real file.</PageShellDescription>
       </PageShellHeader>
 
       <ExportForm
-        projectId={id}
+        projectId={project.id}
         projectTitle={project.title}
         defaultAuthorName={project.authorName}
         availableSections={availableSections}
-        trimSize={effectiveTrimSize(project.exportTrimSize, features.allTrimSizes)}
+        trimSize={project.exportTrimSize}
       />
     </PageShell>
   )

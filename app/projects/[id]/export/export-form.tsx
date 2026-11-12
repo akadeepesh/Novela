@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useState, useTransition } from "react"
 import Link from "next/link"
 import { FilePdfIcon, FileDocIcon, BookIcon, DownloadSimpleIcon, GearSixIcon } from "@phosphor-icons/react/dist/ssr"
 import { cn } from "cn"
@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
 import { getTrimSize } from "@/lib/export-config"
+import { downloadExport } from "@/lib/export/export-file"
 import type { SectionId } from "@/lib/project-config"
 
 type Format = "pdf" | "epub" | "docx"
@@ -45,16 +46,28 @@ export function ExportForm({
     setSections((prev) => (checked ? [...prev, id] : prev.filter((s) => s !== id)))
   }
 
-  const href = useMemo(() => {
-    const params = new URLSearchParams()
-    params.set("format", format)
-    if (!includeTitlePage) params.set("titlePage", "off")
-    if (!includeTOC) params.set("toc", "off")
-    if (authorName.trim()) params.set("author", authorName.trim())
-    if (dedication.trim()) params.set("dedication", dedication.trim())
-    if (sections.length > 0) params.set("sections", sections.join(","))
-    return `/api/projects/${projectId}/export?${params.toString()}`
-  }, [projectId, format, includeTitlePage, includeTOC, authorName, dedication, sections])
+  const [exporting, startExport] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+
+  // Built right here in the browser: the book never leaves this device.
+  function handleDownload() {
+    setError(null)
+    startExport(async () => {
+      try {
+        const result = await downloadExport(projectId, format, {
+          includeTitlePage,
+          includeTOC,
+          authorName,
+          dedication: dedication.slice(0, 2000) || undefined,
+          includeSections: sections,
+        })
+        if (!result.ok) setError(result.error)
+      } catch (err) {
+        console.error("export failed", err)
+        setError("Couldn't build the file. Please try again.")
+      }
+    })
+  }
 
   return (
     <Card>
@@ -165,10 +178,15 @@ export function ExportForm({
       </CardContent>
 
       <CardFooter className="mt-2 border-t pt-5">
-        <Button size="lg" render={<a href={href} />} nativeButton={false}>
+        <Button size="lg" type="button" onClick={handleDownload} disabled={exporting}>
           <DownloadSimpleIcon />
-          Download {FORMATS.find((f) => f.value === format)?.label}
+          {exporting ? "Preparing…" : `Download ${FORMATS.find((f) => f.value === format)?.label}`}
         </Button>
+        {error ? (
+          <p role="alert" className="ml-3 text-sm text-destructive">
+            {error}
+          </p>
+        ) : null}
       </CardFooter>
     </Card>
   )

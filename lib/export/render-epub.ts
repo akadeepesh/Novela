@@ -1,6 +1,4 @@
-import "server-only";
 import JSZip from "jszip";
-import { randomUUID } from "node:crypto";
 import { SCENE_BREAK_TEXT, type ExportBlock, type ExportDocument, type ExportRun, type ExportSection } from "./document-model";
 
 function escapeXml(text: string): string {
@@ -98,9 +96,9 @@ nav li { margin-bottom: 0.5em; }
 
 type ManifestItem = { id: string; href: string; mediaType: string; xhtml?: string };
 
-export async function renderEpub(doc: ExportDocument): Promise<Buffer> {
+export async function renderEpub(doc: ExportDocument): Promise<Blob> {
   const zip = new JSZip();
-  const uid = `urn:uuid:${randomUUID()}`;
+  const uid = `urn:uuid:${crypto.randomUUID()}`;
   const manifest: ManifestItem[] = [];
   const spineIds: string[] = [];
 
@@ -230,6 +228,6 @@ ${spineXml}
 </package>`;
   zip.file("OEBPS/content.opf", opf);
 
-  const buffer = await zip.generateAsync({ type: "nodebuffer", mimeType: "application/epub+zip" });
+  const buffer = await zip.generateAsync({ type: "blob", mimeType: "application/epub+zip" });
   return buffer;
 }
