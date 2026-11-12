@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import type { SerializedNoteSummary } from "@/lib/notes"
+import type { SerializedNoteSummary } from "@/lib/store/notes"
 import { NoteComposer } from "./note-composer"
 import { NoteCard } from "./note-card"
 
@@ -20,6 +20,12 @@ export function NoteGrid({
   notes: SerializedNoteSummary[]
 }) {
   const [notes, setNotes] = useState(initialNotes)
+  // Follow the stored list as it changes (it updates live, also from other tabs).
+  const [prev, setPrev] = useState(initialNotes)
+  if (initialNotes !== prev) {
+    setPrev(initialNotes)
+    setNotes(initialNotes)
+  }
 
   function handleCreated(note: SerializedNoteSummary) {
     setNotes((prev) => sortNotes([note, ...prev]))

@@ -1,31 +1,25 @@
-import type { Metadata } from "next"
+"use client"
+
 import {
   PageShell,
   PageShellHeader,
   PageShellTitle,
   PageShellDescription,
 } from "@/components/layout/page-shell"
-import { requireProjectSection } from "@/lib/require-project-section"
-import { listResearchEntriesForProject } from "@/lib/research-entries"
 import { ResearchEntryGrid } from "./research-entry-grid"
+import { useProjectSection } from "@/components/project/project-context"
+import { NotFoundView } from "@/components/store/status-views"
+import { useResearchEntries } from "@/lib/store/hooks"
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}): Promise<Metadata> {
-  const { id } = await params
-  const project = await requireProjectSection(id, "research")
-  return { title: `Research — ${project.title}` }
-}
-
-export default async function ResearchPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  await requireProjectSection(id, "research")
-  const entries = await listResearchEntriesForProject(id)
+export default function Page() {
+  const project = useProjectSection("research")
+  const entries = useResearchEntries(project?.id ?? "")
+  if (!project) return <NotFoundView />
+  const id = project.id
 
   return (
     <PageShell>
+      <title>{`Research — ${project.title}`}</title>
       <PageShellHeader>
         <PageShellTitle>Research</PageShellTitle>
         <PageShellDescription>
@@ -33,7 +27,7 @@ export default async function ResearchPage({ params }: { params: Promise<{ id: s
         </PageShellDescription>
       </PageShellHeader>
 
-      <ResearchEntryGrid projectId={id} entries={entries} />
+      {entries === undefined ? null : <ResearchEntryGrid projectId={id} entries={entries} />}
     </PageShell>
   )
 }

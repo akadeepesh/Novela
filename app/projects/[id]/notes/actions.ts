@@ -1,127 +1,53 @@
-"use server";
-
-import { z } from "zod";
-import { revalidatePath } from "next/cache";
-import { connectDB } from "@/lib/db";
-import { Note } from "@/lib/models/note";
-import { ownsActiveProject, requireProject, requireUserId } from "@/lib/projects";
-import { serializeNoteSummary, type SerializedNoteSummary } from "@/lib/notes";
-import { safeAction } from "@/lib/safe-action";
-import { getLimit, keepWithinLimit } from "@/lib/entitlements";
-import { limitMessage } from "@/lib/plans";
+import { z } from "zod"
+import { createNote, deleteNote, updateNote, type SerializedNoteSummary } from "@/lib/store/notes"
 
 const createSchema = z.object({
   title: z.string().trim().max(160).optional(),
   content: z.string().trim().max(20000).optional(),
-});
+})
 
 /**
- * Creates a note straight from the "Take a note…" composer — no dialog,
- * no separate page, no redirect (Part 7.1). Returns the created note so
- * the grid can drop it straight into local state.
+ * Creates a note straight from the "Take a note…" composer, with no dialog
+ * or redirect. Returns the note so the grid can show it at once.
  */
-export const createNoteInlineAction = safeAction(
-  "createNoteInlineAction",
-  async (
-    projectId: string,
-    input: { title?: string; content?: string }
-  ): Promise<{ ok: boolean; note?: SerializedNoteSummary; error?: string }> => {
-    await requireProject(projectId);
-    const userId = await requireUserId();
-
-    const parsed = createSchema.safeParse(input);
-    if (!parsed.success) return { ok: false };
-
-    // Matches Keep: clicking away from a blank composer creates nothing.
-    if (!parsed.data.title?.trim() && !parsed.data.content?.trim()) {
-      return { ok: false };
-    }
-
-    await connectDB();
-    const { plan, limit } = await getLimit(userId, "notes");
-    if ((await Note.countDocuments({ projectId, ownerId: userId })) >= limit) {
-      return { ok: false, error: limitMessage("notes", plan) };
-    }
-    const note = await Note.create({
-      projectId,
-      ownerId: userId,
-      title: parsed.data.title?.trim() || "Untitled Note",
-      content: parsed.data.content?.trim() || "",
-    });
-    // Another create may have landed at the same moment (see keepWithinLimit).
-    if (!(await keepWithinLimit(Note, { projectId, ownerId: userId }, note._id, limit))) {
-      return { ok: false, error: limitMessage("notes", plan) };
-    }
-
-    revalidatePath(`/projects/${projectId}/notes`);
-    return { ok: true, note: serializeNoteSummary(note.toObject()) };
-  },
-  () => ({ ok: false }),
-  { ids: [0] }
-);
+export async function createNoteInlineAction(
+  projectId: string,
+  input: { title?: string; content?: string }
+): Promise<{ ok: boolean; note?: SerializedNoteSummary; error?: string }> {
+  const parsed = createSchema.safeParse(input)
+  if (!parsed.success) return { ok: false }
+  // Clicking away from a blank composer creates nothing.
+  if (!parsed.data.title?.trim() && !parsed.data.content?.trim()) return { ok: false }
+  const note = await createNote(projectId, {
+    title: parsed.data.title?.trim() || "Untitled Note",
+    content: parsed.data.content?.trim() || "",
+  })
+  return note ? { ok: true, note } : { ok: false }
+}
 
 const saveSchema = z.object({
   title: z.string().trim().max(160).optional(),
   content: z.string().trim().max(20000).optional(),
   tags: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
-});
+})
 
-export type SaveNoteInput = z.infer<typeof saveSchema>;
+export type SaveNoteInput = z.infer<typeof saveSchema>
 
-/**
- * Typed, direct-call save used by a note card's debounced autosave — the
- * inline-editing counterpart to the old form-based update action. Only
- * touches the fields it's actually given.
- */
-export const saveNoteAction = safeAction(
-  "saveNoteAction",
-  async (projectId: string, noteId: string, input: SaveNoteInput): Promise<{ ok: boolean }> => {
-    const userId = await requireUserId();
-    const parsed = saveSchema.safeParse(input);
-    if (!parsed.success) return { ok: false };
+/** A note card's debounced autosave. Only touches the fields it is given. */
+export async function saveNoteAction(projectId: string, noteId: string, input: SaveNoteInput): Promise<{ ok: boolean }> {
+  const parsed = saveSchema.safeParse(input)
+  if (!parsed.success) return { ok: false }
+  const patch: SaveNoteInput = {}
+  if (parsed.data.title !== undefined) patch.title = parsed.data.title.trim() || "Untitled Note"
+  if (parsed.data.content !== undefined) patch.content = parsed.data.content
+  if (parsed.data.tags !== undefined) patch.tags = parsed.data.tags
+  return { ok: await updateNote(projectId, noteId, patch) }
+}
 
-    const update: Record<string, unknown> = {};
-    if (parsed.data.title !== undefined) update.title = parsed.data.title.trim() || "Untitled Note";
-    if (parsed.data.content !== undefined) update.content = parsed.data.content;
-    if (parsed.data.tags !== undefined) update.tags = parsed.data.tags;
+export async function deleteNoteAction(projectId: string, noteId: string): Promise<void> {
+  await deleteNote(projectId, noteId)
+}
 
-    if (!(await ownsActiveProject(userId, projectId))) return { ok: false };
-
-    await connectDB();
-    const result = await Note.updateOne(
-      { _id: noteId, projectId, ownerId: userId },
-      { $set: update }
-    );
-
-    revalidatePath(`/projects/${projectId}/notes`);
-    return { ok: result.matchedCount > 0 };
-  },
-  () => ({ ok: false }),
-  { ids: [0, 1] }
-);
-
-export const deleteNoteAction = safeAction(
-  "deleteNoteAction",
-  async (projectId: string, noteId: string) => {
-    const userId = await requireUserId();
-    if (!(await ownsActiveProject(userId, projectId))) return;
-    await connectDB();
-    await Note.deleteOne({ _id: noteId, projectId, ownerId: userId });
-    revalidatePath(`/projects/${projectId}/notes`);
-  },
-  () => undefined,
-  { ids: [0, 1] }
-);
-
-export const togglePinNoteAction = safeAction(
-  "togglePinNoteAction",
-  async (projectId: string, noteId: string, pinned: boolean) => {
-    const userId = await requireUserId();
-    if (!(await ownsActiveProject(userId, projectId))) return;
-    await connectDB();
-    await Note.updateOne({ _id: noteId, projectId, ownerId: userId }, { $set: { pinned } });
-    revalidatePath(`/projects/${projectId}/notes`);
-  },
-  () => undefined,
-  { ids: [0, 1] }
-);
+export async function togglePinNoteAction(projectId: string, noteId: string, pinned: boolean): Promise<void> {
+  await updateNote(projectId, noteId, { pinned })
+}

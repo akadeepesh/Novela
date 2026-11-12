@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { RESEARCH_ENTRY_TYPES, type ResearchEntryType } from "@/lib/research-config"
-import type { SerializedResearchEntry } from "@/lib/research-entries"
+import type { SerializedResearchEntry } from "@/lib/store/notes"
 import { updateResearchEntryAction, type UpdateResearchEntryState } from "./actions"
 
 const initialState: UpdateResearchEntryState = {}

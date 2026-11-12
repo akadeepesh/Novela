@@ -1,31 +1,25 @@
-import type { Metadata } from "next"
+"use client"
+
 import {
   PageShell,
   PageShellHeader,
   PageShellTitle,
   PageShellDescription,
 } from "@/components/layout/page-shell"
-import { requireProjectSection } from "@/lib/require-project-section"
-import { listNotesForProject } from "@/lib/notes"
 import { NoteGrid } from "./note-grid"
+import { useProjectSection } from "@/components/project/project-context"
+import { NotFoundView } from "@/components/store/status-views"
+import { useNotes } from "@/lib/store/hooks"
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}): Promise<Metadata> {
-  const { id } = await params
-  const project = await requireProjectSection(id, "notes")
-  return { title: `Notes — ${project.title}` }
-}
-
-export default async function NotesPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  await requireProjectSection(id, "notes")
-  const notes = await listNotesForProject(id)
+export default function Page() {
+  const project = useProjectSection("notes")
+  const notes = useNotes(project?.id ?? "")
+  if (!project) return <NotFoundView />
+  const id = project.id
 
   return (
     <PageShell>
+      <title>{`Notes — ${project.title}`}</title>
       <PageShellHeader>
         <PageShellTitle>Notes</PageShellTitle>
         <PageShellDescription>
@@ -33,7 +27,7 @@ export default async function NotesPage({ params }: { params: Promise<{ id: stri
         </PageShellDescription>
       </PageShellHeader>
 
-      <NoteGrid projectId={id} notes={notes} />
+      {notes === undefined ? null : <NoteGrid projectId={id} notes={notes} />}
     </PageShell>
   )
 }

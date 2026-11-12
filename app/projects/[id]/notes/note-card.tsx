@@ -6,7 +6,7 @@ import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { ChipInput } from "@/components/ui/chip-input"
 import { cn } from "cn"
 import { createActionQueue } from "@/lib/action-queue"
-import type { SerializedNoteSummary } from "@/lib/notes"
+import type { SerializedNoteSummary } from "@/lib/store/notes"
 import { saveNoteAction, deleteNoteAction, togglePinNoteAction } from "./actions"
 
 const SAVE_DEBOUNCE_MS = 700

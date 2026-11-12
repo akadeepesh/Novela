@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
-import type { SerializedNote } from "@/lib/notes"
+import type { SerializedNote } from "@/lib/store/notes"
 import { updateNoteAction, type UpdateNoteState } from "./actions"
 
 const initialState: UpdateNoteState = {}

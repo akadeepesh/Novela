@@ -3,7 +3,7 @@
 import { useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "cn"
-import type { SerializedNoteSummary } from "@/lib/notes"
+import type { SerializedNoteSummary } from "@/lib/store/notes"
 import { createNoteInlineAction } from "./actions"
 
 /**

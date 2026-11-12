@@ -5,7 +5,7 @@ import { ArrowSquareOutIcon, NotePencilIcon, TrashIcon } from "@phosphor-icons/r
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { cn } from "cn"
 import { createActionQueue } from "@/lib/action-queue"
-import type { SerializedResearchEntrySummary } from "@/lib/research-entries"
+import type { SerializedResearchEntrySummary } from "@/lib/store/notes"
 import { deleteResearchEntryAction, saveResearchEntryFieldsAction } from "./actions"
 
 const SAVE_DEBOUNCE_MS = 700
