@@ -14,3 +14,9 @@ export const DOMAIN = "korakagaj.app"
 /** Longer description for metadata, the manifest and link previews. */
 export const DESCRIPTION =
   "A focused writing workspace for novelists, poets, and storytellers — manuscript, characters, world, and plot, all in one place."
+
+/**
+ * File extension for project files and backups (a zip inside). Placeholder
+ * until the final name is chosen; `.zip` is always accepted on import too.
+ */
+export const BACKUP_FILE_EXTENSION = "korakagaj"

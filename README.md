@@ -65,8 +65,26 @@ link preview: the pasted URL is sent to `app/actions/url-preview.ts`, which
 fetches the page's title, image and icon. Nothing is stored on the server.
 
 Because data is per browser, clearing site data deletes it. The app asks
-for persistent storage (`navigator.storage.persist()`); backups and project
-files are planned next.
+for persistent storage (`navigator.storage.persist()`) and offers backups.
+
+## Backups and project files
+
+`lib/backup/format.ts` defines one file format for both: a zip (with the
+extension from `BACKUP_FILE_EXTENSION` in `lib/brand.ts`) holding
+`manifest.json`, every record in `data.json`, and the images under
+`assets/`. A project file holds one book; a full backup holds every book,
+Trash and history included.
+
+- **Download and restore** are on the Settings page. A book that already
+  exists can be replaced or kept alongside as a copy with fresh ids.
+- **Folder backup** (Chromium browsers): a chosen folder gets a full backup
+  about a minute after writing stops, one file per day for seven days
+  (`lib/backup/folder.ts`, driven by `components/store/backup-agent.tsx`).
+- **Reminders**: the dashboard suggests a backup after seven days without one.
+
+When the backup layout changes, bump `BACKUP_FORMAT_VERSION`. When
+`SCHEMA_VERSION` goes up, add a step to `migrateData` so older files still
+import.
 
 ## Configuration
 
@@ -86,6 +104,7 @@ npm install
 npm run dev        # http://localhost:3000
 npm run typecheck
 npm run lint
+npm test           # Vitest, against an in-memory IndexedDB
 npm run build
 ```
 
