@@ -7,11 +7,17 @@ export default function manifest(): MetadataRoute.Manifest {
     name: APP_NAME,
     short_name: APP_NAME,
     description: DESCRIPTION,
-    start_url: "/",
+    id: "/",
+    // Installed, the app opens straight to your books.
+    start_url: "/dashboard",
+    scope: "/",
     display: "standalone",
+    categories: ["productivity", "books"],
     background_color: "#fcfaf7",
     theme_color: "#8e5138",
     icons: [
+      { src: "/android-chrome-192x192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/android-chrome-512x512.png", sizes: "512x512", type: "image/png", purpose: "any" },
       { src: "/android-chrome-192x192.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
       { src: "/android-chrome-512x512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
