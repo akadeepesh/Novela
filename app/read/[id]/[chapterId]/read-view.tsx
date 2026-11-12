@@ -6,6 +6,7 @@ import Link from "next/link"
 import { ArrowLeftIcon, CaretLeftIcon, CaretRightIcon } from "@phosphor-icons/react/dist/ssr"
 import { cn } from "cn"
 import { getBackgroundPreset, LINE_WIDTH_PX, type ManuscriptSettings } from "@/lib/manuscript-config"
+import { useImageUrl } from "@/lib/store/use-image-url"
 import type { ExportBlock } from "@/lib/export/document-model"
 import type { ProjectType } from "@/lib/project-config"
 import { blocksToHtml } from "./blocks-html"
@@ -68,7 +69,8 @@ export function ReadView({
   projectType: ProjectType
 }) {
   const backHref = `/projects/${projectId}/chapters/${chapterId}`
-  const bg = getBackgroundPreset(settings.background, settings.backgroundImageUrl)
+  const backgroundImageUrl = useImageUrl(settings.backgroundImageUrl)
+  const bg = getBackgroundPreset(settings.background, backgroundImageUrl)
   const isPoetry = projectType === "poetry"
 
   const areaRef = useRef<HTMLDivElement>(null)

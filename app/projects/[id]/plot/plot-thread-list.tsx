@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { TrashIcon } from "@phosphor-icons/react/dist/ssr"
 import { NewLinkButton } from "@/components/ui/new-link-button"
@@ -9,7 +8,7 @@ import { Badge, type badgeVariants } from "@/components/ui/badge"
 import type { VariantProps } from "class-variance-authority"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { plotStatusLabel } from "@/lib/plot-config"
-import type { SerializedPlotThreadSummary } from "@/lib/plot-threads"
+import type { SerializedPlotThreadSummary } from "@/lib/store/bible"
 import { deletePlotThreadAction } from "./actions"
 
 type BadgeVariant = VariantProps<typeof badgeVariants>["variant"]
@@ -28,7 +27,6 @@ export function PlotThreadList({
   projectId: string
   threads: SerializedPlotThreadSummary[]
 }) {
-  const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; title: string } | null>(null)
 
@@ -37,7 +35,6 @@ export function PlotThreadList({
     startTransition(async () => {
       await deletePlotThreadAction(projectId, deleteTarget.id)
       setDeleteTarget(null)
-      router.refresh()
     })
   }
 

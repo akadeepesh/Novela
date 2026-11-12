@@ -1,4 +1,5 @@
-import type { Metadata } from "next"
+"use client"
+
 import {
   PageShell,
   PageShellHeader,
@@ -8,33 +9,26 @@ import {
 import { EmptyState } from "@/components/ui/empty-state"
 import { NewLinkButton } from "@/components/ui/new-link-button"
 import { SECTION_DEFS } from "@/lib/project-config"
-import { requireProjectSection } from "@/lib/require-project-section"
-import { listCharactersForProject } from "@/lib/characters"
 import { CharacterGrid } from "./character-grid"
+import { useProjectSection } from "@/components/project/project-context"
+import { NotFoundView } from "@/components/store/status-views"
+import { useCharacters } from "@/lib/store/hooks"
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}): Promise<Metadata> {
-  const { id } = await params
-  const project = await requireProjectSection(id, "characters")
-  return { title: `Characters — ${project.title}` }
-}
-
-export default async function CharactersPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const project = await requireProjectSection(id, "characters")
-  const characters = await listCharactersForProject(id)
+export default function Page() {
+  const project = useProjectSection("characters")
+  const characters = useCharacters(project?.id ?? "")
+  if (!project) return <NotFoundView />
+  const id = project.id
 
   return (
     <PageShell>
+      <title>{`Characters — ${project.title}`}</title>
       <PageShellHeader>
         <PageShellTitle>Characters</PageShellTitle>
         <PageShellDescription>Everyone who appears in {project.title}.</PageShellDescription>
       </PageShellHeader>
 
-      {characters.length === 0 ? (
+      {characters === undefined ? null : characters.length === 0 ? (
         <EmptyState
           icon={SECTION_DEFS.characters.icon}
           title="No characters yet"

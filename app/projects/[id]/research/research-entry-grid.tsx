@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import type { SerializedResearchEntrySummary } from "@/lib/research-entries"
+import type { SerializedResearchEntrySummary } from "@/lib/store/notes"
 import { ResearchComposer } from "./research-composer"
 import { ResearchEntryCard } from "./research-entry-card"
 
@@ -13,6 +13,12 @@ export function ResearchEntryGrid({
   entries: SerializedResearchEntrySummary[]
 }) {
   const [entries, setEntries] = useState(initialEntries)
+  // Follow the stored list as it changes (it updates live, also from other tabs).
+  const [prev, setPrev] = useState(initialEntries)
+  if (initialEntries !== prev) {
+    setPrev(initialEntries)
+    setEntries(initialEntries)
+  }
 
   function handleCreated(entry: SerializedResearchEntrySummary) {
     setEntries((prev) => [entry, ...prev])

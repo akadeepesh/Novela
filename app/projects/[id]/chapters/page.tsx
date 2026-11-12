@@ -1,67 +1,8 @@
-import type { Metadata } from "next"
 import { cookies } from "next/headers"
-import {
-  PageShell,
-  PageShellHeader,
-  PageShellTitle,
-  PageShellDescription,
-} from "@/components/layout/page-shell"
-import { EmptyState } from "@/components/ui/empty-state"
-import { NewLinkButton } from "@/components/ui/new-link-button"
-import { SECTION_DEFS, sectionLabel, sectionLabelSingular } from "@/lib/project-config"
-import { requireProjectSection } from "@/lib/require-project-section"
-import { listChaptersForProject, listTrashedChapters } from "@/lib/chapters"
-import { ChapterList } from "./chapter-list"
+import { ChaptersView } from "./chapters-view"
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}): Promise<Metadata> {
-  const { id } = await params
-  const project = await requireProjectSection(id, "chapters")
-  return { title: `${sectionLabel("chapters", project.type)} — ${project.title}` }
-}
-
-export default async function ChaptersPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
-  const project = await requireProjectSection(id, "chapters")
-  const [chapters, trashed, cookieStore] = await Promise.all([
-    listChaptersForProject(id),
-    listTrashedChapters(id),
-    cookies(),
-  ])
+export default async function ChaptersPage() {
+  const cookieStore = await cookies()
   const defaultView = cookieStore.get("chapters-view")?.value === "board" ? "board" : "list"
-  const label = sectionLabel("chapters", project.type)
-  const singular = sectionLabelSingular("chapters", project.type)
-
-  return (
-    <PageShell>
-      <PageShellHeader>
-        <PageShellTitle>{label}</PageShellTitle>
-        <PageShellDescription>Where {project.title} actually gets written.</PageShellDescription>
-      </PageShellHeader>
-
-      {chapters.length === 0 && trashed.length === 0 ? (
-        <EmptyState
-          icon={SECTION_DEFS.chapters.icon}
-          title={`No ${label.toLowerCase()} yet`}
-          description={`Start your first ${singular.toLowerCase()} — you can always reorder or rename it later.`}
-          action={
-            <NewLinkButton href={`/projects/${id}/chapters/new`}>New {singular.toLowerCase()}</NewLinkButton>
-          }
-        />
-      ) : (
-        <ChapterList
-          projectId={id}
-          chapters={chapters}
-          trashed={trashed}
-          defaultView={defaultView}
-          label={label}
-          singular={singular}
-          projectType={project.type}
-        />
-      )}
-    </PageShell>
-  )
+  return <ChaptersView defaultView={defaultView} />
 }

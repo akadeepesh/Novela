@@ -1,6 +1,7 @@
 "use client"
 
-import { useActionState } from "react"
+import { useActionState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import {
   Card,
   CardHeader,
@@ -15,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { PLOT_STATUSES } from "@/lib/plot-config"
-import type { SerializedPlotThread } from "@/lib/plot-threads"
+import type { SerializedPlotThread } from "@/lib/store/bible"
 import { updatePlotThreadAction, createPlotThreadFromFormAction, type UpdatePlotThreadState } from "./actions"
 
 const initialState: UpdatePlotThreadState = {}
@@ -26,6 +27,10 @@ export function PlotThreadForm({ thread }: { thread: SerializedPlotThread }) {
     ? updatePlotThreadAction.bind(null, thread.projectId, thread.id)
     : createPlotThreadFromFormAction.bind(null, thread.projectId)
   const [state, formAction, pending] = useActionState(boundAction, initialState)
+  const router = useRouter()
+  useEffect(() => {
+    if (state.redirectTo) router.push(state.redirectTo)
+  }, [state.redirectTo, router])
 
   return (
     <Card>

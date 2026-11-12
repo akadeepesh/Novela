@@ -1,66 +1,40 @@
-import type { Metadata } from "next"
-import { connectDB } from "@/lib/db"
-import { Chapter } from "@/lib/models/chapter"
-import { requireUserId } from "@/lib/projects"
+"use client"
+
 import { sectionLabelSingular } from "@/lib/project-config"
-import { requireProjectSection } from "@/lib/require-project-section"
-import { listMentionablesForProject } from "@/lib/mentions"
 import { initialChapterContent } from "@/lib/script-scaffold"
 import { nextDefaultName } from "@/lib/default-name"
-import { getLimit } from "@/lib/entitlements"
-import { limitMessage } from "@/lib/plans"
-import { LimitReached } from "@/components/project/limit-reached"
-import type { SerializedChapter } from "@/lib/chapters"
+import { useProjectSection } from "@/components/project/project-context"
+import { LoadingView, NotFoundView } from "@/components/store/status-views"
+import { useSnapshot } from "@/lib/store/hooks"
+import { listChaptersForProject, type SerializedChapter } from "@/lib/store/chapters"
+import { listMentionablesForProject } from "@/lib/store/mentions"
+import type { SerializedProject } from "@/lib/store/projects"
 import { ManuscriptEditor } from "../[chapterId]/manuscript-editor"
-
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}): Promise<Metadata> {
-  const { id } = await params
-  const project = await requireProjectSection(id, "chapters")
-  return { title: `New ${sectionLabelSingular("chapters", project.type).toLowerCase()} — ${project.title}` }
-}
 
 // The editor in "draft" mode (empty id): nothing is saved until the first
 // change, so opening this page and leaving creates no chapter.
-export default async function NewChapterPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
-  const { id } = await params
-  const project = await requireProjectSection(id, "chapters")
-  const userId = await requireUserId()
-  const mentionables = await listMentionablesForProject(id)
+export default function NewChapterPage() {
+  const project = useProjectSection("chapters")
+  if (!project) return <NotFoundView />
+  return <DraftEditor project={project} />
+}
 
-  await connectDB()
-  const existing = await Chapter.find({ projectId: id, ownerId: userId, deletedAt: null })
-    .select("title")
-    .lean<{ title: string }[]>()
+function DraftEditor({ project }: { project: SerializedProject }) {
   const singular = sectionLabelSingular("chapters", project.type)
-
-  const { plan, limit } = await getLimit(userId, "chapters")
-  if (existing.length >= limit) {
-    return (
-      <LimitReached
-        showUpgrade={plan === "free"}
-        message={limitMessage("chapters", plan, `${singular.toLowerCase()}s`)}
-        backHref={`/projects/${id}/chapters`}
-        backLabel={`${singular}s`}
-      />
-    )
-  }
+  const data = useSnapshot(async () => ({
+    existing: await listChaptersForProject(project.id),
+    mentionables: await listMentionablesForProject(project.id),
+  }))
+  if (data === undefined) return <LoadingView />
 
   const draft: SerializedChapter = {
     id: "",
-    projectId: id,
+    projectId: project.id,
     title: nextDefaultName(
-      existing.map((c) => c.title),
+      data.existing.map((c) => c.title),
       singular
     ),
-    order: existing.length,
+    order: data.existing.length,
     wordCount: 0,
     status: "draft",
     synopsis: "",
@@ -71,13 +45,16 @@ export default async function NewChapterPage({
   }
 
   return (
-    <ManuscriptEditor
-      projectId={id}
-      projectType={project.type}
-      chapter={draft}
-      chapterLabelSingular={singular}
-      manuscriptSettings={project.manuscriptSettings}
-      mentionables={mentionables}
-    />
+    <>
+      <title>{`New ${singular.toLowerCase()} — ${project.title}`}</title>
+      <ManuscriptEditor
+        projectId={project.id}
+        projectType={project.type}
+        chapter={draft}
+        chapterLabelSingular={singular}
+        manuscriptSettings={project.manuscriptSettings}
+        mentionables={data.mentionables}
+      />
+    </>
   )
 }

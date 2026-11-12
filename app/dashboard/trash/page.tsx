@@ -7,18 +7,12 @@ import {
   PageShellTitle,
   PageShellDescription,
 } from "@/components/layout/page-shell"
-import { requireUserId } from "@/lib/projects"
-import { getTrashedProjects, purgeExpiredTrash } from "@/lib/trash"
 import { TRASH_DAYS } from "@/lib/trash-config"
 import { TrashList } from "./trash-list"
 
 export const metadata: Metadata = { title: "Trash" }
 
-export default async function TrashPage() {
-  const userId = await requireUserId()
-  await purgeExpiredTrash(userId)
-  const items = await getTrashedProjects(userId)
-
+export default function TrashPage() {
   return (
     <PageShell width="prose">
       <Link
@@ -35,11 +29,7 @@ export default async function TrashPage() {
           bring everything back.
         </PageShellDescription>
       </PageShellHeader>
-      {items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">The Trash is empty.</p>
-      ) : (
-        <TrashList items={items} />
-      )}
+      <TrashList />
     </PageShell>
   )
 }

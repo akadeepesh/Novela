@@ -1,6 +1,7 @@
 import { BookOpenTextIcon, FeatherIcon } from "@phosphor-icons/react/dist/ssr"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { APP_NAME } from "@/lib/brand"
 
 export default function Home() {
   return (
@@ -15,23 +16,20 @@ export default function Home() {
         </h1>
 
         <p className="font-serif text-lg leading-relaxed text-muted-foreground">
-          KoraKagaj is a focused workspace for novels, poetry, and everything
+          {APP_NAME} is a focused workspace for novels, poetry, and everything
           in between — manuscript, characters, world, and plot, all in one
           quiet place.
         </p>
 
         <div className="mt-2 flex items-center gap-3">
-          <Button size="lg" render={<Link href="/signup" />} nativeButton={false}>
+          <Button size="lg" render={<Link href="/dashboard" />} nativeButton={false}>
             <BookOpenTextIcon />
             Start writing
           </Button>
-          <Button size="lg" variant="outline" render={<Link href="/login" />} nativeButton={false}>
-            Sign in
-          </Button>
         </div>
-        <Link href="/pricing" className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline">
-          Free to write. See pricing
-        </Link>
+        <p className="text-sm text-muted-foreground">
+          Free. No account. Your writing stays on your device.
+        </p>
       </div>
     </div>
   )

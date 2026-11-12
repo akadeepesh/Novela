@@ -4,10 +4,9 @@ import { useEffect, useState } from "react"
 import type { Editor } from "@tiptap/react"
 import { TextSelection } from "@tiptap/pm/state"
 import { XIcon, ChatTeardropTextIcon } from "@phosphor-icons/react/dist/ssr"
-import { cn } from "cn"
 import { Button } from "@/components/ui/button"
 import { commentRanges } from "@/components/editor/comment-mark"
-import type { SerializedComment } from "@/lib/comments"
+import type { SerializedComment } from "@/lib/store/comments"
 import type { ActionQueue } from "@/lib/action-queue"
 import {
   createOwnerCommentAction,
@@ -245,10 +244,10 @@ function CommentItem({
   onDelete: () => void
 }) {
   return (
-    <li className={cn("rounded-md border border-border p-2.5", comment.authorKind === "reader" && "border-primary/30")}>
+    <li className="rounded-md border border-border p-2.5">
       <div className="flex items-baseline justify-between gap-2">
         <p className="text-xs font-medium text-foreground">
-          {comment.authorKind === "reader" ? `${comment.authorName || "A reader"} (reader)` : "You"}
+          You
         </p>
         <p className="text-[11px] text-muted-foreground">{formatTime(comment.createdAt)}</p>
       </div>

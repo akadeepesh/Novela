@@ -13,7 +13,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
 } from "@/components/ui/alert-dialog"
-import type { SerializedVersion } from "@/lib/versions"
+import type { SerializedVersion } from "@/lib/store/versions"
 import type { DiffPart } from "@/lib/text-diff"
 import type { ActionQueue } from "@/lib/action-queue"
 import { createVersionAction, listVersionsAction, getVersionDiffAction, restoreVersionAction } from "./actions"

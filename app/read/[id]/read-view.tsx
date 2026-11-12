@@ -11,6 +11,7 @@ import {
 } from "@phosphor-icons/react/dist/ssr"
 import { cn } from "cn"
 import { getBackgroundPreset, type ManuscriptSettings } from "@/lib/manuscript-config"
+import { useImageUrl } from "@/lib/store/use-image-url"
 import { getTrimSize } from "@/lib/export-config"
 import type { ExportBlock, ExportDocument } from "@/lib/export/document-model"
 import type { ProjectType } from "@/lib/project-config"
@@ -157,8 +158,8 @@ export function ReadView({
   doc,
   projectType,
   manuscriptSettings: settings,
-  coverFrontUrl,
-  coverBackUrl,
+  coverFrontUrl: coverFrontRef,
+  coverBackUrl: coverBackRef,
   initialChapterId,
   backHref,
   renderExtra,
@@ -174,6 +175,10 @@ export function ReadView({
   /** Extra controls for the top bar (the reader's "Comment" button), told which chapter is open. */
   renderExtra?: (current: { chapterId: string; title: string } | null) => React.ReactNode
 }) {
+  // Covers and backgrounds may be images stored in this browser.
+  const coverFrontUrl = useImageUrl(coverFrontRef)
+  const coverBackUrl = useImageUrl(coverBackRef)
+  const backgroundImageUrl = useImageUrl(settings.backgroundImageUrl)
   const trim = getTrimSize(doc.trimSize)
   const W0 = trim.widthIn * POINTS_PER_INCH
   const H0 = trim.heightIn * POINTS_PER_INCH
@@ -192,7 +197,7 @@ export function ReadView({
     }
   }, [trim, W0, H0])
 
-  const bg = getBackgroundPreset(settings.background, settings.backgroundImageUrl)
+  const bg = getBackgroundPreset(settings.background, backgroundImageUrl)
   const paperStyle = { ...bg.style, width: W0, height: H0 }
 
   const areaRef = useRef<HTMLDivElement>(null)

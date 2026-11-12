@@ -9,7 +9,7 @@ import {
 } from "@phosphor-icons/react/dist/ssr"
 import { cn } from "cn"
 import { SECTION_DEFS, sectionLabel, sectionLabelSingular, type ProjectType, type SectionId } from "@/lib/project-config"
-import type { SearchItem, SearchItemKind } from "@/lib/search"
+import type { SearchItem, SearchItemKind } from "@/lib/store/search"
 import { useGuardedPush } from "./navigation-guard"
 
 const KIND_ICON: Record<SearchItemKind, typeof BookOpenIcon> = {

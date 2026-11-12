@@ -5,11 +5,11 @@ import { ArrowSquareOutIcon, NotePencilIcon, TrashIcon } from "@phosphor-icons/r
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { cn } from "cn"
 import { createActionQueue } from "@/lib/action-queue"
-import type { SerializedResearchEntrySummary } from "@/lib/research-entries"
+import type { SerializedResearchEntrySummary } from "@/lib/store/notes"
 import { deleteResearchEntryAction, saveResearchEntryFieldsAction } from "./actions"
 
 const SAVE_DEBOUNCE_MS = 700
-// Match the server's limits (research/actions.ts) so an over-long entry is
+// Match the save limits (research/actions.ts) so an over-long entry is
 // stopped while typing instead of silently failing to save.
 const MAX_TITLE = 160
 const MAX_CONTENT = 8000
@@ -57,7 +57,7 @@ export function ResearchEntryCard({
   // Saves run one at a time, in order (see lib/action-queue.ts).
   const enqueue = useMemo(() => createActionQueue(), [])
 
-  // Stay in sync with the server copy while not actively being edited.
+  // Stay in sync with the stored copy while not actively being edited.
   // Adjusting state directly during render (rather than in a useEffect)
   // avoids an extra render pass — see
   // https://react.dev/learn/you-might-not-need-an-effect

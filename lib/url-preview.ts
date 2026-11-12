@@ -3,6 +3,7 @@ import http from "node:http";
 import https from "node:https";
 import net from "node:net";
 import { isObviouslyInternalHost, resolvePublicAddress, type ResolvedTarget } from "@/lib/ssrf-guard";
+import { APP_NAME, DOMAIN } from "@/lib/brand";
 
 /**
  * Fetches enough of a page's <head> to build a bookmark-card preview:
@@ -24,7 +25,7 @@ const FETCH_TIMEOUT_MS = 6000;
 // this — no reason to pull an entire (possibly huge) page over the wire.
 const MAX_BYTES = 300_000;
 const MAX_REDIRECTS = 3;
-const USER_AGENT = "Mozilla/5.0 (compatible; KoraKagajBot/1.0; +https://korakagaj.app/bot)";
+const USER_AGENT = `Mozilla/5.0 (compatible; ${APP_NAME.replace(/\s+/g, "")}Bot/1.0; +https://${DOMAIN}/bot)`;
 
 function faviconFor(hostname: string): string {
   return `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(hostname)}`;

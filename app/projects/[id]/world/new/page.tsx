@@ -1,52 +1,23 @@
-import type { Metadata } from "next"
+"use client"
+
 import Link from "next/link"
 import { ArrowLeftIcon } from "@phosphor-icons/react/dist/ssr"
 import { PageShell, PageShellHeader, PageShellTitle } from "@/components/layout/page-shell"
-import { requireProjectSection } from "@/lib/require-project-section"
-import { connectDB } from "@/lib/db"
-import { WorldEntry } from "@/lib/models/world-entry"
-import { requireUserId } from "@/lib/projects"
-import { getLimit } from "@/lib/entitlements"
-import { limitMessage } from "@/lib/plans"
-import { LimitReached } from "@/components/project/limit-reached"
-import type { SerializedWorldEntry } from "@/lib/world-entries"
 import { WorldEntryForm } from "../[entryId]/world-entry-form"
+import type { SerializedWorldEntry } from "@/lib/store/bible"
+import { useProjectSection } from "@/components/project/project-context"
+import { NotFoundView } from "@/components/store/status-views"
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}): Promise<Metadata> {
-  const { id } = await params
-  const project = await requireProjectSection(id, "world")
-  return { title: `New entry — ${project.title}` }
-}
-
-// A blank form. Nothing is saved until the person presses "Create entry".
-export default async function NewWorldEntryPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
-  const { id } = await params
-  await requireProjectSection(id, "world")
-  const userId = await requireUserId()
-  await connectDB()
-  const { plan, limit } = await getLimit(userId, "worldEntries")
-  if ((await WorldEntry.countDocuments({ projectId: id, ownerId: userId })) >= limit) {
-    return (
-      <LimitReached
-        showUpgrade={plan === "free"}
-        message={limitMessage("worldEntries", plan)}
-        backHref={`/projects/${id}/world`}
-        backLabel="World"
-      />
-    )
-  }
+// A blank form. Nothing is saved until the person presses Create.
+export default function Page() {
+  const project = useProjectSection("world")
+  if (!project) return <NotFoundView />
+  const id = project.id
   const draft: SerializedWorldEntry = { id: "", projectId: id, name: "", type: "location", aliases: [], createdAt: "", updatedAt: "" }
 
   return (
     <PageShell width="prose">
+      <title>{`New world entry — ${project.title}`}</title>
       <Link
         href={`/projects/${id}/world`}
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"

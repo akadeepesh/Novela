@@ -1,5 +1,7 @@
-import type { Metadata } from "next"
+"use client"
+
 import Link from "next/link"
+import { useParams } from "next/navigation"
 import { ArrowLeftIcon } from "@phosphor-icons/react/dist/ssr"
 import {
   PageShell,
@@ -8,37 +10,28 @@ import {
 } from "@/components/layout/page-shell"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
-import { requireProjectSection } from "@/lib/require-project-section"
-import { requireWorldEntry } from "@/lib/world-entries"
 import { worldEntryTypeLabel } from "@/lib/world-config"
-import { listChaptersMentioning } from "@/lib/mentions"
 import { AppearsIn } from "@/components/project/appears-in"
 import { WorldEntryForm } from "./world-entry-form"
 import { DeleteWorldEntryButton } from "./delete-world-entry-button"
+import { useProjectSection } from "@/components/project/project-context"
+import { LoadingView, NotFoundView } from "@/components/store/status-views"
+import { useWorldEntry, useChaptersMentioning } from "@/lib/store/hooks"
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string; entryId: string }>
-}): Promise<Metadata> {
-  const { id, entryId } = await params
-  const project = await requireProjectSection(id, "world")
-  const entry = await requireWorldEntry(id, entryId)
-  return { title: `${entry.name} — ${project.title}` }
-}
-
-export default async function WorldEntryDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string; entryId: string }>
-}) {
-  const { id, entryId } = await params
-  const project = await requireProjectSection(id, "world")
-  const entry = await requireWorldEntry(id, entryId)
-  const mentionedIn = await listChaptersMentioning(id, "world", entryId)
+export default function Page() {
+  const project = useProjectSection("world")
+  const { entryId } = useParams<{ id: string; entryId: string }>()
+  const projectId = project?.id ?? ""
+  const entry = useWorldEntry(projectId, entryId)
+  const mentionedIn = useChaptersMentioning(projectId, "world", entryId)
+  if (!project) return <NotFoundView />
+  const id = project.id
+  if (entry === undefined) return <LoadingView />
+  if (entry === null) return <NotFoundView backHref={`/projects/${id}/world`} backLabel="Back to World" />
 
   return (
     <PageShell width="prose">
+      <title>{`${entry.name} — ${project.title}`}</title>
       <Link
         href={`/projects/${id}/world`}
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
@@ -57,7 +50,7 @@ export default async function WorldEntryDetailPage({
         <DeleteWorldEntryButton projectId={id} entryId={entryId} name={entry.name} />
       </PageShellHeader>
 
-      <WorldEntryForm key={entry.updatedAt} entry={entry} />
+      <WorldEntryForm key={entry.id} entry={entry} />
 
       <Card className="mt-6">
         <CardHeader>
@@ -65,7 +58,7 @@ export default async function WorldEntryDetailPage({
           <CardDescription>Chapters that @mention this entry.</CardDescription>
         </CardHeader>
         <CardContent>
-          <AppearsIn projectId={id} projectType={project.type} chapters={mentionedIn} />
+          <AppearsIn projectId={id} projectType={project.type} chapters={mentionedIn ?? []} />
         </CardContent>
       </Card>
     </PageShell>

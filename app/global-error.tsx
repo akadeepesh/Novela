@@ -5,6 +5,8 @@
 // its own <html>/<body> and can't lean on globals.css, fonts, or any app
 // component that might itself be implicated in the crash.
 
+import { APP_NAME } from "@/lib/brand"
+
 export default function GlobalError({
   reset,
 }: {
@@ -29,7 +31,7 @@ export default function GlobalError({
       >
         <div style={{ maxWidth: 380, textAlign: "center" }}>
           <h1 style={{ fontSize: 22, fontWeight: 600, marginBottom: 12 }}>
-            KoraKagaj hit a snag.
+            {APP_NAME} hit a snag.
           </h1>
           <p style={{ fontSize: 15, lineHeight: 1.6, color: "#7d6a58", marginBottom: 20 }}>
             Something went wrong loading the app. Reloading usually fixes it.

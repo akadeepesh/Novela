@@ -1,6 +1,7 @@
 "use client"
 
-import { useActionState, createElement } from "react"
+import { useActionState, useEffect, createElement } from "react"
+import { useRouter } from "next/navigation"
 import {
   Card,
   CardHeader,
@@ -15,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { WORLD_ENTRY_TYPES, worldEntryTypeIcon } from "@/lib/world-config"
-import type { SerializedWorldEntry } from "@/lib/world-entries"
+import type { SerializedWorldEntry } from "@/lib/store/bible"
 import { updateWorldEntryAction, createWorldEntryFromFormAction, type UpdateWorldEntryState } from "./actions"
 
 const initialState: UpdateWorldEntryState = {}
@@ -26,6 +27,10 @@ export function WorldEntryForm({ entry }: { entry: SerializedWorldEntry }) {
     ? updateWorldEntryAction.bind(null, entry.projectId, entry.id)
     : createWorldEntryFromFormAction.bind(null, entry.projectId)
   const [state, formAction, pending] = useActionState(boundAction, initialState)
+  const router = useRouter()
+  useEffect(() => {
+    if (state.redirectTo) router.push(state.redirectTo)
+  }, [state.redirectTo, router])
   const worldEntryTypeIconComponent = worldEntryTypeIcon(entry.type)
 
   return (

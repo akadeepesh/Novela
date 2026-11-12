@@ -8,6 +8,7 @@ import { BoundedNumberInput, DebouncedInput } from "@/components/ui/committed-in
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import type { ActionQueue } from "@/lib/action-queue"
+import { useImageUrl } from "@/lib/store/use-image-url"
 import {
   BACKGROUND_PRESETS,
   CUSTOM_BACKGROUND_ID,
@@ -35,6 +36,7 @@ export function ManuscriptSettingsPanel({
   enqueue: ActionQueue
 }) {
   const [saveFailed, setSaveFailed] = useState(false)
+  const customBackgroundUrl = useImageUrl(settings.backgroundImageUrl)
 
   function patch(update: Partial<ManuscriptSettings>) {
     const next = { ...settings, ...update }
@@ -98,7 +100,7 @@ export function ManuscriptSettingsPanel({
               >
                 <span
                   className="size-3 rounded-full border border-black/10 bg-cover bg-center"
-                  style={{ backgroundImage: `url(${settings.backgroundImageUrl})` }}
+                  style={customBackgroundUrl ? { backgroundImage: `url(${customBackgroundUrl})` } : undefined}
                 />
                 Custom
               </button>

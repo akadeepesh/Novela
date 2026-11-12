@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { LinkIcon } from "@phosphor-icons/react/dist/ssr"
 import { Button } from "@/components/ui/button"
-import type { SerializedResearchEntrySummary } from "@/lib/research-entries"
+import type { SerializedResearchEntrySummary } from "@/lib/store/notes"
 import { createLinkEntryAction, createQuickNoteEntryAction } from "./actions"
 
 /**

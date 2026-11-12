@@ -1,52 +1,23 @@
-import type { Metadata } from "next"
+"use client"
+
 import Link from "next/link"
 import { ArrowLeftIcon } from "@phosphor-icons/react/dist/ssr"
 import { PageShell, PageShellHeader, PageShellTitle } from "@/components/layout/page-shell"
-import { requireProjectSection } from "@/lib/require-project-section"
-import { connectDB } from "@/lib/db"
-import { PlotThread } from "@/lib/models/plot-thread"
-import { requireUserId } from "@/lib/projects"
-import { getLimit } from "@/lib/entitlements"
-import { limitMessage } from "@/lib/plans"
-import { LimitReached } from "@/components/project/limit-reached"
-import type { SerializedPlotThread } from "@/lib/plot-threads"
 import { PlotThreadForm } from "../[threadId]/plot-thread-form"
+import type { SerializedPlotThread } from "@/lib/store/bible"
+import { useProjectSection } from "@/components/project/project-context"
+import { NotFoundView } from "@/components/store/status-views"
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}): Promise<Metadata> {
-  const { id } = await params
-  const project = await requireProjectSection(id, "plot")
-  return { title: `New thread — ${project.title}` }
-}
-
-// A blank form. Nothing is saved until the person presses "Create thread".
-export default async function NewPlotThreadPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
-  const { id } = await params
-  await requireProjectSection(id, "plot")
-  const userId = await requireUserId()
-  await connectDB()
-  const { plan, limit } = await getLimit(userId, "plotThreads")
-  if ((await PlotThread.countDocuments({ projectId: id, ownerId: userId })) >= limit) {
-    return (
-      <LimitReached
-        showUpgrade={plan === "free"}
-        message={limitMessage("plotThreads", plan)}
-        backHref={`/projects/${id}/plot`}
-        backLabel="Plot"
-      />
-    )
-  }
+// A blank form. Nothing is saved until the person presses Create.
+export default function Page() {
+  const project = useProjectSection("plot")
+  if (!project) return <NotFoundView />
+  const id = project.id
   const draft: SerializedPlotThread = { id: "", projectId: id, title: "", status: "planned", aliases: [], updatedAt: "", createdAt: "" }
 
   return (
     <PageShell width="prose">
+      <title>{`New plot thread — ${project.title}`}</title>
       <Link
         href={`/projects/${id}/plot`}
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"

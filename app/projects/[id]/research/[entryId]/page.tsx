@@ -1,5 +1,7 @@
-import type { Metadata } from "next"
+"use client"
+
 import Link from "next/link"
+import { useParams } from "next/navigation"
 import { ArrowLeftIcon, ArrowSquareOutIcon } from "@phosphor-icons/react/dist/ssr"
 import {
   PageShell,
@@ -7,34 +9,25 @@ import {
   PageShellTitle,
 } from "@/components/layout/page-shell"
 import { Badge } from "@/components/ui/badge"
-import { requireProjectSection } from "@/lib/require-project-section"
-import { requireResearchEntry } from "@/lib/research-entries"
 import { researchEntryTypeLabel } from "@/lib/research-config"
 import { ResearchEntryForm } from "./research-entry-form"
 import { DeleteResearchEntryButton } from "./delete-research-entry-button"
+import { useProjectSection } from "@/components/project/project-context"
+import { LoadingView, NotFoundView } from "@/components/store/status-views"
+import { useResearchEntry } from "@/lib/store/hooks"
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string; entryId: string }>
-}): Promise<Metadata> {
-  const { id, entryId } = await params
-  const project = await requireProjectSection(id, "research")
-  const entry = await requireResearchEntry(id, entryId)
-  return { title: `${entry.title} — ${project.title}` }
-}
-
-export default async function ResearchEntryDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string; entryId: string }>
-}) {
-  const { id, entryId } = await params
-  await requireProjectSection(id, "research")
-  const entry = await requireResearchEntry(id, entryId)
+export default function Page() {
+  const project = useProjectSection("research")
+  const { entryId } = useParams<{ id: string; entryId: string }>()
+  const entry = useResearchEntry(project?.id ?? "", entryId)
+  if (!project) return <NotFoundView />
+  const id = project.id
+  if (entry === undefined) return <LoadingView />
+  if (entry === null) return <NotFoundView backHref={`/projects/${id}/research`} backLabel="Back to Research" />
 
   return (
     <PageShell width="prose">
+      <title>{`${entry.title} — ${project.title}`}</title>
       <Link
         href={`/projects/${id}/research`}
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"

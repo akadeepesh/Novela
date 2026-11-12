@@ -1,38 +1,31 @@
-import type { Metadata } from "next"
+"use client"
+
 import Link from "next/link"
+import { useParams } from "next/navigation"
 import { ArrowLeftIcon, PushPinIcon } from "@phosphor-icons/react/dist/ssr"
 import {
   PageShell,
   PageShellHeader,
   PageShellTitle,
 } from "@/components/layout/page-shell"
-import { requireProjectSection } from "@/lib/require-project-section"
-import { requireNote } from "@/lib/notes"
 import { NoteForm } from "./note-form"
 import { DeleteNoteButton } from "./delete-note-button"
+import { useProjectSection } from "@/components/project/project-context"
+import { LoadingView, NotFoundView } from "@/components/store/status-views"
+import { useNote } from "@/lib/store/hooks"
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ id: string; noteId: string }>
-}): Promise<Metadata> {
-  const { id, noteId } = await params
-  const project = await requireProjectSection(id, "notes")
-  const note = await requireNote(id, noteId)
-  return { title: `${note.title} — ${project.title}` }
-}
-
-export default async function NoteDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string; noteId: string }>
-}) {
-  const { id, noteId } = await params
-  await requireProjectSection(id, "notes")
-  const note = await requireNote(id, noteId)
+export default function Page() {
+  const project = useProjectSection("notes")
+  const { noteId } = useParams<{ id: string; noteId: string }>()
+  const note = useNote(project?.id ?? "", noteId)
+  if (!project) return <NotFoundView />
+  const id = project.id
+  if (note === undefined) return <LoadingView />
+  if (note === null) return <NotFoundView backHref={`/projects/${id}/notes`} backLabel="Back to Notes" />
 
   return (
     <PageShell width="prose">
+      <title>{`${note.title} — ${project.title}`}</title>
       <Link
         href={`/projects/${id}/notes`}
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"

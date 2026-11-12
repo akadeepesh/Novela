@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { useMemo, useState, useTransition } from "react"
 import {
   DndContext,
@@ -33,7 +32,7 @@ import { cn } from "cn"
 import { Button } from "@/components/ui/button"
 import { NewLinkButton } from "@/components/ui/new-link-button"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
-import type { SerializedChapterSummary, TrashedChapter } from "@/lib/chapters"
+import type { SerializedChapterSummary, TrashedChapter } from "@/lib/store/chapters"
 import type { ProjectType } from "@/lib/project-config"
 import { estimateScriptRuntime } from "@/lib/script-scaffold"
 import { createActionQueue } from "@/lib/action-queue"
@@ -73,7 +72,6 @@ export function ChapterList({
   projectType: ProjectType
   defaultView: View
 }) {
-  const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [items, setItems] = useState(chapters)
   const [view, setView] = useState<View>(defaultView)
@@ -83,7 +81,7 @@ export function ChapterList({
   // Metadata edits go out one at a time, in order (see lib/action-queue.ts).
   const enqueue = useMemo(() => createActionQueue(), [])
 
-  // Take the server's list whenever it changes (after a refresh).
+  // Take the stored list whenever it changes (it updates live).
   const [prevChapters, setPrevChapters] = useState(chapters)
   if (chapters !== prevChapters) {
     setPrevChapters(chapters)
@@ -111,7 +109,7 @@ export function ChapterList({
     void enqueue(() => reorderChaptersAction(projectId, next.map((c) => c.id))).then((result) => {
       if (!result.ok) {
         setNotice("Couldn't save the new order: the list changed in another tab. It's been reloaded.")
-        router.refresh()
+        setItems(chapters)
       }
     })
   }
@@ -128,7 +126,6 @@ export function ChapterList({
     startTransition(async () => {
       const result = await trashChapterAction(projectId, chapter.id)
       if (!result.ok) setNotice(`Couldn't move “${chapter.title}” to the Trash.`)
-      router.refresh()
     })
   }
 
@@ -137,7 +134,6 @@ export function ChapterList({
     startTransition(async () => {
       const result = await restoreChapterAction(projectId, chapter.id)
       if (!result.ok) setNotice(result.error)
-      router.refresh()
     })
   }
 
@@ -148,7 +144,6 @@ export function ChapterList({
       const result = await deleteChapterForeverAction(projectId, target.id)
       setForgetTarget(null)
       if (!result.ok) setNotice(`Couldn't delete “${target.title}”.`)
-      router.refresh()
     })
   }
 

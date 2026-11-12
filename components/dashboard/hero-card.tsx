@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { ProjectMenu } from "@/components/dashboard/project-menu"
 import { PROJECT_TYPE_ICON, projectTypeLabel } from "@/lib/project-config"
 import { relativeTime } from "@/lib/format"
-import type { DashboardHero } from "@/lib/dashboard"
+import type { DashboardHero } from "@/lib/store/projects"
 
 export function HeroCard({ hero }: { hero: DashboardHero }) {
   const router = useRouter()

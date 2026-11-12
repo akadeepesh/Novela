@@ -37,7 +37,8 @@ import {
 } from "@phosphor-icons/react/dist/ssr"
 import { cn } from "cn"
 import { Button } from "@/components/ui/button"
-import type { SerializedChapter } from "@/lib/chapters"
+import type { SerializedChapter } from "@/lib/store/chapters"
+import { useImageUrl } from "@/lib/store/use-image-url"
 import {
   FONT_FAMILY_CSS,
   getBackgroundPreset,
@@ -51,7 +52,7 @@ import { FindReplace } from "@/components/editor/find-replace-extension"
 import { FindBar } from "@/components/editor/find-bar"
 import { CommentMark } from "@/components/editor/comment-mark"
 import { OutlinePanel } from "@/components/editor/outline-panel"
-import type { Mentionable } from "@/lib/mentions"
+import type { Mentionable } from "@/lib/store/mentions"
 import { estimateScriptRuntime } from "@/lib/script-scaffold"
 import { createActionQueue } from "@/lib/action-queue"
 import { useRegisterNavigationGuard } from "@/components/project/navigation-guard"
@@ -63,7 +64,7 @@ import { VersionHistoryPanel } from "./version-history-panel"
 import { CommentsPanel, type CommentDraft } from "./comments-panel"
 
 const SAVE_DEBOUNCE_MS = 900
-// Show a "consider splitting" hint from here (the server hard-limit is far higher).
+// Show a "consider splitting" hint from here (the save limit is far higher).
 const LONG_CHAPTER_WORDS = 50_000
 
 type SaveFailure = Extract<SaveChapterResult, { ok: false }>["code"]
@@ -73,8 +74,6 @@ const FAILURE_MESSAGE: Record<Exclude<SaveFailure, "conflict">, string> = {
     "This chapter is too large to save (over 3 MB). Split it into smaller chapters. Your text is still in this tab, so copy it somewhere safe before leaving.",
   not_found:
     "This chapter can't be saved: it was deleted, or its project was moved to the Trash, in another tab. Copy your text before leaving.",
-  limit:
-    "This project has reached its plan limit of chapters, so this one couldn't be saved. Your text is still in this tab. Copy it, then delete a chapter you no longer need, or upgrade to Pro.",
   invalid: "Couldn't save this text. Copy it somewhere safe and let us know.",
   error: "Couldn't save. Your text is still in this tab and will be retried on your next change.",
 }
@@ -171,7 +170,7 @@ export function ManuscriptEditor({
     if (contentDirty.current && editorRef.current) {
       input.content = editorRef.current.getJSON()
       contentDirty.current = false
-      // Same function the server uses, so the footer matches the saved count.
+      // Same function the store uses, so the footer matches the saved count.
       setWordCount(countWords(input.content))
     }
     // Nothing new to send, but an earlier save may still be on its way:
@@ -380,7 +379,8 @@ export function ManuscriptEditor({
     }
   }, [flush, isPending])
 
-  const bg = getBackgroundPreset(settings.background, settings.backgroundImageUrl)
+  const backgroundImageUrl = useImageUrl(settings.backgroundImageUrl)
+  const bg = getBackgroundPreset(settings.background, backgroundImageUrl)
   // A draft has no chapter yet, so Read opens the whole book instead.
   const readHref = chapterId ? `/read/${projectId}?chapter=${chapterId}` : `/read/${projectId}`
 

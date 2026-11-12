@@ -1,174 +1,85 @@
-"use server";
-
-import { z } from "zod";
-import { revalidatePath } from "next/cache";
-import { connectDB } from "@/lib/db";
-import { ResearchEntry } from "@/lib/models/research-entry";
-import { ownsActiveProject, requireProject, requireUserId } from "@/lib/projects";
-import { fetchUrlPreview } from "@/lib/url-preview";
+import { z } from "zod"
 import {
-  serializeResearchEntrySummary,
+  createResearchEntry,
+  deleteResearchEntry,
+  updateResearchEntry,
   type SerializedResearchEntrySummary,
-} from "@/lib/research-entries";
-import { safeAction } from "@/lib/safe-action";
-import { getLimit, keepWithinLimit } from "@/lib/entitlements";
-import { limitMessage } from "@/lib/plans";
+} from "@/lib/store/notes"
+import { fetchUrlPreviewAction } from "@/app/actions/url-preview"
 
-const urlSchema = z.string().trim().min(1).max(2000);
+const urlSchema = z.string().trim().min(1).max(2000)
 
 /**
- * The single URL-paste input on the Research board (Part 7.2, option b):
- * paste a link and we fetch its title/image/favicon server-side, turning
- * it into a bookmark card — no form to fill in.
+ * Paste a link on the Research board and it becomes a bookmark card. The
+ * link (and only the link) goes to our server, which reads the page's
+ * title, image and icon; the card itself is stored in this browser.
  */
-export const createLinkEntryAction = safeAction(
-  "createLinkEntryAction",
-  async (
-    projectId: string,
-    rawUrl: string
-  ): Promise<{ ok: boolean; entry?: SerializedResearchEntrySummary; error?: string }> => {
-    await requireProject(projectId);
-    const userId = await requireUserId();
+export async function createLinkEntryAction(
+  projectId: string,
+  rawUrl: string
+): Promise<{ ok: boolean; entry?: SerializedResearchEntrySummary; error?: string }> {
+  const parsedUrl = urlSchema.safeParse(rawUrl)
+  if (!parsedUrl.success) return { ok: false, error: "Paste a link first." }
 
-    const parsedUrl = urlSchema.safeParse(rawUrl);
-    if (!parsedUrl.success) return { ok: false, error: "Paste a link first." };
+  let normalized = parsedUrl.data
+  if (!/^https?:\/\//i.test(normalized)) normalized = `https://${normalized}`
 
-    // Checked before fetching the page, so a full board costs nothing.
-    await connectDB();
-    const { plan, limit } = await getLimit(userId, "research");
-    if ((await ResearchEntry.countDocuments({ projectId, ownerId: userId })) >= limit) {
-      return { ok: false, error: limitMessage("research", plan) };
-    }
+  const preview = await fetchUrlPreviewAction(normalized).catch(() => null)
+  if (!preview) return { ok: false, error: "That doesn't look like a valid link, or it couldn't be reached." }
 
-    // A bare "example.com" with no scheme is still what most people paste —
-    // let URL do the normalizing rather than rejecting it outright.
-    let normalized = parsedUrl.data;
-    if (!/^https?:\/\//i.test(normalized)) normalized = `https://${normalized}`;
-
-    const preview = await fetchUrlPreview(normalized);
-    if (!preview) return { ok: false, error: "That doesn't look like a valid link." };
-
-    await connectDB();
-    const entry = await ResearchEntry.create({
-      projectId,
-      ownerId: userId,
-      title: preview.title,
-      type: "link",
-      url: normalized,
-      content: "",
-      imageUrl: preview.imageUrl,
-      faviconUrl: preview.faviconUrl,
-      siteName: preview.siteName,
-    });
-    // Another create may have landed at the same moment (see keepWithinLimit).
-    if (!(await keepWithinLimit(ResearchEntry, { projectId, ownerId: userId }, entry._id, limit))) {
-      return { ok: false, error: limitMessage("research", plan) };
-    }
-
-    revalidatePath(`/projects/${projectId}/research`);
-    return { ok: true, entry: serializeResearchEntrySummary(entry.toObject()) };
-  },
-  () => ({ ok: false }),
-  { ids: [0] }
-);
+  const entry = await createResearchEntry(projectId, {
+    title: preview.title,
+    type: "link",
+    url: normalized,
+    imageUrl: preview.imageUrl,
+    faviconUrl: preview.faviconUrl,
+    siteName: preview.siteName,
+  })
+  return entry ? { ok: true, entry } : { ok: false }
+}
 
 const noteSchema = z.object({
   title: z.string().trim().max(160).optional(),
   content: z.string().trim().max(8000).optional(),
-});
+})
 
-/**
- * The manual "quick note" escape hatch (Part 7.2) for research that has no
- * URL — a book, a conversation, anything offline.
- */
-export const createQuickNoteEntryAction = safeAction(
-  "createQuickNoteEntryAction",
-  async (
-    projectId: string,
-    input: { title?: string; content?: string }
-  ): Promise<{ ok: boolean; entry?: SerializedResearchEntrySummary; error?: string }> => {
-    await requireProject(projectId);
-    const userId = await requireUserId();
+/** A "quick note" for research with no URL: a book, a conversation, anything offline. */
+export async function createQuickNoteEntryAction(
+  projectId: string,
+  input: { title?: string; content?: string }
+): Promise<{ ok: boolean; entry?: SerializedResearchEntrySummary; error?: string }> {
+  const parsed = noteSchema.safeParse(input)
+  if (!parsed.success) return { ok: false }
+  if (!parsed.data.title?.trim() && !parsed.data.content?.trim()) return { ok: false }
+  const entry = await createResearchEntry(projectId, {
+    title: parsed.data.title?.trim() || "Untitled note",
+    type: "note",
+    content: parsed.data.content?.trim() || "",
+  })
+  return entry ? { ok: true, entry } : { ok: false }
+}
 
-    const parsed = noteSchema.safeParse(input);
-    if (!parsed.success) return { ok: false };
-    if (!parsed.data.title?.trim() && !parsed.data.content?.trim()) return { ok: false };
-
-    await connectDB();
-    const { plan, limit } = await getLimit(userId, "research");
-    if ((await ResearchEntry.countDocuments({ projectId, ownerId: userId })) >= limit) {
-      return { ok: false, error: limitMessage("research", plan) };
-    }
-    const entry = await ResearchEntry.create({
-      projectId,
-      ownerId: userId,
-      title: parsed.data.title?.trim() || "Untitled note",
-      type: "note",
-      content: parsed.data.content?.trim() || "",
-    });
-    // Another create may have landed at the same moment (see keepWithinLimit).
-    if (!(await keepWithinLimit(ResearchEntry, { projectId, ownerId: userId }, entry._id, limit))) {
-      return { ok: false, error: limitMessage("research", plan) };
-    }
-
-    revalidatePath(`/projects/${projectId}/research`);
-    return { ok: true, entry: serializeResearchEntrySummary(entry.toObject()) };
-  },
-  () => ({ ok: false }),
-  { ids: [0] }
-);
-
-export const deleteResearchEntryAction = safeAction(
-  "deleteResearchEntryAction",
-  async (projectId: string, entryId: string) => {
-    const userId = await requireUserId();
-    if (!(await ownsActiveProject(userId, projectId))) return;
-    await connectDB();
-    await ResearchEntry.deleteOne({ _id: entryId, projectId, ownerId: userId });
-    revalidatePath(`/projects/${projectId}/research`);
-  },
-  () => undefined,
-  { ids: [0, 1] }
-);
+export async function deleteResearchEntryAction(projectId: string, entryId: string): Promise<void> {
+  await deleteResearchEntry(projectId, entryId)
+}
 
 const fieldsSchema = z.object({
   title: z.string().trim().max(160).optional(),
   content: z.string().trim().max(8000).optional(),
-});
+})
 
-export type SaveResearchEntryFieldsInput = z.infer<typeof fieldsSchema>;
+export type SaveResearchEntryFieldsInput = z.infer<typeof fieldsSchema>
 
-/**
- * Inline caption/title edits fired from a card's debounced autosave. Link
- * cards only ever send `content` (the "why this matters" caption) since
- * their title comes from the fetched preview; quick notes send both.
- */
-export const saveResearchEntryFieldsAction = safeAction(
-  "saveResearchEntryFieldsAction",
-  async (
-    projectId: string,
-    entryId: string,
-    input: SaveResearchEntryFieldsInput
-  ): Promise<{ ok: boolean }> => {
-    const userId = await requireUserId();
-    const parsed = fieldsSchema.safeParse(input);
-    if (!parsed.success) return { ok: false };
-
-    const update: Record<string, unknown> = {};
-    if (parsed.data.title !== undefined) update.title = parsed.data.title.trim() || "Untitled";
-    if (parsed.data.content !== undefined) update.content = parsed.data.content;
-
-    if (!(await ownsActiveProject(userId, projectId))) return { ok: false };
-
-    await connectDB();
-    const result = await ResearchEntry.updateOne(
-      { _id: entryId, projectId, ownerId: userId },
-      { $set: update }
-    );
-
-    revalidatePath(`/projects/${projectId}/research`);
-    return { ok: result.matchedCount > 0 };
-  },
-  () => ({ ok: false }),
-  { ids: [0, 1] }
-);
+/** Inline title/caption edits from a card's debounced autosave. */
+export async function saveResearchEntryFieldsAction(
+  projectId: string,
+  entryId: string,
+  input: SaveResearchEntryFieldsInput
+): Promise<{ ok: boolean }> {
+  const parsed = fieldsSchema.safeParse(input)
+  if (!parsed.success) return { ok: false }
+  const patch: SaveResearchEntryFieldsInput = {}
+  if (parsed.data.title !== undefined) patch.title = parsed.data.title.trim() || "Untitled"
+  if (parsed.data.content !== undefined) patch.content = parsed.data.content
+  return { ok: await updateResearchEntry(projectId, entryId, patch) }
+}

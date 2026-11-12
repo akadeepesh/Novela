@@ -1,17 +1,17 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { useRouter } from "next/navigation"
 import { ArrowCounterClockwiseIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr"
 import { Button } from "@/components/ui/button"
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog"
 import { PROJECT_TYPE_ICON } from "@/lib/project-config"
 import { relativeTime } from "@/lib/format"
-import type { TrashedProject } from "@/lib/trash"
+import type { TrashedProject } from "@/lib/store/projects"
+import { useTrashedProjects } from "@/lib/store/hooks"
 import { restoreProjectAction, deleteProjectForeverAction, type TrashResult } from "./actions"
 
-export function TrashList({ items }: { items: TrashedProject[] }) {
-  const router = useRouter()
+export function TrashList() {
+  const items = useTrashedProjects()
   const [error, setError] = useState<string | null>(null)
   const [confirming, setConfirming] = useState<TrashedProject | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -22,9 +22,11 @@ export function TrashList({ items }: { items: TrashedProject[] }) {
       const result = await action(id)
       if (!result?.ok) setError(result?.error ?? "Something went wrong. Try again.")
       after?.()
-      router.refresh()
     })
   }
+
+  if (items === undefined) return null
+  if (items.length === 0) return <p className="text-sm text-muted-foreground">The Trash is empty.</p>
 
   return (
     <div className="flex flex-col gap-2">

@@ -6,7 +6,7 @@ import { CaretRightIcon } from "@phosphor-icons/react/dist/ssr"
 import { PROJECT_TYPE_ICON } from "@/lib/project-config"
 import { relativeTime } from "@/lib/format"
 import { ProjectMenu } from "@/components/dashboard/project-menu"
-import type { DashboardOther } from "@/lib/dashboard"
+import type { DashboardOther } from "@/lib/store/projects"
 
 export function OtherWritings({ others }: { others: DashboardOther[] }) {
   if (others.length === 0) return null
