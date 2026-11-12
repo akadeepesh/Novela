@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { NodeViewWrapper, type NodeViewProps } from "@tiptap/react"
 import { cn } from "cn"
-import type { MentionableType } from "@/lib/mentions"
+import type { MentionableType } from "@/lib/store/mentions"
 
 const TYPE_STYLE: Record<MentionableType, string> = {
   character: "bg-primary/10 text-primary",

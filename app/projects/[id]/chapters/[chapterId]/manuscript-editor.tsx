@@ -37,7 +37,8 @@ import {
 } from "@phosphor-icons/react/dist/ssr"
 import { cn } from "cn"
 import { Button } from "@/components/ui/button"
-import type { SerializedChapter } from "@/lib/chapters"
+import type { SerializedChapter } from "@/lib/store/chapters"
+import { useImageUrl } from "@/lib/store/use-image-url"
 import {
   FONT_FAMILY_CSS,
   getBackgroundPreset,
@@ -51,7 +52,7 @@ import { FindReplace } from "@/components/editor/find-replace-extension"
 import { FindBar } from "@/components/editor/find-bar"
 import { CommentMark } from "@/components/editor/comment-mark"
 import { OutlinePanel } from "@/components/editor/outline-panel"
-import type { Mentionable } from "@/lib/mentions"
+import type { Mentionable } from "@/lib/store/mentions"
 import { estimateScriptRuntime } from "@/lib/script-scaffold"
 import { createActionQueue } from "@/lib/action-queue"
 import { useRegisterNavigationGuard } from "@/components/project/navigation-guard"
@@ -378,7 +379,8 @@ export function ManuscriptEditor({
     }
   }, [flush, isPending])
 
-  const bg = getBackgroundPreset(settings.background, settings.backgroundImageUrl)
+  const backgroundImageUrl = useImageUrl(settings.backgroundImageUrl)
+  const bg = getBackgroundPreset(settings.background, backgroundImageUrl)
   // A draft has no chapter yet, so Read opens the whole book instead.
   const readHref = chapterId ? `/read/${projectId}?chapter=${chapterId}` : `/read/${projectId}`
 

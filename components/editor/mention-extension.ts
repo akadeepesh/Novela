@@ -3,7 +3,7 @@ import { ReactNodeViewRenderer, ReactRenderer } from "@tiptap/react"
 import Suggestion from "@tiptap/suggestion"
 import { MentionList, type MentionListRef } from "./mention-list"
 import { MentionNodeView } from "./mention-node-view"
-import type { Mentionable } from "@/lib/mentions"
+import type { Mentionable } from "@/lib/store/mentions"
 
 export type MentionExtensionOptions = {
   mentionables: Mentionable[]

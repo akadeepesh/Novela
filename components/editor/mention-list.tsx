@@ -3,7 +3,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react"
 import { UserCircleIcon, MapPinIcon, PuzzlePieceIcon } from "@phosphor-icons/react/dist/ssr"
 import { cn } from "cn"
-import type { Mentionable, MentionableType } from "@/lib/mentions"
+import type { Mentionable, MentionableType } from "@/lib/store/mentions"
 
 const TYPE_ICON: Record<MentionableType, typeof UserCircleIcon> = {
   character: UserCircleIcon,

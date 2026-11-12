@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useRef, useState } from "react"
 import { useLiveQuery } from "dexie-react-hooks"
 import { getProject, getDashboardData, listTrashedProjects, countTrashedProjects } from "./projects"
 import { getChapter, listChaptersForProject, listTrashedChapters } from "./chapters"
@@ -63,3 +64,24 @@ export const useMentionables = (projectId: string) =>
   useLiveQuery(() => listMentionablesForProject(projectId), [projectId])
 export const useChaptersMentioning = (projectId: string, type: MentionableType, id: string) =>
   useLiveQuery(() => listChaptersMentioning(projectId, type, id), [projectId, type, id])
+
+/**
+ * Reads once, without live updates. For screens that take a starting value
+ * and then own it (the chapter editor), where re-rendering on every
+ * autosave would only cost time. Key the component on the record id to
+ * reload for another record.
+ */
+export function useSnapshot<T>(load: () => Promise<T>): T | undefined {
+  const [value, setValue] = useState<{ v: T } | undefined>(undefined)
+  const loadRef = useRef(load)
+  useEffect(() => {
+    let cancelled = false
+    loadRef.current().then((v) => {
+      if (!cancelled) setValue({ v })
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  return value?.v
+}

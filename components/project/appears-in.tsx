@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { sectionLabel, type ProjectType } from "@/lib/project-config"
-import type { ChapterMentionRef } from "@/lib/mentions"
+import type { ChapterMentionRef } from "@/lib/store/mentions"
 
 export function AppearsIn({
   projectId,
