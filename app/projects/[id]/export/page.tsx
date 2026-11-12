@@ -10,6 +10,7 @@ import { sectionLabel, type SectionId } from "@/lib/project-config"
 import { useProjectSection } from "@/components/project/project-context"
 import { NotFoundView } from "@/components/store/status-views"
 import { ExportForm } from "./export-form"
+import { ProjectFileCard } from "./project-file-card"
 
 const OPTIONAL_SECTIONS: SectionId[] = ["characters", "world", "plot", "notes", "research"]
 
@@ -37,6 +38,7 @@ export default function ExportPage() {
         availableSections={availableSections}
         trimSize={project.exportTrimSize}
       />
+      <ProjectFileCard projectId={project.id} />
     </PageShell>
   )
 }

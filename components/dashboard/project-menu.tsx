@@ -3,9 +3,10 @@
 import Link from "next/link"
 import { useState, useTransition } from "react"
 import { cn } from "cn"
-import { DotsThreeIcon, GearSixIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr"
+import { DotsThreeIcon, FileArrowDownIcon, GearSixIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr"
 import { Menu, MenuTrigger, MenuContent, MenuItem } from "@/components/ui/menu"
 import { trashProjectAction } from "@/app/dashboard/trash/actions"
+import { downloadProjectFile } from "@/lib/backup/download"
 
 /** "⋯" menu on a dashboard project. Moving to the Trash is undoable, so no confirmation. */
 export function ProjectMenu({ projectId, className }: { projectId: string; className?: string }) {
@@ -41,6 +42,15 @@ export function ProjectMenu({ projectId, className }: { projectId: string; class
           <MenuItem render={<Link href={`/projects/${projectId}/overview`} />}>
             <GearSixIcon className="size-4" />
             Book settings
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              setError(null)
+              downloadProjectFile(projectId).catch(() => setError("Couldn't make the project file."))
+            }}
+          >
+            <FileArrowDownIcon className="size-4" />
+            Download project file
           </MenuItem>
           <MenuItem onClick={moveToTrash}>
             <TrashIcon className="size-4" />

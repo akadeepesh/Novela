@@ -9,6 +9,8 @@ import { Greeting } from "@/components/dashboard/greeting"
 import { HeroCard } from "@/components/dashboard/hero-card"
 import { OtherWritings } from "@/components/dashboard/other-writings"
 import { useDashboardData, useTrashCount } from "@/lib/store/hooks"
+import { BackupReminder } from "@/components/backup/backup-reminder"
+import { ImportButton } from "@/components/backup/import-button"
 
 export function DashboardView() {
   const data = useDashboardData()
@@ -51,6 +53,7 @@ export function DashboardView() {
       <main className="flex flex-1 flex-col px-6 pb-24 sm:px-10">
         <div className="mx-auto w-full max-w-2xl">
           <Greeting />
+          <BackupReminder />
 
           {data === undefined ? null : hero ? (
             <>
@@ -64,6 +67,7 @@ export function DashboardView() {
                 <PlusIcon />
                 Start writing
               </Button>
+              <ImportButton label="Or import a project file" variant="ghost" />
             </div>
           )}
         </div>
