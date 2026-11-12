@@ -10,7 +10,7 @@ import type { SerializedNoteSummary } from "@/lib/store/notes"
 import { saveNoteAction, deleteNoteAction, togglePinNoteAction } from "./actions"
 
 const SAVE_DEBOUNCE_MS = 700
-// Match the server's limits (notes/actions.ts) so an over-long note is
+// Match the save limits (notes/actions.ts) so an over-long note is
 // stopped while typing instead of silently failing to save.
 const MAX_TITLE = 160
 const MAX_CONTENT = 20_000
@@ -48,7 +48,7 @@ export function NoteCard({
   // lib/action-queue.ts.
   const enqueue = useMemo(() => createActionQueue(), [])
 
-  // Stay in sync with the server copy while not actively being edited —
+  // Stay in sync with the stored copy while not actively being edited —
   // e.g. after the grid re-sorts on a pin toggle. Adjusting state directly
   // during render (rather than in a useEffect) avoids an extra render
   // pass — see https://react.dev/learn/you-might-not-need-an-effect

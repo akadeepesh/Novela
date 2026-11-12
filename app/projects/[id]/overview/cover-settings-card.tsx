@@ -51,10 +51,8 @@ function CoverSlot({
   const [localError, setLocalError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Optimistic-enough: the freshly uploaded URL (from action state) wins
-  // over the server-rendered prop until the page next revalidates, so the
-  // preview updates the moment the upload finishes rather than waiting on
-  // a full round trip back through the parent.
+  // `url` is the stored reference and updates live once the image is saved;
+  // a locally stored image is turned into an object URL here.
   const previewUrl = useImageUrl(url)
   const busy = uploading || removing
   const error = localError ?? state.error

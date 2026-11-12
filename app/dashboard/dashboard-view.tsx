@@ -4,7 +4,7 @@ import Link from "next/link"
 import { FeatherIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr"
 import { Button } from "@/components/ui/button"
 import { APP_NAME } from "@/lib/brand"
-import { AvatarMenu } from "@/components/account/avatar-menu"
+import { AppMenu } from "@/components/app-menu"
 import { Greeting } from "@/components/dashboard/greeting"
 import { HeroCard } from "@/components/dashboard/hero-card"
 import { OtherWritings } from "@/components/dashboard/other-writings"
@@ -44,7 +44,7 @@ export function DashboardView() {
             <PlusIcon />
             New
           </Button>
-          <AvatarMenu />
+          <AppMenu />
         </div>
       </header>
 

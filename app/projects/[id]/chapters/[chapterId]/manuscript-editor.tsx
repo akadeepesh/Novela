@@ -64,7 +64,7 @@ import { VersionHistoryPanel } from "./version-history-panel"
 import { CommentsPanel, type CommentDraft } from "./comments-panel"
 
 const SAVE_DEBOUNCE_MS = 900
-// Show a "consider splitting" hint from here (the server hard-limit is far higher).
+// Show a "consider splitting" hint from here (the save limit is far higher).
 const LONG_CHAPTER_WORDS = 50_000
 
 type SaveFailure = Extract<SaveChapterResult, { ok: false }>["code"]
@@ -170,7 +170,7 @@ export function ManuscriptEditor({
     if (contentDirty.current && editorRef.current) {
       input.content = editorRef.current.getJSON()
       contentDirty.current = false
-      // Same function the server uses, so the footer matches the saved count.
+      // Same function the store uses, so the footer matches the saved count.
       setWordCount(countWords(input.content))
     }
     // Nothing new to send, but an earlier save may still be on its way:
