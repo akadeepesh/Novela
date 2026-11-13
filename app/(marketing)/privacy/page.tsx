@@ -12,7 +12,6 @@ export const metadata: Metadata = {
 const UPDATED = "14 November 2026"
 
 export default function PrivacyPage() {
-  const analytics = Boolean(process.env.NEXT_PUBLIC_ANALYTICS_SRC && process.env.NEXT_PUBLIC_ANALYTICS_DOMAIN)
   return (
     <LegalPage title="Privacy" updated={UPDATED}>
       <p>
@@ -47,15 +46,13 @@ export default function PrivacyPage() {
       </p>
 
       <h2>Analytics</h2>
-      {analytics ? (
-        <p>
-          On public pages only (this site&apos;s home page, guides and legal pages) we count visits with a
-          cookieless analytics service. It records the page, the referring site, and the browser, device type and
-          country, without cookies and without a personal identifier. It is never loaded inside the writing app.
-        </p>
-      ) : (
-        <p>We don&apos;t run any analytics or tracking.</p>
-      )}
+      <p>
+        On the public pages only (the home page, guides, templates and legal pages) we count visits with Vercel Web
+        Analytics, from our hosting provider. It uses no cookies. It records the page address (without any query
+        string), the site you came from, and your country, browser, operating system and device type. Visitors are
+        counted with a short-lived hash that resets every day, not with a stored identifier. It is never loaded
+        inside the writing app, so nothing you write can reach it.
+      </p>
 
       <h2>Cookies</h2>
       <p>

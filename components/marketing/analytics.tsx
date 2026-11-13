@@ -1,24 +1,29 @@
-import Script from "next/script"
+"use client"
+
+import { Analytics as VercelAnalytics, type BeforeSendEvent } from "@vercel/analytics/next"
+
+/** The writing app's routes. Nothing there is ever counted. */
+const APP_PATHS = /^\/(dashboard|projects|settings|read)(\/|$)/
 
 /**
- * Cookieless page-view analytics for the public pages only (landing,
- * guides, legal). Nothing loads unless both variables are set, and the
- * writing app (/dashboard, /projects, /settings, /read) never includes
- * this component, so nothing a writer types can be seen by it.
- *
- * Works with any script that takes the site in `data-domain`
- * (Plausible, self-hosted Plausible) or `data-website-id` (Umami).
+ * Drops any event from the writing app (in case the script, once loaded on
+ * a public page, sees a later client-side navigation into the app), and
+ * strips query strings so nothing but the page path is sent.
+ */
+export function filterEvent(event: BeforeSendEvent): BeforeSendEvent | null {
+  const url = new URL(event.url, "https://example.invalid")
+  if (APP_PATHS.test(url.pathname)) return null
+  url.search = ""
+  url.hash = ""
+  return { ...event, url: event.url.startsWith("http") ? url.toString() : url.pathname }
+}
+
+/**
+ * Vercel Web Analytics (cookieless) for the public pages only: landing,
+ * guides, templates and legal. The writing app's layouts never include
+ * this component. It does nothing until Web Analytics is turned on for the
+ * project in Vercel, and nothing outside Vercel.
  */
 export function Analytics() {
-  const src = process.env.NEXT_PUBLIC_ANALYTICS_SRC
-  const site = process.env.NEXT_PUBLIC_ANALYTICS_DOMAIN
-  if (!src || !site) return null
-  const umami = /umami/i.test(src)
-  return (
-    <Script
-      src={src}
-      strategy="afterInteractive"
-      {...(umami ? { "data-website-id": site } : { "data-domain": site })}
-    />
-  )
+  return <VercelAnalytics beforeSend={filterEvent} />
 }
