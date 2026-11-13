@@ -20,7 +20,7 @@ import type { ResearchEntryType } from "@/lib/research-config"
  */
 
 /** Bumped whenever the stored shape changes; see `migrations` below. */
-export const SCHEMA_VERSION = 1
+export const SCHEMA_VERSION = 2
 
 export type ChapterStatus = "draft" | "in-progress" | "done"
 export type VersionKind = "auto" | "manual" | "restore-point"
@@ -45,10 +45,21 @@ export type ProjectRecord = {
   manuscriptSettings: ManuscriptSettings
   /** Story Check preferences and dismissed issues. Absent until first changed. */
   storyCheck?: StoryCheckSettings
+  /** Print export choices (template, printer, paper, bleed, copyright page). */
+  print?: PrintSettings
   createdAt: string
   updatedAt: string
   /** Set while the project is in the Trash. */
   deletedAt?: string
+}
+
+export type PrintSettings = {
+  templateId: string
+  printer: "kdp" | "ingramspark"
+  paper: "white" | "cream"
+  bleed: boolean
+  /** The copyright page, as typed. Empty means the generated default. */
+  copyrightText: string
 }
 
 export type StoryCheckSettings = {
@@ -200,6 +211,27 @@ export type AssetRecord = {
   createdAt: string
 }
 
+/** A print template imported from a template pack. File references point at `templateFiles`. */
+export type TemplateRecord = {
+  /** The template's own id, e.g. "fantasy/ornate". Importing again replaces it. */
+  id: string
+  /** The validated template JSON, with file references rewritten to `tplfile:<id>`. */
+  template: import("@/lib/print/template").PrintTemplate
+  packName: string
+  packVersion?: string
+  importedAt: string
+}
+
+/** A font or image file belonging to an imported template. */
+export type TemplateFileRecord = {
+  id: string
+  templateId: string
+  /** The file's path inside the pack, for messages. */
+  path: string
+  blob: Blob
+  type: string
+}
+
 /** Small key/value settings and bookkeeping (e.g. last backup time). */
 export type MetaRecord = { key: string; value: unknown }
 
@@ -215,6 +247,8 @@ export type AppDB = Dexie & {
   comments: EntityTable<CommentRecord, "id">
   assets: EntityTable<AssetRecord, "id">
   meta: EntityTable<MetaRecord, "key">
+  templates: EntityTable<TemplateRecord, "id">
+  templateFiles: EntityTable<TemplateFileRecord, "id">
 }
 
 /**
@@ -242,6 +276,14 @@ const migrations: {
       comments: "id, chapterId, projectId",
       assets: "id, projectId",
       meta: "key",
+    },
+  },
+  {
+    // Imported print templates and their fonts and ornaments.
+    version: 2,
+    stores: {
+      templates: "id",
+      templateFiles: "id, templateId",
     },
   },
 ]
