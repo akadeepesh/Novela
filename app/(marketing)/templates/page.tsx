@@ -1,21 +1,21 @@
 import type { Metadata } from "next"
 import Link from "next/link"
-import { ArrowLeftIcon, ArrowSquareOutIcon } from "@phosphor-icons/react/dist/ssr"
+import { ArrowSquareOutIcon } from "@phosphor-icons/react/dist/ssr"
 import { PageShell, PageShellHeader, PageShellTitle, PageShellDescription } from "@/components/layout/page-shell"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { BUILTIN_TEMPLATES } from "@/lib/print/builtin-templates"
 import { TEMPLATE_STORE_URL } from "@/lib/brand"
 
-export const metadata: Metadata = { title: "More templates" }
+export const metadata: Metadata = {
+  title: "Print templates",
+  description: "Free print templates for Amazon KDP and IngramSpark paperbacks, and genre template packs.",
+  alternates: { canonical: "/templates" },
+}
 
 export default function TemplatesPage() {
   return (
     <PageShell width="prose">
-      <Link href="/dashboard" className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-        <ArrowLeftIcon className="size-3.5" />
-        Dashboard
-      </Link>
       <PageShellHeader>
         <PageShellTitle>Print templates</PageShellTitle>
         <PageShellDescription>
