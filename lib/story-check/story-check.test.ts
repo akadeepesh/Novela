@@ -25,8 +25,6 @@ function chapter(id: string, order: number, paragraphs: string[], extra: Partial
   }
 }
 
-const filler = (n: number) => Array.from({ length: n }, (_, i) => `The road went on for mile ${i}.`)
-
 const MARA: CheckCharacter = {
   id: "mara", name: "Mara Vale", aliases: [], role: "protagonist",
   eyeColor: "green", hairColor: "black", birthYear: 1990, pronouns: "she",
