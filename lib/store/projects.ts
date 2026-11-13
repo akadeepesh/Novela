@@ -11,6 +11,7 @@ import { DEFAULT_MANUSCRIPT_SETTINGS, type ManuscriptSettings } from "@/lib/manu
 import type { ChapterNumberingStyle } from "@/lib/chapter-numbering"
 import type { TrimSizeId } from "@/lib/export-config"
 import { TRASH_DAYS } from "@/lib/trash-config"
+import { withStyleDefaults, type StyleSettings } from "@/lib/style-check/types"
 
 export type SerializedProject = {
   id: string
@@ -29,6 +30,7 @@ export type SerializedProject = {
   sections: SectionId[]
   manuscriptSettings: ManuscriptSettings
   storyCheck?: StoryCheckSettings
+  styleCheck: StyleSettings
   print?: PrintSettings
   createdAt: string
   updatedAt: string
@@ -61,6 +63,7 @@ export function serializeProject(r: ProjectRecord): SerializedProject {
     sections: r.sections ?? [],
     manuscriptSettings: { ...DEFAULT_MANUSCRIPT_SETTINGS, ...r.manuscriptSettings },
     storyCheck: r.storyCheck,
+    styleCheck: withStyleDefaults(r.styleCheck),
     print: r.print,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
@@ -170,6 +173,16 @@ export async function updateStoryCheckSettings(
   })
 }
 
+/** Changes the style check settings. Bookkeeping, so `updatedAt` stays put. */
+export async function updateStyleSettings(id: string, change: (current: StyleSettings) => StyleSettings): Promise<boolean> {
+  return db().transaction("rw", db().projects, async () => {
+    const r = await db().projects.get(id)
+    if (!r || r.deletedAt) return false
+    await db().projects.put({ ...r, styleCheck: change(withStyleDefaults(r.styleCheck)) })
+    return true
+  })
+}
+
 /** Saves print export choices. Bookkeeping, so `updatedAt` stays put. */
 export async function updatePrintSettings(id: string, patch: Partial<PrintSettings>, defaults: PrintSettings): Promise<boolean> {
   return db().transaction("rw", db().projects, async () => {
@@ -238,7 +251,7 @@ async function purgeProject(projectId: string): Promise<void> {
   const d = db()
   await d.transaction(
     "rw",
-    [d.projects, d.chapters, d.versions, d.characters, d.worldEntries, d.plotThreads, d.notes, d.researchEntries, d.comments, d.assets],
+    [d.projects, d.chapters, d.versions, d.characters, d.worldEntries, d.plotThreads, d.notes, d.researchEntries, d.comments, d.assets, d.writingLog],
     async () => {
       await Promise.all([
         d.chapters.where("projectId").equals(projectId).delete(),
@@ -250,6 +263,7 @@ async function purgeProject(projectId: string): Promise<void> {
         d.researchEntries.where("projectId").equals(projectId).delete(),
         d.comments.where("projectId").equals(projectId).delete(),
         d.assets.where("projectId").equals(projectId).delete(),
+        d.writingLog.where("projectId").equals(projectId).delete(),
       ])
       await d.projects.delete(projectId)
     }

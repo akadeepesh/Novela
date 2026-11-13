@@ -21,6 +21,14 @@ rather than one generic template stretched over everything.
 - **Story Bible** — Characters, World, and Plot sections, cross-linked by
   an `@mention` system so referencing a character or place from your prose
   quietly keeps a backlink index, without ever writing for you.
+- **Style checks** — a Style tab in the editor's Story Check panel flags
+  repeated words, filler words (your own list), long sentences, adverbs and
+  passive voice, with optional coloured underlines in the text. It also
+  shows chapter stats: reading time, sentence length, dialogue versus
+  narration, and how much each character speaks.
+- **Daily goals and streaks** — set a daily word goal per book. The editor
+  shows today's progress, and Book Settings shows your streak and the last
+  30 days. Deleting text never takes away from the day's count.
 - **Notes & Research** — a Keep-style scratchpad for notes, and a source
   board for research: paste a URL and it's auto-fetched into a bookmark
   card (title, image, favicon), with a manual quick-note fallback for
@@ -51,7 +59,7 @@ rather than one generic template stretched over everything.
 ## Where data lives
 
 All projects, chapters, versions, story-bible entries, notes, research,
-comments and uploaded images live in the browser's IndexedDB, in a database
+comments, uploaded images and the daily word log live in the browser's IndexedDB, in a database
 defined in `lib/store/db.ts`. Each table has typed repository functions in
 `lib/store/`, and `lib/store/hooks.ts` wraps them in live React hooks that
 re-render on any change, in any tab.

@@ -50,6 +50,9 @@ import type { ProjectType } from "@/lib/project-config"
 import { FocusMode } from "@/components/editor/focus-mode-extension"
 import { MentionExtension } from "@/components/editor/mention-extension"
 import { FindReplace } from "@/components/editor/find-replace-extension"
+import { StyleCheck } from "@/components/editor/style-check-extension"
+import { useConfigureStyleCheck } from "@/components/story-check/use-style-check"
+import { TodayGoal } from "@/components/goals/goal-widgets"
 import { FindBar } from "@/components/editor/find-bar"
 import { CommentMark } from "@/components/editor/comment-mark"
 import { OutlinePanel } from "@/components/editor/outline-panel"
@@ -310,6 +313,7 @@ export function ManuscriptEditor({
       TextAlign.configure({ types: ["heading", "paragraph"] }),
       FindReplace,
       CommentMark,
+      StyleCheck,
     ],
     content: (chapter.content as object | string | null) ?? "",
     onCreate: ({ editor }) => {
@@ -326,6 +330,8 @@ export function ManuscriptEditor({
       if (typewriterRef.current) centerCaret(editor, scrollRef.current)
     },
   })
+
+  useConfigureStyleCheck(editor, projectId, checkOpen)
 
   // Ctrl/Cmd+F opens find & replace while this page is open.
   useEffect(() => {
@@ -671,6 +677,7 @@ export function ManuscriptEditor({
           {projectType === "script-writing" ? ` · ${estimateScriptRuntime(wordCount)}` : ""}
           {wordCount >= LONG_CHAPTER_WORDS ? " · Very long. Consider splitting it into smaller chapters." : ""}
         </span>
+        <TodayGoal projectId={projectId} />
         <span className={cn("italic", saveState === "error" && "text-destructive not-italic")}>
           {saveState === "saving"
             ? "Saving…"

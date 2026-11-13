@@ -7,6 +7,7 @@ import * as B from "@/lib/store/bible"
 import * as N from "@/lib/store/notes"
 import * as CM from "@/lib/store/comments"
 import * as A from "@/lib/store/assets"
+import * as G from "@/lib/store/goals"
 import { listChaptersMentioning } from "@/lib/store/mentions"
 import { BackupError, createBackup, findConflicts, importBackup, readBackup } from "./format"
 
@@ -21,6 +22,7 @@ const TABLES = [
   "researchEntries",
   "comments",
   "assets",
+  "writingLog",
   "meta",
 ] as const
 
@@ -68,6 +70,7 @@ async function seedBook(title = "The Glass Tower") {
   }, "Chapter")
   const c2 = await C.createChapter(pid, { title: "Cut scene" }, "Chapter")
   if (!c1.ok || !c2.ok) throw new Error("seed failed")
+  await G.logWords(pid, 250, "2026-11-01")
   await C.saveChapter(pid, c1.id, { title: "Up" })
   await V.createManualSnapshot(pid, c1.id, "first draft")
   await C.trashChapter(pid, c2.id)
@@ -139,6 +142,7 @@ describe("backups", () => {
     expect(await db().projects.count()).toBe(2)
     expect(await db().chapters.where("projectId").equals(copyId).count()).toBe(2)
     expect(await db().versions.where("projectId").equals(copyId).count()).toBeGreaterThan(0)
+    expect((await G.listWritingLog(copyId)).map((r) => r.words).sort()).toEqual((await G.listWritingLog(pid)).map((r) => r.words).sort())
 
     // The copy's @mention points at the copy's own character, not the original.
     const copyChars = await B.listCharactersForProject(copyId)
@@ -173,5 +177,20 @@ describe("backups", () => {
     data.notes[0].projectId = "somewhere-else"
     zip.file("data.json", JSON.stringify(data))
     await expect(readBackup(await zip.generateAsync({ type: "blob" }))).rejects.toThrow(/belongs to no book/)
+  })
+
+  it("reads files from before daily goals, which have no writing log", async () => {
+    const { pid } = await seedBook()
+    const JSZip = (await import("jszip")).default
+    const zip = await JSZip.loadAsync(await createBackup("project", [pid]))
+    const manifest = JSON.parse(await zip.file("manifest.json")!.async("string"))
+    const data = JSON.parse(await zip.file("data.json")!.async("string"))
+    delete data.writingLog
+    zip.file("manifest.json", JSON.stringify({ ...manifest, schemaVersion: 2 }))
+    zip.file("data.json", JSON.stringify(data))
+    await clearAll()
+    await importBackup(await readBackup(await zip.generateAsync({ type: "blob" })), "replace")
+    expect(await P.getProject(pid)).not.toBeNull()
+    expect(await G.listWritingLog(pid)).toEqual([])
   })
 })

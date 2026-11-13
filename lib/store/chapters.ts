@@ -2,6 +2,7 @@ import { db, newId, nowIso, type ChapterRecord, type ChapterStatus } from "./db"
 import { sha256Hex } from "./hash"
 import { daysLeftInTrash, isActiveProject } from "./projects"
 import { snapshotBeforeSave } from "./versions"
+import { logWords } from "./goals"
 import { countWords } from "@/lib/word-count"
 import { nextDefaultName } from "@/lib/default-name"
 import type { ChapterLabel } from "@/lib/chapter-config"
@@ -130,7 +131,14 @@ export async function createChapter(
       updatedAt: now,
     }
     await d.chapters.add(record)
-    return { ok: true as const, id: record.id, version: 0 }
+    return { ok: true as const, id: record.id, version: 0, words: record.wordCount }
+  }).then(async (result) => {
+    try {
+      await logWords(projectId, result.words)
+    } catch (err) {
+      console.error("createChapter: writing log failed", err)
+    }
+    return { ok: true as const, id: result.id, version: result.version }
   })
 }
 
@@ -192,6 +200,12 @@ export async function saveChapter(
   // Title-only saves don't touch history, and a failed snapshot must never
   // turn a successful save into an error.
   if (newHash !== undefined) {
+    // Words gained count toward today's goal; a failure here is bookkeeping only.
+    try {
+      await logWords(projectId, (patch.wordCount ?? 0) - (outcome.previous.wordCount ?? 0))
+    } catch (err) {
+      console.error("saveChapter: writing log failed", err)
+    }
     try {
       await snapshotBeforeSave({ previous: outcome.previous, newHash, newWordCount: patch.wordCount })
     } catch (err) {

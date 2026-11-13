@@ -15,6 +15,7 @@ import {
 import { getNote, getResearchEntry, listNotesForProject, listResearchEntriesForProject } from "./notes"
 import { listSearchIndexForProject } from "./search"
 import { listChaptersMentioning, listMentionablesForProject, type MentionableType } from "./mentions"
+import { getGoalProgress } from "./goals"
 
 /**
  * React hooks over the local database. Each re-renders by itself whenever
@@ -57,6 +58,8 @@ export const useResearchEntries = (projectId: string) =>
   useLiveQuery(() => listResearchEntriesForProject(projectId), [projectId])
 export const useResearchEntry = (projectId: string, id: string) =>
   useLiveQuery(() => getResearchEntry(projectId, id), [projectId, id])
+
+export const useGoalProgress = (projectId: string) => useLiveQuery(() => getGoalProgress(projectId), [projectId])
 
 export const useSearchIndex = (projectId: string) =>
   useLiveQuery(() => listSearchIndexForProject(projectId), [projectId])

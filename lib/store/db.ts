@@ -20,7 +20,7 @@ import type { ResearchEntryType } from "@/lib/research-config"
  */
 
 /** Bumped whenever the stored shape changes; see `migrations` below. */
-export const SCHEMA_VERSION = 2
+export const SCHEMA_VERSION = 3
 
 export type ChapterStatus = "draft" | "in-progress" | "done"
 export type VersionKind = "auto" | "manual" | "restore-point"
@@ -45,6 +45,8 @@ export type ProjectRecord = {
   manuscriptSettings: ManuscriptSettings
   /** Story Check preferences and dismissed issues. Absent until first changed. */
   storyCheck?: StoryCheckSettings
+  /** Style check preferences (checks on, filler list, limits, dismissed findings). Absent until first changed. */
+  styleCheck?: Partial<import("@/lib/style-check/types").StyleSettings>
   /** Print export choices (template, printer, paper, bleed, copyright page). */
   print?: PrintSettings
   createdAt: string
@@ -236,6 +238,16 @@ export type TemplateFileRecord = {
   type: string
 }
 
+/** Words written in one book on one day (local date), for daily goals and streaks. */
+export type WritingLogRecord = {
+  id: string
+  projectId: string
+  /** Local calendar day, "YYYY-MM-DD". */
+  date: string
+  /** Words added that day. Deleting text never takes away from it. */
+  words: number
+}
+
 /** Small key/value settings and bookkeeping (e.g. last backup time). */
 export type MetaRecord = { key: string; value: unknown }
 
@@ -253,6 +265,7 @@ export type AppDB = Dexie & {
   meta: EntityTable<MetaRecord, "key">
   templates: EntityTable<TemplateRecord, "id">
   templateFiles: EntityTable<TemplateFileRecord, "id">
+  writingLog: EntityTable<WritingLogRecord, "id">
 }
 
 /**
@@ -288,6 +301,13 @@ const migrations: {
     stores: {
       templates: "id",
       templateFiles: "id, templateId",
+    },
+  },
+  {
+    // Words written per book per day, for daily goals and streaks.
+    version: 3,
+    stores: {
+      writingLog: "id, projectId, &[projectId+date]",
     },
   },
 ]
