@@ -59,6 +59,9 @@ accepted) before the public launch. Each item says where it lives and what
 - [ ] **Story Check in a real browser**: the panel, Go to text across chapters, the Web
   Worker (bundled by Turbopack; a main-thread fallback exists), and the
   flashback/year fields. Test in Chrome, Firefox and Safari.
+- [ ] **Style tab and goals in Firefox and Safari**: checked in Chromium only (the Style tab,
+  underlines, Go to text, Ignore, the settings, the footer goal counter and the Book Settings
+  goal card). Wavy underlines use `text-decoration-style: wavy`; check they look right.
 
 ## Should fix before launch
 
@@ -67,6 +70,10 @@ accepted) before the public launch. Each item says where it lives and what
   other languages only name spelling, forgotten characters and open threads
   work. Either add vocabularies per language (from the project or browser
   locale), or say "English only" next to the affected rules.
+- [ ] **Style checks only understand English**: the filler list is editable, but the
+  adverb ("-ly"), passive-voice and repeated-word lists (`lib/style-check/words.ts`)
+  are English. In other languages, turn those checks off by default or label them
+  "English only".
 - [ ] **Demo book with planted mistakes**: the plan's "done when" is covered by
   fixture tests (`lib/story-check/story-check.test.ts`), but a sample book
   that new writers can open (and the landing-page demo can show) doesn't
@@ -114,13 +121,32 @@ accepted) before the public launch. Each item says where it lives and what
 - [ ] **"Open thread" notes for every unresolved thread** may feel noisy mid-draft.
   Revisit after feedback (for example, only show them once the book is marked done).
 
+## Style checks and goals: known limits of v1 (decide whether to extend)
+
+- [ ] **Passive voice and adverbs are guesses**: "was opened" is caught, "had the door
+  opened" isn't; "-ly" adjectives not on the skip list ("a costly mistake" is skipped,
+  rarer ones aren't) are flagged. Collect false alarms from real writers and grow
+  `lib/style-check/words.ts`.
+- [ ] **Who-speaks stats need a name nearby**: a line is credited only when a tag or the
+  paragraph names a character. "she said" stays "Not sure who". Using pronouns from the
+  character profile, or alternating speakers in a two-person exchange, would credit more.
+- [ ] **Style checks look at one chapter**: there is no whole-book Style view yet (for
+  example, a word you overuse across the book).
+- [ ] **Pasted text counts toward the daily goal**: a save counts every word gained, so
+  pasting in an old chapter counts as writing it today. Consider ignoring a single
+  jump of more than, say, 2,000 words, or asking.
+- [ ] **No goals across all books**: goals and streaks are per book. A writer working on
+  two books doesn't get one combined streak, and the dashboard doesn't show goals.
+- [ ] **The day turns over only on the next change**: the footer counter re-reads after
+  each save, so a tab left open past midnight shows yesterday's total until you type.
+
 ## Clean-up (no user impact)
 
 - [ ] **Dead components**: `components/ui/create-button.tsx` (it still mentions the removed
   `safeAction`) and `components/project/section-coming-soon.tsx` are unused.
   Delete them.
-- [ ] **Unused project fields**: `dailyWordGoal` and `targetWordCount` are stored but
-  unused. Use them for the Phase 4 session goals, or drop them in a schema
+- [ ] **Unused project field**: `targetWordCount` is stored but unused (`dailyWordGoal`
+  now drives daily goals). Use it for a whole-book target, or drop it in a schema
   migration.
 
 ## Deliberately deferred (tracked in the plan)
