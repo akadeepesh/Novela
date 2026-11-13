@@ -60,6 +60,10 @@ export type PrintSettings = {
   bleed: boolean
   /** The copyright page, as typed. Empty means the generated default. */
   copyrightText: string
+  /** Pages in the last print PDF, so the cover's spine can be sized without re-exporting. */
+  lastPageCount?: number
+  /** Cover background colour for typeset covers. */
+  coverColor?: string
 }
 
 export type StoryCheckSettings = {

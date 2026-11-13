@@ -71,6 +71,8 @@ export async function downloadExport(
       })
       blob = result.blob
       print = { report: result.report, missingGlyphs, templateName: template.name }
+      const { updatePrintSettings } = await import("@/lib/store/projects")
+      await updatePrintSettings(projectId, { lastPageCount: result.report.pageCount }, DEFAULT_PRINT_SETTINGS)
     } finally {
       dispose()
     }
