@@ -1,17 +1,28 @@
 # KoraKagaj
 
-A calmer place to write your book — a focused workspace for novels, poetry,
-short story collections, scripts, and everything in between. Manuscript,
-characters, world, plot, notes, and research all live in one quiet place,
-linked together instead of scattered across files.
+**Free. Private. No AI. Catches your plot holes.**
+
+KoraKagaj is free novel writing software that runs in your browser and keeps
+your book on your device. It has a story bible that checks your manuscript
+for continuity mistakes, style checks, daily goals, and print-ready PDFs
+for Amazon KDP and IngramSpark. No account, no subscription, no AI.
+
+![The landing page, with Story Check catching a dead character who speaks and a misspelled town](docs/screenshots/landing.webp)
+
+| Story Check | Style checks and chapter stats |
+|---|---|
+| ![Story Check flags Tomas speaking after his death, and Graywater as a misspelling of Greywater](docs/screenshots/story-check.webp) | ![The Style tab: chapter stats, who speaks, and repeated, filler and adverb findings underlined in the text](docs/screenshots/style-checks.webp) |
+| **Daily goals and streaks** | **Print-ready export** |
+| ![The daily writing goal card with streaks and a 30-day heatmap](docs/screenshots/goals.webp) | ![The Export page with print templates, printer and paper choices](docs/screenshots/export.webp) |
 
 ## Why
 
 Most writing tools are either too simple (a folder of docs, no structure)
-or too complex (full production-software energy that takes a manual to
-learn). KoraKagaj sits in between: real structure when a project needs it,
-invisible when it doesn't — and every project type gets its own shape
-rather than one generic template stretched over everything.
+or too complex, and the popular new ones want a subscription and your
+manuscript on their servers, often to feed an AI. KoraKagaj gives a
+novelist real structure, checks the things readers notice (a dead character
+who talks, a name spelled two ways), and gets out of the way. It's free
+because it costs nothing to run per writer: there is no server holding books.
 
 ## Features
 
@@ -21,6 +32,10 @@ rather than one generic template stretched over everything.
 - **Story Bible** — Characters, World, and Plot sections, cross-linked by
   an `@mention` system so referencing a character or place from your prose
   quietly keeps a backlink index, without ever writing for you.
+- **Story Check** — continuity checks against the story bible: a dead
+  character who speaks or acts, a misspelled name, eye or hair colour that
+  differs from the profile, an age that doesn't match the birth year,
+  forgotten characters and unresolved plot threads (`lib/story-check/`).
 - **Style checks** — a Style tab in the editor's Story Check panel flags
   repeated words, filler words (your own list), long sentences, adverbs and
   passive voice, with optional coloured underlines in the text. It also
@@ -43,7 +58,11 @@ rather than one generic template stretched over everything.
   document model, so what you see in the editor is what ships.
 - **Local-first and private** — no account and no database. Everything is
   stored in your browser (IndexedDB) on your own device, and the app is an
-  installable PWA that opens offline.
+  installable PWA that keeps working offline once opened.
+- **Public pages** — a landing page, four guide pages for search, and
+  privacy and terms pages live in `app/(marketing)/`, with their own header
+  and footer. Competitor facts on the landing page are dated and sourced in
+  `lib/marketing/comparison.ts`.
 
 ## Tech stack
 
@@ -116,9 +135,16 @@ No environment variables are required to run the app.
 | Variable | Purpose |
 |---|---|
 | `NEXT_PUBLIC_APP_URL` | Optional. Public origin, e.g. `https://example.com`, for metadata, the sitemap and robots.txt |
+| `NEXT_PUBLIC_ANALYTICS_SRC` | Optional. URL of a cookieless analytics script (Plausible, self-hosted Plausible or Umami) |
+| `NEXT_PUBLIC_ANALYTICS_DOMAIN` | Optional. The site name for that script (`data-domain`, or Umami's website id) |
+
+Analytics loads only when both are set, and only on the public pages, never
+inside the writing app. The privacy page reads the same variables.
 
 The product name, tagline and domain are placeholders in `lib/brand.ts`
-until the final name is chosen.
+until the final name is chosen. The donation link (`DONATE_URL`), source
+link (`REPO_URL`) and privacy contact (`CONTACT_EMAIL`) are there too, and
+stay hidden while empty.
 
 ## Development
 
@@ -133,3 +159,15 @@ npm run build
 
 The service worker is only registered in production builds (`npm run build`
 then `npm start`), so development always serves fresh code.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). The short version: no AI, no network
+calls with anything a writer types, and never lose a writer's work.
+
+## Licence
+
+[GNU Affero General Public License v3.0](LICENSE). You can use, change and
+share the app. If you run a changed version for other people, you must share
+your changes under the same licence. Bundled fonts keep their own licences
+(`public/fonts/`).

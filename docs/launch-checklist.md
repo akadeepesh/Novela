@@ -22,10 +22,38 @@ accepted) before the public launch. Each item says where it lives and what
   `lib/print/template.ts` and `lib/print/packs.ts`. They're internal ids, but templates/spec.md
   publishes the last two. If they change, the readers must still accept the old ids.
 - [ ] **Icons and images**: the favicon, apple icon, Android icons, OpenGraph and Twitter images
-  (`app/*.png`, `public/android-chrome-*`) show the old brand. Replace them
-  with the final logo.
+  (`app/*.png`, `public/android-chrome-*`) show the old brand, and the OpenGraph and Twitter images
+  still say "A calmer place to write your book". Replace them with the final logo and the new
+  headline ("Free. Private. No AI. Catches your plot holes."), so shared links match the landing page.
 - [ ] **Leftover starter files**: `public/file.svg`, `globe.svg`, `next.svg`, `vercel.svg` and
   `window.svg` are unused create-next-app files. Delete them.
+
+### Going public (Phase 6, needs the owner)
+- [ ] **Open the repo**: the GitHub repo is private. Done when it is public, `REPO_URL` in
+  `lib/brand.ts` is set (this shows the "Source code" links), and the README screenshots render on
+  GitHub. Check the history has no secrets first (`.env` is ignored, but look).
+- [ ] **Donation link**: `DONATE_URL` in `lib/brand.ts` is empty, so the Ko-fi links are hidden. Done
+  when the Ko-fi page exists and the URL is set.
+- [ ] **Privacy contact**: `CONTACT_EMAIL` in `lib/brand.ts` is empty, so the privacy page has no
+  contact line. Set an address that is checked.
+- [ ] **Public URL**: set `NEXT_PUBLIC_APP_URL` in production, or canonical URLs, the sitemap and
+  robots.txt point at localhost.
+- [ ] **Analytics**: choose Plausible, self-hosted Plausible or Umami, then set
+  `NEXT_PUBLIC_ANALYTICS_SRC` and `NEXT_PUBLIC_ANALYTICS_DOMAIN`. The privacy page switches its
+  wording automatically. Leaving them empty is also fine (no analytics).
+- [ ] **Search engines**: after deploying, submit the sitemap in Google Search Console and Bing
+  Webmaster Tools, and check that the four guide pages are indexed.
+- [ ] **Comparison facts**: the landing page table (`lib/marketing/comparison.ts`) was checked on
+  14 November 2026. Campfire's AI features couldn't be confirmed, so that cell says "Not confirmed".
+  Re-check every claim before posting, and update `COMPARISON_CHECKED`.
+- [ ] **Legal review**: `/privacy` and `/terms` are plain-English drafts written to match what the app
+  does. Have them read by someone qualified before the store opens, especially the liability wording
+  and anything your country requires (for example, a named data controller under GDPR).
+- [ ] **Launch posts**: drafts are in `docs/launch-posts.md` (Show HN, Product Hunt, Reddit, a short
+  video script). Read each subreddit's self-promotion rules first. Record the video from the real app.
+- [ ] **Lighthouse on the public pages**: run Lighthouse on `/` and one guide page in production and
+  fix anything under 90 for performance, accessibility and SEO. The demo animation respects reduced
+  motion; check it on a slow phone.
 
 ### Template store (blocked on opening the store)
 - [ ] **Store link**: `TEMPLATE_STORE_URL` in `lib/brand.ts` is empty, so the More templates page says
@@ -90,9 +118,8 @@ accepted) before the public launch. Each item says where it lives and what
   downloads and the reminder. Consider the optional Google Drive backup from
   the plan (client-side OAuth, app-data folder) or a desktop app (Tauri,
   Phase 7).
-- [ ] **Legal pages**: privacy policy and terms (needed for the store and analytics
-  in Phases 5 and 6). The privacy policy should state that content never
-  leaves the device.
+- [x] **Legal pages**: `/privacy` and `/terms` exist (Phase 6). The privacy page says content never
+  leaves the device. A legal review is still listed under "Going public".
 
 ## Print: known limits (decide whether to extend)
 
@@ -152,4 +179,4 @@ accepted) before the public launch. Each item says where it lives and what
 ## Deliberately deferred (tracked in the plan)
 
 - Beta-reader sharing returns in Phase 7 as an exported reader file.
-- The landing page and SEO pages are Phase 6.
+- Optional Google Drive backup and a desktop app (Tauri) are Phase 7.
