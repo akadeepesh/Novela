@@ -1,7 +1,6 @@
 # Launch posts (drafts)
 
-Drafts to post by hand. `[URL]` is https://novela.akadeepesh.com once the domain is live. Replace `[REPO]` with the public repo
-once it is open. Before posting anywhere:
+Drafts to post by hand. `[URL]` is https://novela.akadeepesh.com and `[REPO]` is https://github.com/akadeepesh/Novela. Before posting anywhere:
 
 - Re-check the comparison facts (`lib/marketing/comparison.ts`) if more than a month has passed.
 - Read each subreddit's rules. Several allow self-promotion only in a weekly thread, or not at all.

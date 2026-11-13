@@ -15,9 +15,8 @@ accepted) before the public launch. Each item says where it lives and what
   shown, and renaming it would hide every book already written.
 - [x] **Backup and template format ids**: now `novela-backup`, `novela-template` and
   `novela-template-pack`. The old `korakagaj-*` ids are still read, with tests.
-- [ ] **Domain live**: point `novela.akadeepesh.com` at the Vercel project (a CNAME on
-  akadeepesh.com) and add it as the project's domain in Vercel. Production builds already use it
-  for canonical links, the sitemap and robots.txt.
+- [x] **Domain live**: https://novela.akadeepesh.com serves the app from Vercel. Production builds use
+  it for canonical links, the sitemap and robots.txt.
 - [x] **Social preview image**: `app/opengraph-image.png` and `app/twitter-image.png` (1200×630) show
   Novela and the new headline, with alt text. The full-size source is `docs/brand/social-preview-source.png`.
 - [x] **Logo and icons**: the favicon (16, 32, 48), `app/icon.png`, the 180 px Apple icon, the 192 and
@@ -26,14 +25,11 @@ accepted) before the public launch. Each item says where it lives and what
 - [x] **Leftover starter files**: the unused create-next-app SVGs in `public/` are deleted.
 
 ### Going public (Phase 6, needs the owner)
-- [ ] **Open the repo**: the GitHub repo is private. Done when it is public, `REPO_URL` in
-  `lib/brand.ts` is set (this shows the "Source code" links), and the README screenshots render on
-  GitHub. Check the history has no secrets first (`.env` is ignored, but look).
-- [ ] **Privacy contact**: `CONTACT_EMAIL` in `lib/brand.ts` is empty, so the privacy page has no
-  contact line. Set an address that is checked.
-- [ ] **Analytics**: turn on Web Analytics for the project in the Vercel dashboard. The app already
-  includes `@vercel/analytics` on the public pages only (never in the writing app, which a test
-  checks), and the privacy page describes it.
+- [x] **Open the repo**: public at https://github.com/akadeepesh/Novela, and `REPO_URL` is set, so the
+  "Source code" links show on the landing page and footer.
+- [x] **Privacy contact**: `CONTACT_EMAIL` is set; the privacy page shows it.
+- [x] **Analytics**: Web Analytics is on in Vercel. `@vercel/analytics` runs on the public pages only;
+  visits to the writing app (/dashboard, /projects, /settings, /read) are never counted.
 - [ ] **Search engines**: after deploying, submit the sitemap in Google Search Console and Bing
   Webmaster Tools, and check that the four guide pages are indexed.
 - [ ] **Comparison facts**: the landing page table (`lib/marketing/comparison.ts`) was checked on
