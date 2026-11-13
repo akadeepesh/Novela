@@ -41,9 +41,22 @@ accepted) before the public launch. Each item says where it lives and what
 - [ ] **Folder backup**: test in Chrome and Edge (choose the folder, write, prune
   after seven days, reconnect after a restart).
 - [ ] **Restore after clearing site data**: test by hand in each major browser.
+- [ ] **Story Check in a real browser**: the panel, Go to text across chapters, the Web
+  Worker (bundled by Turbopack; a main-thread fallback exists), and the
+  flashback/year fields. Test in Chrome, Firefox and Safari.
 
 ## Should fix before launch
 
+- [ ] **Story Check only understands English**: colour words, action and speech verbs,
+  memory cues and number words (`lib/story-check/vocab.ts`) are English. In
+  other languages only name spelling, forgotten characters and open threads
+  work. Either add vocabularies per language (from the project or browser
+  locale), or say "English only" next to the affected rules.
+- [ ] **Demo book with planted mistakes**: the plan's "done when" is covered by
+  fixture tests (`lib/story-check/story-check.test.ts`), but a sample book
+  that new writers can open (and the landing-page demo can show) doesn't
+  exist yet. Ship it as a bundled project file imported from the empty
+  dashboard.
 - [ ] **Offline for pages never opened**: the service worker (`public/sw.js`) serves
   only pages opened before. A fresh install that goes offline straight away
   can open the dashboard but not a book. Options: precache a route shell per
@@ -58,6 +71,19 @@ accepted) before the public launch. Each item says where it lives and what
 - [ ] **Legal pages**: privacy policy and terms (needed for the store and analytics
   in Phases 5 and 6). The privacy policy should state that content never
   leaves the device.
+
+## Story Check: known limits of v1 (decide whether to extend)
+
+- [ ] **Pronouns aren't a rule**: they're stored and used only so "his blue eyes" isn't
+  pinned on a "she". Checking pronoun use against a character would raise too
+  many false alarms (other people in the scene), so v1 doesn't.
+- [ ] **Height, build and other free-text facts aren't checked**: only eye colour, hair
+  colour, death and birth year are structured.
+- [ ] **Ages use years only**: chapter dates are read to the year, and ages allow one
+  year either way because birthdays aren't recorded. An optional birth date
+  would tighten this.
+- [ ] **"Open thread" notes for every unresolved thread** may feel noisy mid-draft.
+  Revisit after feedback (for example, only show them once the book is marked done).
 
 ## Clean-up (no user impact)
 
