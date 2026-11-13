@@ -17,13 +17,20 @@ accepted) before the public launch. Each item says where it lives and what
   name opens an empty database, and every writer would appear to lose their
   books. Either keep the old internal name forever (it is never shown), or add
   a one-time copy from the old database at startup. Decide before launch.
-- [ ] **Backup format id**: `BACKUP_FORMAT` in `lib/backup/format.ts` (`korakagaj-backup`). It is
-  internal, but if it is changed, `readBackup` must still accept the old id.
+- [ ] **Backup and template format ids**: `BACKUP_FORMAT` (`korakagaj-backup`), `TEMPLATE_FORMAT`
+  (`korakagaj-template`) and `PACK_FORMAT` (`korakagaj-template-pack`) in `lib/backup/format.ts`,
+  `lib/print/template.ts` and `lib/print/packs.ts`. They're internal ids, but templates/spec.md
+  publishes the last two. If they change, the readers must still accept the old ids.
 - [ ] **Icons and images**: the favicon, apple icon, Android icons, OpenGraph and Twitter images
   (`app/*.png`, `public/android-chrome-*`) show the old brand. Replace them
   with the final logo.
 - [ ] **Leftover starter files**: `public/file.svg`, `globe.svg`, `next.svg`, `vercel.svg` and
   `window.svg` are unused create-next-app files. Delete them.
+
+### Template store (blocked on opening the store)
+- [ ] **Store link**: `TEMPLATE_STORE_URL` in `lib/brand.ts` is empty, so the More templates page says
+  "opening soon". Done when the Lemon Squeezy or Gumroad store exists, the URL is set, and at least
+  one paid pack is for sale. Paid pack files must never be committed to this repo.
 
 ### Privacy promise
 - [ ] **Research link previews must be opt-in**: today, pasting a link sends that URL to
@@ -33,11 +40,19 @@ accepted) before the public launch. Each item says where it lives and what
   network call.
 
 ### Verify in a real browser
-- [ ] **PDF export**: in Phase 1 the renderer moved to the browser
-  (`lib/export/render-pdf.tsx`, `pdf().toBlob()`). EPUB and DOCX are tested
-  in Node, but PDF can't be (a `@react-pdf` module-resolution limitation).
-  Done when a PDF exports correctly in Chrome, Firefox and Safari, ideally
-  covered by a Playwright test.
+- [ ] **Print PDF passes the KDP previewer** (the plan's "done when" for Phase 5): Node tests
+  (`lib/print/*.test.tsx`) prove page size, trim and bleed boxes, embedded fonts, right-hand
+  chapter starts and 366 pages in about 7 s, and the pages were checked by eye. Still needed:
+  export a ~300-page 6×9 book in Chrome, Firefox and Safari, upload it to the KDP previewer
+  (and IngramSpark's checker), and fix anything they flag. Only a person with an account can do this.
+- [ ] **Print PDF speed in the browser**: rendering runs on the main thread. 7 s in Node may mean
+  a frozen tab for a long book on a slow laptop. Measure, and if it's bad, move rendering into a
+  Web Worker.
+- [ ] **Cover PDF against real templates**: compare the cover size, spine width and barcode area
+  with KDP's cover calculator and IngramSpark's cover template generator for a few page counts
+  and both papers (`lib/print/specs.ts`, `lib/print/render-cover.tsx`).
+- [ ] **Template packs in a browser**: import a pack whose fonts and ornament images load through
+  object URLs, and export with it.
 - [ ] **Folder backup**: test in Chrome and Edge (choose the folder, write, prune
   after seven days, reconnect after a restart).
 - [ ] **Restore after clearing site data**: test by hand in each major browser.
@@ -71,6 +86,20 @@ accepted) before the public launch. Each item says where it lives and what
 - [ ] **Legal pages**: privacy policy and terms (needed for the store and analytics
   in Phases 5 and 6). The privacy policy should state that content never
   leaves the device.
+
+## Print: known limits (decide whether to extend)
+
+- [ ] **No large drop caps**: react-pdf overlaps the first two lines when one character in a line is
+  much bigger than the rest, so templates offer a capitals lead-in instead. Revisit if react-pdf
+  fixes this, or draw the initial as an absolutely positioned element with a manual indent.
+- [ ] **EPUB and DOCX ignore print templates**: only the PDF uses them. Ebook styling could reuse
+  the template's fonts and scene-break glyph.
+- [ ] **Hyphenation is English only**: other languages fall back to react-pdf's English patterns.
+- [ ] **Backups don't include imported templates**: a restored book that used a pack prints with
+  Classic until the pack is imported again (Settings says to keep the pack file). Decide whether
+  full backups should carry them.
+- [ ] **Fonts add 4 MB**: the bundled TTFs are fetched on first print export and then cached
+  offline. Subsetting them to the scripts they cover would shrink this.
 
 ## Story Check: known limits of v1 (decide whether to extend)
 

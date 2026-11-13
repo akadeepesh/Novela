@@ -86,6 +86,21 @@ When the backup layout changes, bump `BACKUP_FORMAT_VERSION`. When
 `SCHEMA_VERSION` goes up, add a step to `migrateData` so older files still
 import.
 
+## Print-ready books
+
+PDF export makes a print interior for Amazon KDP or IngramSpark
+(`lib/print/`). The rules (gutter by page count, minimum margins, bleed,
+spine width) live in `specs.ts`, and `render-print.tsx` lays out the book
+with react-pdf and then uses pdf-lib to mirror the margins and set trim and
+bleed boxes. Templates are JSON (`template.ts`, documented in
+`templates/spec.md`). Three free ones are built in, with OFL fonts bundled
+in `public/fonts/`. Paid packs are imported in Settings and stored locally.
+The Export page also makes a one-piece cover PDF sized for the page count.
+
+To look at the output, write sample PDFs with
+`PRINT_SAMPLES=<folder> npm test -- lib/print/sample`, or time a 366-page
+book with `PRINT_TIMING=<file> npm test -- lib/print/timing`.
+
 ## Configuration
 
 No environment variables are required to run the app.
