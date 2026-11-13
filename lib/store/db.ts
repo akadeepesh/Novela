@@ -43,10 +43,23 @@ export type ProjectRecord = {
   /** Ordered list of enabled sidebar sections, fixed at creation. */
   sections: SectionId[]
   manuscriptSettings: ManuscriptSettings
+  /** Story Check preferences and dismissed issues. Absent until first changed. */
+  storyCheck?: StoryCheckSettings
   createdAt: string
   updatedAt: string
   /** Set while the project is in the Trash. */
   deletedAt?: string
+}
+
+export type StoryCheckSettings = {
+  /** Flag a major or supporting character missing for this many chapters. */
+  forgottenAfterChapters: number
+  /** Keys of individual issues the writer dismissed. */
+  ignoredIssues: string[]
+  /** Rules switched off for one character, place or thread: entity id → rule ids. */
+  ignoredRules: Record<string, string[]>
+  /** Words the spelling-drift rule should never flag (real names that look like typos). */
+  ignoredNames: string[]
 }
 
 export type ChapterRecord = {
@@ -65,6 +78,10 @@ export type ChapterRecord = {
   status: ChapterStatus
   synopsis: string
   label: ChapterLabel
+  /** Set chapters in the past; Story Check doesn't flag the dead appearing in them. */
+  flashback?: boolean
+  /** When the chapter takes place: "YYYY" or "YYYY-MM-DD". Used for age checks. */
+  storyDate?: string
   createdAt: string
   updatedAt: string
   deletedAt?: string
@@ -94,9 +111,20 @@ export type CharacterRecord = {
   personality: string
   backstory: string
   notes: string
+  /** Structured facts checked by Story Check. All optional. */
+  eyeColor?: string
+  hairColor?: string
+  birthYear?: number
+  pronouns?: CharacterPronouns
+  status?: CharacterStatus
+  /** The chapter from which `status` (dead, missing) applies. */
+  statusChapterId?: string
   createdAt: string
   updatedAt: string
 }
+
+export type CharacterPronouns = "" | "she" | "he" | "they"
+export type CharacterStatus = "" | "alive" | "dead" | "missing"
 
 export type WorldEntryRecord = {
   id: string
@@ -119,6 +147,8 @@ export type PlotThreadRecord = {
   aliases: string[]
   description: string
   notes: string
+  /** The chapter where this thread is resolved. */
+  resolvedChapterId?: string
   createdAt: string
   updatedAt: string
 }
