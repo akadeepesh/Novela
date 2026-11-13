@@ -1,4 +1,13 @@
-import { db, newId, nowIso, type CharacterRecord, type PlotThreadRecord, type WorldEntryRecord } from "./db"
+import {
+  db,
+  newId,
+  nowIso,
+  type CharacterPronouns,
+  type CharacterRecord,
+  type CharacterStatus,
+  type PlotThreadRecord,
+  type WorldEntryRecord,
+} from "./db"
 import { isActiveProject } from "./projects"
 import type { CharacterRole } from "@/lib/character-config"
 import type { WorldEntryType } from "@/lib/world-config"
@@ -70,6 +79,12 @@ export type SerializedCharacter = SerializedCharacterSummary & {
   personality?: string
   backstory?: string
   notes?: string
+  eyeColor?: string
+  hairColor?: string
+  birthYear?: number
+  pronouns?: CharacterPronouns
+  status?: CharacterStatus
+  statusChapterId?: string
   createdAt: string
   updatedAt: string
 }
@@ -105,6 +120,12 @@ export async function getCharacter(projectId: string, id: string): Promise<Seria
     personality: c.personality || undefined,
     backstory: c.backstory || undefined,
     notes: c.notes || undefined,
+    eyeColor: c.eyeColor || undefined,
+    hairColor: c.hairColor || undefined,
+    birthYear: c.birthYear || undefined,
+    pronouns: c.pronouns || undefined,
+    status: c.status || undefined,
+    statusChapterId: c.statusChapterId || undefined,
     createdAt: c.createdAt,
     updatedAt: c.updatedAt,
   }
@@ -192,6 +213,7 @@ export type SerializedPlotThread = SerializedPlotThreadSummary & {
   projectId: string
   aliases: string[]
   notes?: string
+  resolvedChapterId?: string
   createdAt: string
 }
 
@@ -224,6 +246,7 @@ export async function getPlotThread(projectId: string, id: string): Promise<Seri
     projectId,
     aliases: p.aliases ?? [],
     notes: p.notes || undefined,
+    resolvedChapterId: p.resolvedChapterId || undefined,
     createdAt: p.createdAt,
   }
 }

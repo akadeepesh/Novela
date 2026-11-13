@@ -510,6 +510,7 @@ function BoardCard({
         rows={3}
         className="mx-3 mt-1.5 flex-1 resize-none bg-transparent text-[13px] leading-snug text-foreground outline-none placeholder:text-muted-foreground/70"
       />
+      <ChapterTimeFields chapter={chapter} onMeta={onMeta} />
       <div className="flex items-center justify-between gap-2 border-t border-border px-3 py-2">
         <LabelPicker value={chapter.label} onChange={(label) => onMeta({ label })} />
         <div className="flex items-center gap-2">
@@ -517,6 +518,52 @@ function BoardCard({
           <StatusSelect value={chapter.status} onChange={(status) => onMeta({ status })} title={chapter.title} />
         </div>
       </div>
+    </div>
+  )
+}
+
+/** When a chapter happens, for Story Check: its story date, and whether it's a flashback. */
+function ChapterTimeFields({
+  chapter,
+  onMeta,
+}: {
+  chapter: SerializedChapterSummary
+  onMeta: (patch: ChapterMetaInput) => void
+}) {
+  const [date, setDate] = useState(chapter.storyDate)
+  const [prevDate, setPrevDate] = useState(chapter.storyDate)
+  if (chapter.storyDate !== prevDate) {
+    setPrevDate(chapter.storyDate)
+    setDate(chapter.storyDate)
+  }
+  const valid = /^(-?\d{1,4}(-\d{2}(-\d{2})?)?)?$/.test(date.trim())
+
+  return (
+    <div className="flex items-center gap-3 px-3 pb-2 text-[11px] text-muted-foreground">
+      <label className="flex items-center gap-1" title="Story Check won't flag dead characters appearing in a flashback">
+        <input
+          type="checkbox"
+          checked={chapter.flashback}
+          onChange={(e) => onMeta({ flashback: e.target.checked })}
+          className="size-3 accent-primary"
+        />
+        Flashback
+      </label>
+      <input
+        value={date}
+        onChange={(e) => setDate(e.target.value)}
+        onBlur={() => {
+          if (valid && date.trim() !== chapter.storyDate) onMeta({ storyDate: date.trim() })
+        }}
+        placeholder="Year (e.g. 2015)"
+        aria-label={`When ${chapter.title} takes place`}
+        aria-invalid={!valid}
+        title="When this chapter takes place: a year, or year-month-day. Used to check ages."
+        className={cn(
+          "w-28 rounded border border-transparent bg-transparent px-1 py-0.5 outline-none hover:border-border focus:border-border",
+          !valid && "border-destructive text-destructive"
+        )}
+      />
     </div>
   )
 }

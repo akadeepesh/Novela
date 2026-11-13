@@ -14,6 +14,8 @@ export type SerializedChapterSummary = {
   status: ChapterStatus
   synopsis: string
   label: ChapterLabel
+  flashback: boolean
+  storyDate: string
   updatedAt: string
 }
 
@@ -37,6 +39,8 @@ function serializeSummary(c: ChapterRecord): SerializedChapterSummary {
     status: c.status ?? "draft",
     synopsis: c.synopsis ?? "",
     label: c.label ?? "",
+    flashback: Boolean(c.flashback),
+    storyDate: c.storyDate ?? "",
     updatedAt: c.updatedAt,
   }
 }
@@ -218,7 +222,14 @@ export async function reorderChapters(projectId: string, orderedIds: string[]): 
   })
 }
 
-export type ChapterMetaInput = { status?: ChapterStatus; synopsis?: string; label?: ChapterLabel }
+export type ChapterMetaInput = {
+  status?: ChapterStatus
+  synopsis?: string
+  label?: ChapterLabel
+  flashback?: boolean
+  /** "YYYY", "YYYY-MM" or "YYYY-MM-DD", or "" to clear. */
+  storyDate?: string
+}
 
 /** Status, synopsis and colour label: the outline-board details. */
 export async function updateChapterMeta(projectId: string, chapterId: string, input: ChapterMetaInput): Promise<boolean> {
@@ -229,6 +240,8 @@ export async function updateChapterMeta(projectId: string, chapterId: string, in
   if (input.status !== undefined) patch.status = input.status
   if (input.synopsis !== undefined) patch.synopsis = input.synopsis.trim().slice(0, 1000)
   if (input.label !== undefined) patch.label = input.label
+  if (input.flashback !== undefined) patch.flashback = input.flashback
+  if (input.storyDate !== undefined) patch.storyDate = input.storyDate.trim()
   await db().chapters.update(chapterId, patch)
   return true
 }

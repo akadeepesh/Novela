@@ -15,6 +15,16 @@ const schema = z.object({
   personality: z.string().trim().max(4000).optional(),
   backstory: z.string().trim().max(4000).optional(),
   notes: z.string().trim().max(4000).optional(),
+  eyeColor: z.string().trim().max(60).optional(),
+  hairColor: z.string().trim().max(60).optional(),
+  birthYear: z
+    .string()
+    .trim()
+    .regex(/^(-?\d{1,4})?$/, "Birth year should be a year, like 1990")
+    .optional(),
+  pronouns: z.enum(["none", "she", "he", "they"]).optional(),
+  status: z.enum(["none", "alive", "dead", "missing"]).optional(),
+  statusChapterId: z.string().max(100).optional(),
 })
 
 export type UpdateCharacterState = {
@@ -43,6 +53,12 @@ function parse(formData: FormData): { ok: true; fields: CharacterFields } | { ok
     personality: formString(formData, "personality"),
     backstory: formString(formData, "backstory"),
     notes: formString(formData, "notes"),
+    eyeColor: formString(formData, "eyeColor"),
+    hairColor: formString(formData, "hairColor"),
+    birthYear: formString(formData, "birthYear"),
+    pronouns: formString(formData, "pronouns") || undefined,
+    status: formString(formData, "status") || undefined,
+    statusChapterId: formString(formData, "statusChapterId"),
   })
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the fields and try again." }
   const d = parsed.data
@@ -57,6 +73,14 @@ function parse(formData: FormData): { ok: true; fields: CharacterFields } | { ok
       personality: d.personality ?? "",
       backstory: d.backstory ?? "",
       notes: d.notes ?? "",
+      eyeColor: d.eyeColor ?? "",
+      hairColor: d.hairColor ?? "",
+      birthYear: d.birthYear ? Number(d.birthYear) : undefined,
+      pronouns: !d.pronouns || d.pronouns === "none" ? "" : d.pronouns,
+      status: !d.status || d.status === "none" ? "" : d.status,
+      // The chapter only matters for dead or missing.
+      statusChapterId:
+        d.status === "dead" || d.status === "missing" ? (d.statusChapterId && d.statusChapterId !== "none" ? d.statusChapterId : undefined) : undefined,
     },
   }
 }

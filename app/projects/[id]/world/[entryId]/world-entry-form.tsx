@@ -84,7 +84,7 @@ export function WorldEntryForm({ entry }: { entry: SerializedWorldEntry }) {
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="type">Type</Label>
-              <Select name="type" defaultValue={entry.type}>
+              <Select name="type" items={WORLD_ENTRY_TYPES} defaultValue={entry.type}>
                 <SelectTrigger id="type">
                   <SelectValue />
                 </SelectTrigger>
