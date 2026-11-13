@@ -21,6 +21,14 @@ export const TRIM_SIZES = [
     marginIn: { top: 0.8, bottom: 0.7, horizontal: 0.65 },
   },
   {
+    id: "5.25x8",
+    label: "5.25 × 8 in",
+    sublabel: "Trade paperback, slimmer — popular for fiction",
+    widthIn: 5.25,
+    heightIn: 8,
+    marginIn: { top: 0.75, bottom: 0.7, horizontal: 0.6 },
+  },
+  {
     id: "5x8",
     label: "5 × 8 in",
     sublabel: "Compact — mass-market paperback feel",
