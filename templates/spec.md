@@ -26,7 +26,7 @@ my-pack.zip
 
 ```json
 {
-  "format": "korakagaj-template-pack",
+  "format": "novela-template-pack",
   "formatVersion": 1,
   "name": "Fantasy Pack",
   "version": "1.0",
@@ -36,7 +36,7 @@ my-pack.zip
 
 | Field | Rules |
 |---|---|
-| `format` | Exactly `"korakagaj-template-pack"`. |
+| `format` | `"novela-template-pack"`. Packs made before the app was renamed, with `"korakagaj-template-pack"` (and templates with `"korakagaj-template"`), still import. |
 | `formatVersion` | `1`. Files that need a newer app are refused with a request to update. |
 | `name`, `version` | Shown in Settings. |
 | `templates` | 1 to 30 paths to template JSON files inside the zip. |
@@ -54,7 +54,7 @@ my-pack.zip
 
 ```json
 {
-  "format": "korakagaj-template",
+  "format": "novela-template",
   "formatVersion": 1,
   "id": "fantasy/ornate",
   "name": "Ornate",

@@ -12,7 +12,7 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
 } from "@/components/ui/alert-dialog"
-import { BACKUP_FILE_EXTENSION } from "@/lib/brand"
+import { BACKUP_FILE_EXTENSION, LEGACY_SLUG } from "@/lib/brand"
 import {
   BackupError,
   findConflicts,
@@ -80,7 +80,7 @@ export function ImportButton({
       <input
         ref={inputRef}
         type="file"
-        accept={`.${BACKUP_FILE_EXTENSION},.zip,application/zip`}
+        accept={`.${BACKUP_FILE_EXTENSION},.${LEGACY_SLUG},.zip,application/zip`}
         className="hidden"
         onChange={(e) => {
           onFile(e.target.files?.[0])

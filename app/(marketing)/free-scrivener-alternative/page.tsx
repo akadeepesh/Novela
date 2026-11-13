@@ -55,7 +55,7 @@ export default function Page() {
         },
       ]}
       faq={[
-        { q: "Is it really free?", a: "Yes. Every feature is free. The project is funded by optional print template packs and donations." },
+        { q: "Is it really free?", a: "Yes. Every feature is free. The project is funded by optional print template packs, sold once." },
         { q: "Can I import a Scrivener project file?", a: "Not directly. Copy and paste each chapter for now; italics, bold and headings are kept." },
         { q: "Does it work offline like Scrivener?", a: "Once you've opened it, yes. Install it as an app from your browser, and books you've opened keep working without a connection." },
         { q: "Is my book uploaded anywhere?", a: "No. Everything stays in your browser on your device. There's no account and no server copy." },

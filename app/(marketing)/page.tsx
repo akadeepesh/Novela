@@ -76,7 +76,7 @@ const PRIVACY = [
 const FAQ: Faq[] = [
   {
     q: "Is it really free?",
-    a: "Yes. Every feature is free with no limits on books or words. The project is funded by optional print template packs, sold once, and by donations.",
+    a: "Yes. Every feature is free with no limits on books or words. The project is funded by optional print template packs, sold once.",
   },
   {
     q: "Where is my book stored?",

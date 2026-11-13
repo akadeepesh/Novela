@@ -3,7 +3,7 @@ import { Public_Sans, Manrope, Literata } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 import { Providers } from "./providers";
-import { APP_NAME, DESCRIPTION, TAGLINE } from "@/lib/brand";
+import { APP_NAME, DESCRIPTION, SITE_URL, TAGLINE } from "@/lib/brand";
 
 const FULL_TITLE = `${APP_NAME} — ${TAGLINE}`;
 
@@ -23,7 +23,7 @@ const literataSerif = Literata({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: FULL_TITLE,
     template: `%s — ${APP_NAME}`,

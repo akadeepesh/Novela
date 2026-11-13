@@ -35,7 +35,7 @@ export default function Page() {
           heading: "Why it's free",
           body: [
             "The app runs on your own device, so there are no servers storing books and no running cost per writer. That's what makes it possible to give every feature away.",
-            "The project is funded by optional print template packs for different genres, sold once, and by donations. No feature in the app is ever locked behind them.",
+            "The project is funded by optional print template packs for different genres, sold once. No feature in the app is ever locked behind them.",
           ],
         },
         {

@@ -44,6 +44,11 @@ describe("template packs", () => {
     expect(all[3].packName).toBe("Fantasy Pack")
   })
 
+  it("still imports packs made before the app was renamed", async () => {
+    const old = await pack({ manifest: { format: "korakagaj-template-pack" }, template: { format: "korakagaj-template" } })
+    expect((await importTemplatePack(old)).templates).toEqual([{ id: "fantasy/ornate", name: "Ornate" }])
+  })
+
   it("replaces a template when the pack is imported again, and deletes cleanly", async () => {
     await importTemplatePack(await pack())
     await importTemplatePack(await pack())

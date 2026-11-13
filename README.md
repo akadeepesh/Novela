@@ -1,8 +1,8 @@
-# KoraKagaj
+# Novela
 
 **Free. Private. No AI. Catches your plot holes.**
 
-KoraKagaj is free novel writing software that runs in your browser and keeps
+Novela is free novel writing software that runs in your browser and keeps
 your book on your device. It has a story bible that checks your manuscript
 for continuity mistakes, style checks, daily goals, and print-ready PDFs
 for Amazon KDP and IngramSpark. No account, no subscription, no AI.
@@ -19,7 +19,7 @@ for Amazon KDP and IngramSpark. No account, no subscription, no AI.
 
 Most writing tools are either too simple (a folder of docs, no structure)
 or too complex, and the popular new ones want a subscription and your
-manuscript on their servers, often to feed an AI. KoraKagaj gives a
+manuscript on their servers, often to feed an AI. Novela gives a
 novelist real structure, checks the things readers notice (a dead character
 who talks, a name spelled two ways), and gets out of the way. It's free
 because it costs nothing to run per writer: there is no server holding books.
@@ -134,17 +134,20 @@ No environment variables are required to run the app.
 
 | Variable | Purpose |
 |---|---|
-| `NEXT_PUBLIC_APP_URL` | Optional. Public origin, e.g. `https://example.com`, for metadata, the sitemap and robots.txt |
-| `NEXT_PUBLIC_ANALYTICS_SRC` | Optional. URL of a cookieless analytics script (Plausible, self-hosted Plausible or Umami) |
-| `NEXT_PUBLIC_ANALYTICS_DOMAIN` | Optional. The site name for that script (`data-domain`, or Umami's website id) |
+| `NEXT_PUBLIC_APP_URL` | Optional. Overrides the public origin used for canonical links, the sitemap and robots.txt. Production builds otherwise use `https://novela.akadeepesh.com` (`SITE_URL` in `lib/brand.ts`) |
 
-Analytics loads only when both are set, and only on the public pages, never
-inside the writing app. The privacy page reads the same variables.
+Analytics is Vercel Web Analytics (`@vercel/analytics`), cookieless, on the
+public pages only and never inside the writing app. It does nothing until
+Web Analytics is turned on for the project in Vercel.
 
-The product name, tagline and domain are placeholders in `lib/brand.ts`
-until the final name is chosen. The donation link (`DONATE_URL`), source
-link (`REPO_URL`) and privacy contact (`CONTACT_EMAIL`) are there too, and
-stay hidden while empty.
+The name, domain and positioning live in `lib/brand.ts`. The donation link
+(`DONATE_URL`), source link (`REPO_URL`) and privacy contact
+(`CONTACT_EMAIL`) are there too, and stay hidden while empty.
+
+The app was called KoraKagaj before. Files made then (`.korakagaj` project
+files and backups, and template packs with the old format ids) still
+import. The browser database keeps its old internal name (`DB_NAME`), so
+books already written stay where they are.
 
 ## Development
 

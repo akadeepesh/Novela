@@ -10,7 +10,9 @@ import { TemplateError, mapTemplateFiles, templateFiles, validateTemplate, type 
  * templates/spec.md for the format.
  */
 
-export const PACK_FORMAT = "korakagaj-template-pack"
+export const PACK_FORMAT = "novela-template-pack"
+/** The id used before the rename, still read. */
+const LEGACY_PACK_FORMAT = "korakagaj-template-pack"
 export const PACK_FORMAT_VERSION = 1
 
 const FILE_TYPES: Record<string, { type: string; maxBytes: number }> = {
@@ -49,7 +51,7 @@ export async function importTemplatePack(file: Blob): Promise<PackSummary> {
   } catch {
     throw new TemplateError("The pack's pack.json is damaged.")
   }
-  if (!isObj(manifest) || manifest.format !== PACK_FORMAT) throw new TemplateError("This isn't a template pack.")
+  if (!isObj(manifest) || (manifest.format !== PACK_FORMAT && manifest.format !== LEGACY_PACK_FORMAT)) throw new TemplateError("This isn't a template pack.")
   if (typeof manifest.formatVersion !== "number" || manifest.formatVersion > PACK_FORMAT_VERSION) {
     throw new TemplateError("This pack needs a newer version of the app. Reload to update, then try again.")
   }

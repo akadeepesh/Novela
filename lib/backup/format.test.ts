@@ -164,7 +164,7 @@ describe("backups", () => {
   it("refuses files from a newer version", async () => {
     const JSZip = (await import("jszip")).default
     const zip = new JSZip()
-    zip.file("manifest.json", JSON.stringify({ format: "korakagaj-backup", formatVersion: 99, schemaVersion: 1 }))
+    zip.file("manifest.json", JSON.stringify({ format: "novela-backup", formatVersion: 99, schemaVersion: 1 }))
     zip.file("data.json", "{}")
     await expect(readBackup(await zip.generateAsync({ type: "blob" }))).rejects.toThrow(/newer version/)
   })
@@ -192,5 +192,16 @@ describe("backups", () => {
     await importBackup(await readBackup(await zip.generateAsync({ type: "blob" })), "replace")
     expect(await P.getProject(pid)).not.toBeNull()
     expect(await G.listWritingLog(pid)).toEqual([])
+  })
+
+  it("reads files made before the app was renamed", async () => {
+    const { pid } = await seedBook()
+    const JSZip = (await import("jszip")).default
+    const zip = await JSZip.loadAsync(await createBackup("project", [pid]))
+    const manifest = JSON.parse(await zip.file("manifest.json")!.async("string"))
+    expect(manifest.format).toBe("novela-backup")
+    zip.file("manifest.json", JSON.stringify({ ...manifest, format: "korakagaj-backup" }))
+    const parsed = await readBackup(await zip.generateAsync({ type: "blob" }))
+    expect(parsed.data.projects.map((p) => p.id)).toEqual([pid])
   })
 })
