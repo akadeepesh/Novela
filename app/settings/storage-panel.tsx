@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { db } from "@/lib/store/db"
 import { isStoragePersisted, requestPersistentStorage } from "@/lib/store/persist"
 import { BackupPanel } from "@/components/backup/backup-panel"
+import { TemplatesPanel } from "@/components/print/templates-panel"
 
 const MB = 1024 * 1024
 
@@ -98,6 +99,7 @@ export function StoragePanel() {
       </Card>
 
       <BackupPanel />
+      <TemplatesPanel />
     </div>
   )
 }

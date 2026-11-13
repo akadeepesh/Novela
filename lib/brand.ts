@@ -20,3 +20,10 @@ export const DESCRIPTION =
  * until the final name is chosen; `.zip` is always accepted on import too.
  */
 export const BACKUP_FILE_EXTENSION = "korakagaj"
+
+/**
+ * Where paid template packs are sold (for example a Lemon Squeezy or Gumroad
+ * store). Empty until the store exists; the More templates page then says
+ * the store is coming instead of linking anywhere.
+ */
+export const TEMPLATE_STORE_URL = ""
