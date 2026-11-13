@@ -18,11 +18,10 @@ accepted) before the public launch. Each item says where it lives and what
 - [ ] **Domain live**: point `novela.akadeepesh.com` at the Vercel project (a CNAME on
   akadeepesh.com) and add it as the project's domain in Vercel. Production builds already use it
   for canonical links, the sitemap and robots.txt.
-- [ ] **Icons and images**: the favicon, apple icon, Android icons, OpenGraph and Twitter images
-  (`app/*.png`, `public/android-chrome-*`) show the old brand, and the OpenGraph and Twitter images
-  still say "A calmer place to write your book". Replace them with a Novela logo and the new
-  headline ("Free. Private. No AI. Catches your plot holes."), so shared links match the landing page.
-  `app/opengraph-image.png` and `app/twitter-image.png` should be 1200×630.
+- [x] **Social preview image**: `app/opengraph-image.png` and `app/twitter-image.png` (1200×630) show
+  Novela and the new headline, with alt text. The full-size source is `docs/brand/social-preview-source.png`.
+- [ ] **Logo and icons**: the favicon (`app/favicon.ico`), `app/icon.png`, `app/apple-icon.png` and
+  `public/android-chrome-*` still show the old "K" logo. Replace them with the Novela mark.
 - [x] **Leftover starter files**: the unused create-next-app SVGs in `public/` are deleted.
 
 ### Going public (Phase 6, needs the owner)
