@@ -1,7 +1,7 @@
 // Part 4.2 — a trim-size default set here means Export isn't the first
 // place you discover what a page will actually look like. PDF is the only
 // export format with a fixed page size (EPUB reflows, DOCX exports at
-// standard US Letter) so this only drives renderPdf.
+// standard US Letter) so this only drives the print PDF (lib/print).
 
 export const TRIM_SIZES = [
   {

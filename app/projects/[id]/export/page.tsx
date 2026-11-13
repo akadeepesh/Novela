@@ -36,7 +36,7 @@ export default function ExportPage() {
         projectTitle={project.title}
         defaultAuthorName={project.authorName}
         availableSections={availableSections}
-        trimSize={project.exportTrimSize}
+        project={project}
       />
       <ProjectFileCard projectId={project.id} />
     </PageShell>
