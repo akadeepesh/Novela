@@ -45,6 +45,8 @@ export type ProjectRecord = {
   manuscriptSettings: ManuscriptSettings
   /** Story Check preferences and dismissed issues. Absent until first changed. */
   storyCheck?: StoryCheckSettings
+  /** Style check preferences (checks on, filler list, limits, dismissed findings). Absent until first changed. */
+  styleCheck?: Partial<import("@/lib/style-check/types").StyleSettings>
   /** Print export choices (template, printer, paper, bleed, copyright page). */
   print?: PrintSettings
   createdAt: string
