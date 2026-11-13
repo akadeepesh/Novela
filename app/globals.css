@@ -295,6 +295,30 @@
   border-bottom: 2px solid oklch(0.75 0.14 75 / 0.8);
 }
 
+/* Style check: one colour per check, as a wavy underline in the text and a
+   dot in the panel. Long sentences get a faint wash instead, as they span
+   many words. */
+.style-repeat-dot { background: oklch(0.65 0.18 30); }
+.style-filler-dot { background: oklch(0.72 0.15 75); }
+.style-long-dot { background: oklch(0.65 0.12 250); }
+.style-adverb-dot { background: oklch(0.62 0.16 300); }
+.style-passive-dot { background: oklch(0.62 0.13 160); }
+.manuscript-prose .style-mark {
+  text-decoration-line: underline;
+  text-decoration-style: wavy;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+  text-decoration-skip-ink: none;
+}
+.manuscript-prose .style-repeat { text-decoration-color: oklch(0.65 0.18 30); }
+.manuscript-prose .style-filler { text-decoration-color: oklch(0.72 0.15 75); }
+.manuscript-prose .style-adverb { text-decoration-color: oklch(0.62 0.16 300); }
+.manuscript-prose .style-passive { text-decoration-color: oklch(0.62 0.13 160); }
+.manuscript-prose .style-long {
+  text-decoration-line: none;
+  background: oklch(0.65 0.12 250 / 0.1);
+}
+
 /* Distraction-free mode */
 .is-zen .manuscript-prose .ProseMirror {
   min-height: 80vh;

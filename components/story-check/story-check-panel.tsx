@@ -10,8 +10,9 @@ import { RULES, type Issue } from "@/lib/story-check/types"
 import { updateStoryCheckSettings } from "@/lib/store/projects"
 import { useChapters, useProject } from "@/lib/store/hooks"
 import { updateChapterMetaAction } from "@/app/projects/[id]/chapters/actions"
+import { StyleTab } from "./style-tab"
 
-type Tab = "chapter" | "book"
+type Tab = "chapter" | "book" | "style"
 
 /** The address that opens a chapter and jumps to an issue's passage. */
 export function issueHref(projectId: string, issue: Issue): string | null {
@@ -26,7 +27,7 @@ export function issueHref(projectId: string, issue: Issue): string | null {
 /**
  * The editor's Story Check panel: continuity issues for this chapter and
  * the whole book, each with Go to text, Ignore, and Ignore for this
- * character/place/thread.
+ * character/place/thread; and the Style tab for this chapter's prose.
  */
 export function StoryCheckPanel({
   projectId,
@@ -110,60 +111,73 @@ export function StoryCheckPanel({
         <TabButton active={tab === "book"} onClick={() => setTab("book")}>
           Whole book ({issues.length})
         </TabButton>
+        <TabButton active={tab === "style"} onClick={() => setTab("style")}>
+          Style
+        </TabButton>
       </div>
 
       <div className="flex-1 overflow-y-auto px-3 py-3">
-        {tab === "chapter" && chapterId ? <ChapterTime projectId={projectId} chapterId={chapterId} /> : null}
-
-        {notice ? <p className="mb-2 text-xs text-destructive">{notice}</p> : null}
-
-        {!ready ? (
-          <p className="text-sm text-muted-foreground">Reading your book…</p>
-        ) : shown.length === 0 ? (
-          <div className="flex flex-col gap-2 py-6 text-center text-sm text-muted-foreground">
-            <p className="font-medium text-foreground">Nothing to report</p>
-            <p className="text-xs">
-              Story Check compares your text with the Story facts on characters, the plot threads,
-              and the dates on your chapters. Fill those in to catch more.
-            </p>
-          </div>
+        {tab === "style" ? (
+          <StyleTab projectId={projectId} editor={editor} />
         ) : (
           <>
-            {warnings.length > 0 ? (
-              <IssueList title="Worth a look" issues={warnings} showChapter={tab === "book"} onGo={goTo} onIgnore={ignore} onIgnoreRule={ignoreRuleFor} />
-            ) : null}
-            {notes.length > 0 ? (
-              <IssueList title="Notes" issues={notes} showChapter={tab === "book"} onGo={goTo} onIgnore={ignore} onIgnoreRule={ignoreRuleFor} />
-            ) : null}
+            {tab === "chapter" && chapterId ? <ChapterTime projectId={projectId} chapterId={chapterId} /> : null}
+
+            {notice ? <p className="mb-2 text-xs text-destructive">{notice}</p> : null}
+
+            {!ready ? (
+              <p className="text-sm text-muted-foreground">Reading your book…</p>
+            ) : shown.length === 0 ? (
+              <div className="flex flex-col gap-2 py-6 text-center text-sm text-muted-foreground">
+                <p className="font-medium text-foreground">Nothing to report</p>
+                <p className="text-xs">
+                  Story Check compares your text with the Story facts on characters, the plot threads,
+                  and the dates on your chapters. Fill those in to catch more.
+                </p>
+              </div>
+            ) : (
+              <>
+                {warnings.length > 0 ? (
+                  <IssueList title="Worth a look" issues={warnings} showChapter={tab === "book"} onGo={goTo} onIgnore={ignore} onIgnoreRule={ignoreRuleFor} />
+                ) : null}
+                {notes.length > 0 ? (
+                  <IssueList title="Notes" issues={notes} showChapter={tab === "book"} onGo={goTo} onIgnore={ignore} onIgnoreRule={ignoreRuleFor} />
+                ) : null}
+              </>
+            )}
           </>
         )}
       </div>
 
       <div className="flex flex-col gap-2 border-t border-border px-4 py-3 text-xs text-muted-foreground">
-        <label className="flex items-center justify-between gap-2">
-          Flag characters missing for
-          <span className="flex items-center gap-1">
-            <input
-              type="number"
-              min={2}
-              max={50}
-              value={settings?.forgottenAfterChapters ?? 8}
-              onChange={(e) => {
-                const n = Math.min(50, Math.max(2, Number(e.target.value) || 8))
-                void updateStoryCheckSettings(projectId, (s) => ({ ...s, forgottenAfterChapters: n }))
-              }}
-              className="w-12 rounded border border-border bg-transparent px-1 py-0.5 text-right text-foreground"
-            />
-            chapters
-          </span>
-        </label>
-        {ignoredCount > 0 ? (
-          <p className="flex items-center justify-between">
-            {ignoredCount} ignored
-            <button type="button" onClick={resetIgnored} className="font-medium text-primary hover:underline">
-              Show them again
-            </button>
-          </p>
+        {tab !== "style" ? (
+          <>
+            <label className="flex items-center justify-between gap-2">
+              Flag characters missing for
+              <span className="flex items-center gap-1">
+                <input
+                  type="number"
+                  min={2}
+                  max={50}
+                  value={settings?.forgottenAfterChapters ?? 8}
+                  onChange={(e) => {
+                    const n = Math.min(50, Math.max(2, Number(e.target.value) || 8))
+                    void updateStoryCheckSettings(projectId, (s) => ({ ...s, forgottenAfterChapters: n }))
+                  }}
+                  className="w-12 rounded border border-border bg-transparent px-1 py-0.5 text-right text-foreground"
+                />
+                chapters
+              </span>
+            </label>
+            {ignoredCount > 0 ? (
+              <p className="flex items-center justify-between">
+                {ignoredCount} ignored
+                <button type="button" onClick={resetIgnored} className="font-medium text-primary hover:underline">
+                  Show them again
+                </button>
+              </p>
+            ) : null}
+          </>
         ) : null}
         <p>Runs on this device. Nothing is sent anywhere.</p>
       </div>
