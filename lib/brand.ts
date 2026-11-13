@@ -47,11 +47,8 @@ export const TEMPLATE_STORE_URL = ""
  */
 export const DONATE_URL = ""
 
-/**
- * The public source repository. Empty while the repo is private; the
- * "Source code" links stay hidden until then.
- */
-export const REPO_URL = ""
+/** The public source repository, linked as "Source code". */
+export const REPO_URL = "https://github.com/akadeepesh/Novela"
 
 /** Contact address for privacy questions, shown on the privacy page. Empty hides it. */
-export const CONTACT_EMAIL = ""
+export const CONTACT_EMAIL = "akadeepesh1710@gmail.com"
