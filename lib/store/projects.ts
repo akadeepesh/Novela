@@ -1,4 +1,4 @@
-import { db, newId, nowIso, type ProjectRecord, type StoryCheckSettings } from "./db"
+import { db, newId, nowIso, type PrintSettings, type ProjectRecord, type StoryCheckSettings } from "./db"
 import {
   ADDABLE_SECTIONS,
   SECTION_DEFS,
@@ -29,6 +29,7 @@ export type SerializedProject = {
   sections: SectionId[]
   manuscriptSettings: ManuscriptSettings
   storyCheck?: StoryCheckSettings
+  print?: PrintSettings
   createdAt: string
   updatedAt: string
 }
@@ -60,6 +61,7 @@ export function serializeProject(r: ProjectRecord): SerializedProject {
     sections: r.sections ?? [],
     manuscriptSettings: { ...DEFAULT_MANUSCRIPT_SETTINGS, ...r.manuscriptSettings },
     storyCheck: r.storyCheck,
+    print: r.print,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
   }
@@ -164,6 +166,16 @@ export async function updateStoryCheckSettings(
       ...r.storyCheck,
     }
     await db().projects.put({ ...r, storyCheck: change(current) })
+    return true
+  })
+}
+
+/** Saves print export choices. Bookkeeping, so `updatedAt` stays put. */
+export async function updatePrintSettings(id: string, patch: Partial<PrintSettings>, defaults: PrintSettings): Promise<boolean> {
+  return db().transaction("rw", db().projects, async () => {
+    const r = await db().projects.get(id)
+    if (!r || r.deletedAt) return false
+    await db().projects.put({ ...r, print: { ...defaults, ...r.print, ...patch } })
     return true
   })
 }

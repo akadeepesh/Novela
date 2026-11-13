@@ -39,7 +39,7 @@ type FlipBookHandle = {
 /**
  * The whole book is laid out at the export's own page size, in points
  * (1 pt = 1 CSS px here), with the exporter's own typography and margins
- * (see lib/export/render-pdf.tsx). Pagination happens once at that
+ * (see lib/print/render-print.tsx). Pagination happens once at that
  * reference size; the window size only decides how much each page is
  * scaled up or down to fit. So page breaks, page counts, and page numbers
  * never change when you resize — and they line up with the PDF.

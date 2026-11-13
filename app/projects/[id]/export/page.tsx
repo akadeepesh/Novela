@@ -11,6 +11,7 @@ import { useProjectSection } from "@/components/project/project-context"
 import { NotFoundView } from "@/components/store/status-views"
 import { ExportForm } from "./export-form"
 import { ProjectFileCard } from "./project-file-card"
+import { CoverCard } from "./cover-card"
 
 const OPTIONAL_SECTIONS: SectionId[] = ["characters", "world", "plot", "notes", "research"]
 
@@ -36,8 +37,9 @@ export default function ExportPage() {
         projectTitle={project.title}
         defaultAuthorName={project.authorName}
         availableSections={availableSections}
-        trimSize={project.exportTrimSize}
+        project={project}
       />
+      <CoverCard project={project} />
       <ProjectFileCard projectId={project.id} />
     </PageShell>
   )

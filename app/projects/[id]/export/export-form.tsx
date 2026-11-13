@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import Link from "next/link"
-import { FilePdfIcon, FileDocIcon, BookIcon, DownloadSimpleIcon, GearSixIcon } from "@phosphor-icons/react/dist/ssr"
+import { FilePdfIcon, FileDocIcon, BookIcon, DownloadSimpleIcon } from "@phosphor-icons/react/dist/ssr"
 import { cn } from "cn"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
@@ -10,14 +9,15 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
-import { getTrimSize } from "@/lib/export-config"
-import { downloadExport } from "@/lib/export/export-file"
+import { downloadExport, type ExportResult } from "@/lib/export/export-file"
+import type { SerializedProject } from "@/lib/store/projects"
+import { PrintOptions, PrintSummary } from "./print-options"
 import type { SectionId } from "@/lib/project-config"
 
 type Format = "pdf" | "epub" | "docx"
 
 const FORMATS: { value: Format; label: string; description: string; icon: typeof FilePdfIcon }[] = [
-  { value: "pdf", label: "PDF", description: "Fixed layout, ready to print or share as-is.", icon: FilePdfIcon },
+  { value: "pdf", label: "Print PDF", description: "A print-ready interior for Amazon KDP or IngramSpark.", icon: FilePdfIcon },
   { value: "epub", label: "EPUB", description: "Reflowable — opens in Kindle, Apple Books, etc.", icon: BookIcon },
   { value: "docx", label: "Word (.docx)", description: "Editable — for agents, editors, or further edits.", icon: FileDocIcon },
 ]
@@ -27,13 +27,13 @@ export function ExportForm({
   projectTitle,
   defaultAuthorName,
   availableSections,
-  trimSize,
+  project,
 }: {
   projectId: string
   projectTitle: string
   defaultAuthorName?: string
   availableSections: { id: SectionId; label: string }[]
-  trimSize: string
+  project: SerializedProject
 }) {
   const [format, setFormat] = useState<Format>("pdf")
   const [includeTitlePage, setIncludeTitlePage] = useState(true)
@@ -48,23 +48,34 @@ export function ExportForm({
 
   const [exporting, startExport] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const [progress, setProgress] = useState<string | null>(null)
+  const [printResult, setPrintResult] = useState<Extract<ExportResult, { ok: true }>["print"] | null>(null)
 
   // Built right here in the browser: the book never leaves this device.
   function handleDownload() {
     setError(null)
+    setPrintResult(null)
     startExport(async () => {
       try {
-        const result = await downloadExport(projectId, format, {
-          includeTitlePage,
-          includeTOC,
-          authorName,
-          dedication: dedication.slice(0, 2000) || undefined,
-          includeSections: sections,
-        })
+        const result = await downloadExport(
+          projectId,
+          format,
+          {
+            includeTitlePage,
+            includeTOC,
+            authorName,
+            dedication: dedication.slice(0, 2000) || undefined,
+            includeSections: sections,
+          },
+          setProgress
+        )
         if (!result.ok) setError(result.error)
+        else setPrintResult(result.print ?? null)
       } catch (err) {
         console.error("export failed", err)
         setError("Couldn't build the file. Please try again.")
+      } finally {
+        setProgress(null)
       }
     })
   }
@@ -73,7 +84,7 @@ export function ExportForm({
     <Card>
       <CardHeader>
         <CardTitle className="text-base">Configure your export</CardTitle>
-        <CardDescription>Choose a format and what to include — nothing here is saved.</CardDescription>
+        <CardDescription>Choose a format and what to include. Print choices are remembered for this book.</CardDescription>
       </CardHeader>
 
       <CardContent className="flex flex-col gap-6">
@@ -100,21 +111,7 @@ export function ExportForm({
           </div>
         </div>
 
-        {format === "pdf" ? (
-          <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2.5">
-            <GearSixIcon className="size-4 shrink-0 text-muted-foreground" />
-            <p className="min-w-0 flex-1 text-xs text-muted-foreground">
-              Page size: <span className="font-medium text-foreground">{getTrimSize(trimSize).label}</span>{" "}
-              ({getTrimSize(trimSize).sublabel.toLowerCase()})
-            </p>
-            <Link
-              href={`/projects/${projectId}/overview`}
-              className="shrink-0 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-            >
-              Change
-            </Link>
-          </div>
-        ) : null}
+        {format === "pdf" ? <PrintOptions project={project} authorName={authorName || projectTitle} showCopyright={includeTitlePage} /> : null}
 
         <div className="flex flex-col gap-3">
           <Label>Front matter</Label>
@@ -180,7 +177,7 @@ export function ExportForm({
       <CardFooter className="mt-2 border-t pt-5">
         <Button size="lg" type="button" onClick={handleDownload} disabled={exporting}>
           <DownloadSimpleIcon />
-          {exporting ? "Preparing…" : `Download ${FORMATS.find((f) => f.value === format)?.label}`}
+          {exporting ? progress ?? "Preparing…" : `Download ${FORMATS.find((f) => f.value === format)?.label}`}
         </Button>
         {error ? (
           <p role="alert" className="ml-3 text-sm text-destructive">
@@ -188,6 +185,16 @@ export function ExportForm({
           </p>
         ) : null}
       </CardFooter>
+      {printResult ? (
+        <div className="px-6 pb-6">
+          <PrintSummary
+            report={printResult.report}
+            missingGlyphs={printResult.missingGlyphs}
+            templateName={printResult.templateName}
+            project={project}
+          />
+        </div>
+      ) : null}
     </Card>
   )
 }
