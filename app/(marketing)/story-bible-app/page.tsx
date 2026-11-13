@@ -41,7 +41,7 @@ export default function Page() {
           heading: "Story Check catches what slips through",
           points: [
             { title: "Dead characters", text: "Someone marked dead speaks or acts in a later chapter. Chapters marked as flashbacks are allowed." },
-            { title: "Name spelling", text: "“Marra” in chapter 12 when everyone else calls her Mara." },
+            { title: "Name spelling", text: "“Katharine” in chapter 12 when everywhere else it’s Katherine." },
             { title: "Character facts", text: "Green eyes in the profile, blue eyes on page 140." },
             { title: "Ages and dates", text: "A stated age that doesn't match the birth year and the chapter's year." },
             { title: "Forgotten characters", text: "A main character who hasn't appeared for many chapters." },

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { cn } from "cn"
 import { ListChecksIcon } from "@phosphor-icons/react/dist/ssr"
 
-const BEFORE = "The harbour was quiet when Marra reached the end of the pier. Fog rolled in off the water, and the lamps hissed. "
+const BEFORE = "The harbour at Graywater was quiet when Mara reached the end of the pier. Fog rolled in off the water, and the lamps hissed. "
 const TYPED = "“You came back,” Tomas said, stepping out of the fog."
 
 const ISSUES = [
@@ -17,8 +17,8 @@ const ISSUES = [
   {
     rule: "Name spelling",
     tone: "bg-sky-500",
-    text: "“Marra” looks like a misspelling of Mara.",
-    mark: "Marra",
+    text: "“Graywater” looks like a misspelling of Greywater.",
+    mark: "Graywater",
   },
 ] as const
 
@@ -118,7 +118,7 @@ export function StoryCheckDemo() {
     <div
       className="overflow-hidden rounded-xl border border-border bg-card shadow-xl shadow-foreground/5"
       role="img"
-      aria-label="Demo: a writer types a line where Tomas speaks, though he died in Chapter 3. Story Check flags it, and also flags “Marra” as a misspelling of Mara."
+      aria-label="Demo: a writer types a line where Tomas speaks, though he died in Chapter 3. Story Check flags it, and also flags “Graywater” as a misspelling of the town Greywater."
     >
       <div className="flex items-center gap-1.5 border-b border-border px-4 py-2.5" aria-hidden>
         <span className="size-2.5 rounded-full bg-border" />

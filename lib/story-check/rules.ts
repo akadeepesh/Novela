@@ -200,6 +200,8 @@ export function editDistance(a: string, b: string, max = 3): number {
   return d[a.length][b.length]
 }
 
+const times = (n: number) => `${n} ${n === 1 ? "time" : "times"}`
+
 export function nameDrift(p: Prepared): Issue[] {
   type Known = { word: string; entity: { id: string; name: string; kind: "character" | "place" } }
   const known: Known[] = []
@@ -251,7 +253,7 @@ export function nameDrift(p: Prepared): Issue[] {
       key: `name-drift:${word}:${best.k.word}`,
       rule: "name-drift",
       severity: "warning",
-      message: `“${word}” looks like a misspelling of “${best.k.word}” (used ${uses} ${uses === 1 ? "time" : "times"}). If it's a different name, ignore it.`,
+      message: `“${word}” (${times(uses)}) looks like a misspelling of “${best.k.word}” (${times(counts.get(best.k.word) ?? 0)}). If it's a different name, ignore it.`,
       entity: { id: best.k.entity.id, name: best.k.entity.name, kind: best.k.entity.kind },
       location: { chapterId: where.chapter.id, chapterTitle: where.chapter.title, blockIndex: where.blockIndex, quote: word },
     })
