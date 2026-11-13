@@ -9,7 +9,9 @@
  * ("fonts/…") that is turned into an `asset:` reference on import.
  */
 
-export const TEMPLATE_FORMAT = "korakagaj-template"
+export const TEMPLATE_FORMAT = "novela-template"
+/** The id used before the rename, still read. */
+const LEGACY_TEMPLATE_FORMAT = "korakagaj-template"
 export const TEMPLATE_FORMAT_VERSION = 1
 
 export type FontFamilySpec = {
@@ -165,7 +167,7 @@ function decoration(v: unknown, name: string): { glyph?: string; image?: string;
 
 /** Checks untrusted template JSON and returns a clean copy. Throws TemplateError with a readable message. */
 export function validateTemplate(raw: unknown): PrintTemplate {
-  if (!isObj(raw) || raw.format !== TEMPLATE_FORMAT) throw new TemplateError("This isn't a print template.")
+  if (!isObj(raw) || (raw.format !== TEMPLATE_FORMAT && raw.format !== LEGACY_TEMPLATE_FORMAT)) throw new TemplateError("This isn't a print template.")
   const formatVersion = num(raw.formatVersion, "formatVersion", 1, 1000)
   if (formatVersion > TEMPLATE_FORMAT_VERSION) {
     throw new TemplateError("This template needs a newer version of the app. Reload to update, then try again.")

@@ -1,7 +1,8 @@
 import type { MetadataRoute } from "next"
+import { SITE_URL } from "@/lib/brand"
 import { GUIDE_LINKS } from "@/components/marketing/site-chrome"
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
+const APP_URL = SITE_URL
 
 // Only public pages belong here. Everything under /dashboard and /projects
 // is read from the visitor's own browser storage, so there is nothing to index.

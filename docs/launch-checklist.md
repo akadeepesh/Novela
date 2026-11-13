@@ -6,41 +6,34 @@ accepted) before the public launch. Each item says where it lives and what
 
 ## Must fix before launch
 
-### Brand and naming (blocked on choosing the final name)
-- [ ] **App name, tagline, domain**: `APP_NAME`, `TAGLINE`, `DOMAIN` and `DESCRIPTION` in `lib/brand.ts`
-  are placeholders. Done when they hold the final name and the UI, metadata,
-  manifest and URL-preview user agent all show it.
-- [ ] **File extension**: `BACKUP_FILE_EXTENSION` in `lib/brand.ts` (`korakagaj`). Done when it is the
-  final extension. Importing must keep accepting `.korakagaj` files made
-  before the rename, plus `.zip`.
-- [ ] **Database name**: `DB_NAME` in `lib/store/db.ts` (`korakagaj`). **Do not just rename it.** A new
-  name opens an empty database, and every writer would appear to lose their
-  books. Either keep the old internal name forever (it is never shown), or add
-  a one-time copy from the old database at startup. Decide before launch.
-- [ ] **Backup and template format ids**: `BACKUP_FORMAT` (`korakagaj-backup`), `TEMPLATE_FORMAT`
-  (`korakagaj-template`) and `PACK_FORMAT` (`korakagaj-template-pack`) in `lib/backup/format.ts`,
-  `lib/print/template.ts` and `lib/print/packs.ts`. They're internal ids, but templates/spec.md
-  publishes the last two. If they change, the readers must still accept the old ids.
+### Brand and naming
+- [x] **App name and domain**: the app is **Novela**, at `novela.akadeepesh.com` (`lib/brand.ts`).
+  The UI, metadata, manifest and link-preview user agent read from there.
+- [x] **File extension**: `.novela`. Importing still accepts `.korakagaj` files from before the
+  rename, plus `.zip`.
+- [x] **Database name**: kept as `korakagaj` on purpose (`DB_NAME` in `lib/store/db.ts`). It's never
+  shown, and renaming it would hide every book already written.
+- [x] **Backup and template format ids**: now `novela-backup`, `novela-template` and
+  `novela-template-pack`. The old `korakagaj-*` ids are still read, with tests.
+- [ ] **Domain live**: point `novela.akadeepesh.com` at the Vercel project (a CNAME on
+  akadeepesh.com) and add it as the project's domain in Vercel. Production builds already use it
+  for canonical links, the sitemap and robots.txt.
 - [ ] **Icons and images**: the favicon, apple icon, Android icons, OpenGraph and Twitter images
   (`app/*.png`, `public/android-chrome-*`) show the old brand, and the OpenGraph and Twitter images
-  still say "A calmer place to write your book". Replace them with the final logo and the new
+  still say "A calmer place to write your book". Replace them with a Novela logo and the new
   headline ("Free. Private. No AI. Catches your plot holes."), so shared links match the landing page.
-- [ ] **Leftover starter files**: `public/file.svg`, `globe.svg`, `next.svg`, `vercel.svg` and
-  `window.svg` are unused create-next-app files. Delete them.
+  `app/opengraph-image.png` and `app/twitter-image.png` should be 1200×630.
+- [x] **Leftover starter files**: the unused create-next-app SVGs in `public/` are deleted.
 
 ### Going public (Phase 6, needs the owner)
 - [ ] **Open the repo**: the GitHub repo is private. Done when it is public, `REPO_URL` in
   `lib/brand.ts` is set (this shows the "Source code" links), and the README screenshots render on
   GitHub. Check the history has no secrets first (`.env` is ignored, but look).
-- [ ] **Donation link**: `DONATE_URL` in `lib/brand.ts` is empty, so the Ko-fi links are hidden. Done
-  when the Ko-fi page exists and the URL is set.
 - [ ] **Privacy contact**: `CONTACT_EMAIL` in `lib/brand.ts` is empty, so the privacy page has no
   contact line. Set an address that is checked.
-- [ ] **Public URL**: set `NEXT_PUBLIC_APP_URL` in production, or canonical URLs, the sitemap and
-  robots.txt point at localhost.
-- [ ] **Analytics**: choose Plausible, self-hosted Plausible or Umami, then set
-  `NEXT_PUBLIC_ANALYTICS_SRC` and `NEXT_PUBLIC_ANALYTICS_DOMAIN`. The privacy page switches its
-  wording automatically. Leaving them empty is also fine (no analytics).
+- [ ] **Analytics**: turn on Web Analytics for the project in the Vercel dashboard. The app already
+  includes `@vercel/analytics` on the public pages only (never in the writing app, which a test
+  checks), and the privacy page describes it.
 - [ ] **Search engines**: after deploying, submit the sitemap in Google Search Console and Bing
   Webmaster Tools, and check that the four guide pages are indexed.
 - [ ] **Comparison facts**: the landing page table (`lib/marketing/comparison.ts`) was checked on
@@ -177,6 +170,9 @@ accepted) before the public launch. Each item says where it lives and what
   migration.
 
 ## Deliberately deferred (tracked in the plan)
+
+- Donations: no Ko-fi page yet. `DONATE_URL` in `lib/brand.ts` stays empty, which hides every donate
+  link. Set it when the page exists.
 
 - Beta-reader sharing returns in Phase 7 as an exported reader file.
 - Optional Google Drive backup and a desktop app (Tauri) are Phase 7.

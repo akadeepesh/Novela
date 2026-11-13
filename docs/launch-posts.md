@@ -1,7 +1,7 @@
 # Launch posts (drafts)
 
-Drafts to post by hand. Replace `[URL]` with the live site and `[REPO]` with the public repo once it is
-open. Before posting anywhere:
+Drafts to post by hand. `[URL]` is https://novela.akadeepesh.com once the domain is live. Replace `[REPO]` with the public repo
+once it is open. Before posting anywhere:
 
 - Re-check the comparison facts (`lib/marketing/comparison.ts`) if more than a month has passed.
 - Read each subreddit's rules. Several allow self-promotion only in a weekly thread, or not at all.
@@ -12,7 +12,7 @@ open. Before posting anywhere:
 
 ## Show HN
 
-**Title:** Show HN: KoraKagaj – a free, local-first novel writing app that catches plot holes (no AI)
+**Title:** Show HN: Novela – a free, local-first novel writing app that catches plot holes (no AI)
 
 **Text:**
 
@@ -47,7 +47,7 @@ instead), and Safari can't do folder backups.
 
 ## Product Hunt
 
-**Name:** KoraKagaj
+**Name:** Novela
 
 **Tagline (60 characters max):** Free, private novel writing app that catches plot holes
 
@@ -57,7 +57,7 @@ chapters for continuity mistakes, style checks, daily goals, and print-ready PDF
 account, no subscription, no AI.
 
 **First comment (from the maker):**
-Hi everyone. I built KoraKagaj because I wanted a writing app that respected unpublished work: no
+Hi everyone. I built Novela because I wanted a writing app that respected unpublished work: no
 uploading my manuscript, no AI training, no subscription. Its favourite trick is Story Check. Mark a
 character as dead in chapter 3, and if they speak in chapter 9, it tells you. It also spots misspelled
 names, ages that don't add up, and plot threads you forgot to close. When you're done, it exports a

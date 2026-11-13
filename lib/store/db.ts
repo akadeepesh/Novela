@@ -312,6 +312,11 @@ const migrations: {
   },
 ]
 
+/**
+ * The browser database's name. It keeps the pre-rename name on purpose:
+ * it's never shown, and a new name would open an empty database, hiding
+ * every book already written.
+ */
 export const DB_NAME = "korakagaj"
 
 let instance: AppDB | null = null

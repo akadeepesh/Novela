@@ -25,7 +25,7 @@ const FETCH_TIMEOUT_MS = 6000;
 // this — no reason to pull an entire (possibly huge) page over the wire.
 const MAX_BYTES = 300_000;
 const MAX_REDIRECTS = 3;
-const USER_AGENT = `Mozilla/5.0 (compatible; ${APP_NAME.replace(/\s+/g, "")}Bot/1.0; +https://${DOMAIN}/bot)`;
+const USER_AGENT = `Mozilla/5.0 (compatible; ${APP_NAME.replace(/\s+/g, "")}Bot/1.0; +https://${DOMAIN}/privacy)`;
 
 function faviconFor(hostname: string): string {
   return `https://www.google.com/s2/favicons?sz=64&domain=${encodeURIComponent(hostname)}`;

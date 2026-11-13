@@ -27,7 +27,9 @@ import { APP_NAME } from "@/lib/brand"
  * backup into an empty browser gives back the same data with the same ids.
  */
 
-export const BACKUP_FORMAT = "korakagaj-backup"
+export const BACKUP_FORMAT = "novela-backup"
+/** Ids written before the rename, still read. */
+const LEGACY_BACKUP_FORMATS = ["korakagaj-backup"]
 /** Bump when the zip layout or data.json shape changes. */
 export const BACKUP_FORMAT_VERSION = 1
 
@@ -199,7 +201,7 @@ export async function readBackup(file: Blob): Promise<ParsedBackup> {
   } catch {
     throw new BackupError("The file is damaged and can't be read.")
   }
-  if (!isObject(manifest) || manifest.format !== BACKUP_FORMAT) {
+  if (!isObject(manifest) || !(manifest.format === BACKUP_FORMAT || LEGACY_BACKUP_FORMATS.includes(manifest.format as string))) {
     throw new BackupError(`This isn't a ${APP_NAME} project file or backup.`)
   }
   if (typeof manifest.formatVersion !== "number" || manifest.formatVersion > BACKUP_FORMAT_VERSION ||
