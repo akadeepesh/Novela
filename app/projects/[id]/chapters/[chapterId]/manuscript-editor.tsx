@@ -26,6 +26,7 @@ import {
   TextAlignCenterIcon,
   TextAlignRightIcon,
   MagnifyingGlassIcon,
+  ListChecksIcon,
   ArrowsOutIcon,
   ArrowsInIcon,
   GearSixIcon,
@@ -62,6 +63,8 @@ import { createChapterFromDraftAction } from "../actions"
 import { ManuscriptSettingsPanel } from "./manuscript-settings-panel"
 import { VersionHistoryPanel } from "./version-history-panel"
 import { CommentsPanel, type CommentDraft } from "./comments-panel"
+import { StoryCheckPanel } from "@/components/story-check/story-check-panel"
+import { revealPassage } from "@/components/editor/reveal-passage"
 
 const SAVE_DEBOUNCE_MS = 900
 // Show a "consider splitting" hint from here (the save limit is far higher).
@@ -87,6 +90,8 @@ type Props = {
   mentionables: Mentionable[]
   /** Open with the comments panel showing (links from "new reader comments"). */
   openComments?: boolean
+  /** Arrived from Story Check: open its panel, and jump to this passage if given. */
+  checkTarget?: { blockIndex?: number; quote?: string } | null
 }
 
 export function ManuscriptEditor({
@@ -97,6 +102,7 @@ export function ManuscriptEditor({
   manuscriptSettings,
   mentionables,
   openComments = false,
+  checkTarget = null,
 }: Props) {
   const [title, setTitle] = useState(chapter.title)
   const [focusMode, setFocusMode] = useState(false)
@@ -107,6 +113,7 @@ export function ManuscriptEditor({
   const [findOpen, setFindOpen] = useState(false)
   const [commentsOpen, setCommentsOpen] = useState(openComments)
   const [outlineOpen, setOutlineOpen] = useState(false)
+  const [checkOpen, setCheckOpen] = useState(checkTarget !== null)
   const [commentDraft, setCommentDraft] = useState<CommentDraft | null>(null)
   const [selectionWords, setSelectionWords] = useState(0)
   // Words at the start of this sitting, for the "+N this session" count.
@@ -265,6 +272,17 @@ export function ManuscriptEditor({
     })
   }
 
+  /** Goes to another page, saving pending changes first. */
+  function navigate(href: string) {
+    if (!isPending()) {
+      router.push(href)
+      return
+    }
+    void flush().then((ok) => {
+      if (ok) router.push(href)
+    })
+  }
+
   // Conflict: another tab or device saved this chapter after this one loaded.
   function keepMine() {
     conflictRef.current = false
@@ -380,6 +398,14 @@ export function ManuscriptEditor({
   }, [flush, isPending])
 
   const backgroundImageUrl = useImageUrl(settings.backgroundImageUrl)
+  // Arrived from a Story Check "Go to text" in another chapter.
+  const revealed = useRef(false)
+  useEffect(() => {
+    if (!editor || revealed.current || !checkTarget || (checkTarget.blockIndex === undefined && !checkTarget.quote)) return
+    revealed.current = true
+    revealPassage(editor, checkTarget.blockIndex, checkTarget.quote)
+  }, [editor, checkTarget])
+
   const bg = getBackgroundPreset(settings.background, backgroundImageUrl)
   // A draft has no chapter yet, so Read opens the whole book instead.
   const readHref = chapterId ? `/read/${projectId}?chapter=${chapterId}` : `/read/${projectId}`
@@ -420,6 +446,7 @@ export function ManuscriptEditor({
               else {
                 setHistoryOpen(false)
                 setOutlineOpen(false)
+                setCheckOpen(false)
                 setCommentsOpen((v) => !v)
               }
             }}
@@ -432,10 +459,23 @@ export function ManuscriptEditor({
             onClick={() => {
               setHistoryOpen(false)
               setCommentsOpen(false)
+              setCheckOpen(false)
               setOutlineOpen((v) => !v)
             }}
           >
             <TreeStructureIcon />
+          </ToolbarButton>
+          <ToolbarButton
+            label="Story Check: continuity and plot holes"
+            active={checkOpen}
+            onClick={() => {
+              setHistoryOpen(false)
+              setCommentsOpen(false)
+              setOutlineOpen(false)
+              setCheckOpen((v) => !v)
+            }}
+          >
+            <ListChecksIcon />
           </ToolbarButton>
 
           <Button
@@ -488,6 +528,7 @@ export function ManuscriptEditor({
             onClick={() => {
               setCommentsOpen(false)
               setOutlineOpen(false)
+              setCheckOpen(false)
               setHistoryOpen((v) => !v)
             }}
             disabled={!chapterId}
@@ -592,6 +633,16 @@ export function ManuscriptEditor({
             setCommentsOpen(false)
             setCommentDraft(null)
           }}
+        />
+      ) : null}
+
+      {checkOpen && editor ? (
+        <StoryCheckPanel
+          projectId={projectId}
+          chapterId={chapterId}
+          editor={editor}
+          onNavigate={navigate}
+          onClose={() => setCheckOpen(false)}
         />
       ) : null}
 
