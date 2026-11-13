@@ -1,6 +1,6 @@
 import Link from "next/link"
-import { FeatherIcon } from "@phosphor-icons/react/dist/ssr"
 import { Button } from "@/components/ui/button"
+import { BrandMark } from "@/components/brand-mark"
 import { APP_NAME, DONATE_URL, REPO_URL } from "@/lib/brand"
 
 /** Pages written for search: what people look for, and where it lives. */
@@ -17,7 +17,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-30 border-b border-border/60 bg-background/85 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-6">
         <Link href="/" className="flex items-center gap-2 font-heading font-semibold text-foreground">
-          <FeatherIcon className="size-5 text-primary" weight="duotone" />
+          <BrandMark size={22} />
           {APP_NAME}
         </Link>
         <nav aria-label="Main" className="flex items-center gap-1 text-sm">
@@ -47,7 +47,7 @@ export function SiteFooter() {
       <div className="mx-auto grid max-w-6xl gap-8 px-6 py-12 text-sm sm:grid-cols-3">
         <div className="flex flex-col gap-2">
           <p className="flex items-center gap-2 font-heading font-semibold text-foreground">
-            <FeatherIcon className="size-4 text-primary" weight="duotone" />
+            <BrandMark size={18} />
             {APP_NAME}
           </p>
           <p className="text-muted-foreground">
