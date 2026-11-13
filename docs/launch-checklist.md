@@ -20,8 +20,9 @@ accepted) before the public launch. Each item says where it lives and what
   for canonical links, the sitemap and robots.txt.
 - [x] **Social preview image**: `app/opengraph-image.png` and `app/twitter-image.png` (1200×630) show
   Novela and the new headline, with alt text. The full-size source is `docs/brand/social-preview-source.png`.
-- [ ] **Logo and icons**: the favicon (`app/favicon.ico`), `app/icon.png`, `app/apple-icon.png` and
-  `public/android-chrome-*` still show the old "K" logo. Replace them with the Novela mark.
+- [x] **Logo and icons**: the favicon (16, 32, 48), `app/icon.png`, the 180 px Apple icon, the 192 and
+  512 px Android icons, and padded "maskable" Android icons all use the Novela quill. The site header,
+  footer and dashboard show it too (`public/logo-mark.png`). Sources are in `docs/brand/`.
 - [x] **Leftover starter files**: the unused create-next-app SVGs in `public/` are deleted.
 
 ### Going public (Phase 6, needs the owner)

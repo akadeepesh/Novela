@@ -1,7 +1,8 @@
 "use client"
 
 import Link from "next/link"
-import { FeatherIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr"
+import { PlusIcon, TrashIcon } from "@phosphor-icons/react/dist/ssr"
+import { BrandMark } from "@/components/brand-mark"
 import { Button } from "@/components/ui/button"
 import { APP_NAME } from "@/lib/brand"
 import { AppMenu } from "@/components/app-menu"
@@ -22,7 +23,7 @@ export function DashboardView() {
     <div className="dashboard-glow flex min-h-screen flex-col">
       <header className="flex items-center justify-between px-6 py-5 sm:px-10">
         <Link href="/dashboard" className="flex items-center gap-2 text-foreground">
-          <FeatherIcon className="size-4 text-primary" weight="duotone" />
+          <BrandMark size={18} />
           <span className="font-heading text-sm font-semibold">{APP_NAME}</span>
         </Link>
         <div className="flex items-center gap-3">
