@@ -52,6 +52,7 @@ import { MentionExtension } from "@/components/editor/mention-extension"
 import { FindReplace } from "@/components/editor/find-replace-extension"
 import { StyleCheck } from "@/components/editor/style-check-extension"
 import { useConfigureStyleCheck } from "@/components/story-check/use-style-check"
+import { TodayGoal } from "@/components/goals/goal-widgets"
 import { FindBar } from "@/components/editor/find-bar"
 import { CommentMark } from "@/components/editor/comment-mark"
 import { OutlinePanel } from "@/components/editor/outline-panel"
@@ -676,6 +677,7 @@ export function ManuscriptEditor({
           {projectType === "script-writing" ? ` · ${estimateScriptRuntime(wordCount)}` : ""}
           {wordCount >= LONG_CHAPTER_WORDS ? " · Very long. Consider splitting it into smaller chapters." : ""}
         </span>
+        <TodayGoal projectId={projectId} />
         <span className={cn("italic", saveState === "error" && "text-destructive not-italic")}>
           {saveState === "saving"
             ? "Saving…"

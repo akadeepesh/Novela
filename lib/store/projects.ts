@@ -251,7 +251,7 @@ async function purgeProject(projectId: string): Promise<void> {
   const d = db()
   await d.transaction(
     "rw",
-    [d.projects, d.chapters, d.versions, d.characters, d.worldEntries, d.plotThreads, d.notes, d.researchEntries, d.comments, d.assets],
+    [d.projects, d.chapters, d.versions, d.characters, d.worldEntries, d.plotThreads, d.notes, d.researchEntries, d.comments, d.assets, d.writingLog],
     async () => {
       await Promise.all([
         d.chapters.where("projectId").equals(projectId).delete(),
@@ -263,6 +263,7 @@ async function purgeProject(projectId: string): Promise<void> {
         d.researchEntries.where("projectId").equals(projectId).delete(),
         d.comments.where("projectId").equals(projectId).delete(),
         d.assets.where("projectId").equals(projectId).delete(),
+        d.writingLog.where("projectId").equals(projectId).delete(),
       ])
       await d.projects.delete(projectId)
     }

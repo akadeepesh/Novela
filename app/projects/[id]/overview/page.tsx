@@ -15,6 +15,7 @@ import { ManuscriptSettingsCard } from "./manuscript-settings-card"
 import { CoverSettingsCard } from "./cover-settings-card"
 import { StructureSettingsCard } from "./structure-settings-card"
 import { DeleteProjectSection } from "./delete-project-section"
+import { GoalCard } from "@/components/goals/goal-widgets"
 
 export default function OverviewPage() {
   const project = useProjectSection("overview")
@@ -35,6 +36,8 @@ export default function OverviewPage() {
         {/* Keyed on the project, not updatedAt: any other setting saved on this
             page bumps updatedAt, and remounting would wipe unsaved typing. */}
         <OverviewForm key={project.id} project={project} />
+
+        <GoalCard projectId={id} />
 
         <CoverSettingsCard
           projectId={id}

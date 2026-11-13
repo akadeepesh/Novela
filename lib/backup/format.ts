@@ -12,6 +12,7 @@ import {
   type ResearchEntryRecord,
   type VersionRecord,
   type WorldEntryRecord,
+  type WritingLogRecord,
 } from "@/lib/store/db"
 import { APP_NAME } from "@/lib/brand"
 
@@ -57,6 +58,7 @@ export type BackupData = {
   researchEntries: ResearchEntryRecord[]
   comments: CommentRecord[]
   assets: AssetMeta[]
+  writingLog: WritingLogRecord[]
 }
 
 /** Every table that belongs to a project, i.e. has a `projectId`. */
@@ -70,6 +72,7 @@ const CHILD_TABLES = [
   "researchEntries",
   "comments",
   "assets",
+  "writingLog",
 ] as const
 
 type ChildTable = (typeof CHILD_TABLES)[number]
@@ -89,7 +92,7 @@ async function collect(projectIds?: string[]): Promise<{ data: BackupData; blobs
     const byProject = <T,>(table: ChildTable) =>
       d[table].where("projectId").anyOf(ids).toArray() as unknown as Promise<T[]>
 
-    const [chapters, versions, characters, worldEntries, plotThreads, notes, researchEntries, comments, assets] =
+    const [chapters, versions, characters, worldEntries, plotThreads, notes, researchEntries, comments, assets, writingLog] =
       await Promise.all([
         byProject<ChapterRecord>("chapters"),
         byProject<VersionRecord>("versions"),
@@ -100,6 +103,7 @@ async function collect(projectIds?: string[]): Promise<{ data: BackupData; blobs
         byProject<ResearchEntryRecord>("researchEntries"),
         byProject<CommentRecord>("comments"),
         byProject<AssetRecord>("assets"),
+        byProject<WritingLogRecord>("writingLog"),
       ])
 
     const blobs = new Map(assets.map((a) => [a.id, a.blob]))
@@ -111,7 +115,7 @@ async function collect(projectIds?: string[]): Promise<{ data: BackupData; blobs
       createdAt: a.createdAt,
     }))
     return {
-      data: { projects, chapters, versions, characters, worldEntries, plotThreads, notes, researchEntries, comments, assets: assetMeta },
+      data: { projects, chapters, versions, characters, worldEntries, plotThreads, notes, researchEntries, comments, assets: assetMeta, writingLog },
       blobs,
     }
   })
@@ -203,6 +207,8 @@ export async function readBackup(file: Blob): Promise<ParsedBackup> {
     throw new BackupError(`This file was made by a newer version of ${APP_NAME}. Reload the app to update it, then try again.`)
   }
   if (!isObject(raw)) throw new BackupError("The file is damaged and can't be read.")
+  // Files from before daily goals (schema 3) have no writing log.
+  if (manifest.schemaVersion < 3 && raw.writingLog === undefined) raw.writingLog = []
 
   checkTable(raw, "projects", new Set())
   const projectIds = new Set((raw.projects as { id: string }[]).map((p) => p.id))
@@ -326,6 +332,7 @@ export async function importBackup(backup: ParsedBackup, onConflict: ConflictCho
       await d.notes.bulkPut(part.notes)
       await d.researchEntries.bulkPut(part.researchEntries)
       await d.comments.bulkPut(part.comments)
+      await d.writingLog.bulkPut(part.writingLog)
       // An image whose bytes are missing from the file is skipped; the cover
       // or background then falls back to the default, like a removed image.
       await d.assets.bulkPut(
