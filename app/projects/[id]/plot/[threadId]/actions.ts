@@ -12,6 +12,7 @@ const schema = z.object({
   aliases: z.string().trim().max(500).optional(),
   description: z.string().trim().max(4000).optional(),
   notes: z.string().trim().max(4000).optional(),
+  resolvedChapterId: z.string().max(100).optional(),
 })
 
 export type UpdatePlotThreadState = {
@@ -37,6 +38,7 @@ function parse(formData: FormData): { ok: true; fields: PlotThreadFields } | { o
     aliases: formString(formData, "aliases"),
     description: formString(formData, "description"),
     notes: formString(formData, "notes"),
+    resolvedChapterId: formString(formData, "resolvedChapterId"),
   })
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the fields and try again." }
   const d = parsed.data
@@ -48,6 +50,7 @@ function parse(formData: FormData): { ok: true; fields: PlotThreadFields } | { o
       aliases: splitList(d.aliases),
       description: d.description ?? "",
       notes: d.notes ?? "",
+      resolvedChapterId: d.resolvedChapterId && d.resolvedChapterId !== "none" ? d.resolvedChapterId : undefined,
     },
   }
 }

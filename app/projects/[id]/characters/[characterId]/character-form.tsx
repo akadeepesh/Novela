@@ -18,6 +18,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Button } from "@/components/ui/button"
 import { CHARACTER_ROLES } from "@/lib/character-config"
 import type { SerializedCharacter } from "@/lib/store/bible"
+import { StoryFactsFields } from "./story-facts-fields"
 import { updateCharacterAction, createCharacterFromFormAction, type UpdateCharacterState } from "./actions"
 
 const initialState: UpdateCharacterState = {}
@@ -88,7 +89,7 @@ export function CharacterForm({ character }: { character: SerializedCharacter })
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="role">Role</Label>
-              <Select name="role" defaultValue={character.role}>
+              <Select name="role" items={CHARACTER_ROLES} defaultValue={character.role}>
                 <SelectTrigger id="role">
                   <SelectValue />
                 </SelectTrigger>
@@ -112,6 +113,8 @@ export function CharacterForm({ character }: { character: SerializedCharacter })
               defaultValue={character.aliases.join(", ")}
             />
           </div>
+
+          <StoryFactsFields character={character} />
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="appearance">Appearance</Label>

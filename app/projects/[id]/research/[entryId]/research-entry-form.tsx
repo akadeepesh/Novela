@@ -48,7 +48,7 @@ export function ResearchEntryForm({ entry }: { entry: SerializedResearchEntry })
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="type">Type</Label>
-              <Select name="type" value={type} onValueChange={(v) => setType(v as ResearchEntryType)}>
+              <Select name="type" items={RESEARCH_ENTRY_TYPES} value={type} onValueChange={(v) => setType(v as ResearchEntryType)}>
                 <SelectTrigger id="type">
                   <SelectValue />
                 </SelectTrigger>

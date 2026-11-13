@@ -13,20 +13,41 @@ import { ManuscriptEditor } from "./manuscript-editor"
 export default function ChapterEditorPage() {
   const project = useProjectSection("chapters")
   const { chapterId } = useParams<{ id: string; chapterId: string }>()
-  const openComments = useSearchParams().get("comments") === "1"
+  const searchParams = useSearchParams()
+  const openComments = searchParams.get("comments") === "1"
+  const checkTarget = parseCheckTarget(searchParams.get("check"))
   if (!project) return <NotFoundView />
   // Keyed so moving to another chapter loads it fresh.
-  return <ChapterEditorLoader key={chapterId} project={project} chapterId={chapterId} openComments={openComments} />
+  return (
+    <ChapterEditorLoader
+      key={chapterId}
+      project={project}
+      chapterId={chapterId}
+      openComments={openComments}
+      checkTarget={checkTarget}
+    />
+  )
+}
+
+/** `?check=1` opens Story Check; `?check=<block>:<quote>` also jumps to the passage. */
+function parseCheckTarget(value: string | null): { blockIndex?: number; quote?: string } | null {
+  if (value === null) return null
+  const sep = value.indexOf(":")
+  if (sep < 0) return {}
+  const block = value.slice(0, sep)
+  return { blockIndex: block === "" ? undefined : Number(block), quote: value.slice(sep + 1) || undefined }
 }
 
 function ChapterEditorLoader({
   project,
   chapterId,
   openComments,
+  checkTarget,
 }: {
   project: SerializedProject
   chapterId: string
   openComments: boolean
+  checkTarget: { blockIndex?: number; quote?: string } | null
 }) {
   // Read once: the editor owns the text from here on, and saves it itself.
   const data = useSnapshot(async () => ({
@@ -48,6 +69,7 @@ function ChapterEditorLoader({
         manuscriptSettings={project.manuscriptSettings}
         mentionables={data.mentionables}
         openComments={openComments}
+        checkTarget={checkTarget}
       />
     </>
   )

@@ -1,4 +1,4 @@
-import { db, newId, nowIso, type ProjectRecord } from "./db"
+import { db, newId, nowIso, type ProjectRecord, type StoryCheckSettings } from "./db"
 import {
   ADDABLE_SECTIONS,
   SECTION_DEFS,
@@ -28,6 +28,7 @@ export type SerializedProject = {
   dailyWordGoal: number
   sections: SectionId[]
   manuscriptSettings: ManuscriptSettings
+  storyCheck?: StoryCheckSettings
   createdAt: string
   updatedAt: string
 }
@@ -58,6 +59,7 @@ export function serializeProject(r: ProjectRecord): SerializedProject {
     dailyWordGoal: r.dailyWordGoal ?? 300,
     sections: r.sections ?? [],
     manuscriptSettings: { ...DEFAULT_MANUSCRIPT_SETTINGS, ...r.manuscriptSettings },
+    storyCheck: r.storyCheck,
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
   }
@@ -140,6 +142,29 @@ export async function updateManuscriptSettings(
       updatedAt: nowIso(),
     })
     return r
+  })
+}
+
+/**
+ * Changes Story Check preferences (ignored issues, rules, names, the
+ * forgotten-character threshold). Bookkeeping, so `updatedAt` stays put.
+ */
+export async function updateStoryCheckSettings(
+  id: string,
+  change: (current: StoryCheckSettings) => StoryCheckSettings
+): Promise<boolean> {
+  return db().transaction("rw", db().projects, async () => {
+    const r = await db().projects.get(id)
+    if (!r || r.deletedAt) return false
+    const current: StoryCheckSettings = {
+      forgottenAfterChapters: 8,
+      ignoredIssues: [],
+      ignoredRules: {},
+      ignoredNames: [],
+      ...r.storyCheck,
+    }
+    await db().projects.put({ ...r, storyCheck: change(current) })
+    return true
   })
 }
 

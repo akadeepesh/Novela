@@ -17,6 +17,7 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Button } from "@/components/ui/button"
 import { PLOT_STATUSES } from "@/lib/plot-config"
 import type { SerializedPlotThread } from "@/lib/store/bible"
+import { ResolvedInField } from "./resolved-in-field"
 import { updatePlotThreadAction, createPlotThreadFromFormAction, type UpdatePlotThreadState } from "./actions"
 
 const initialState: UpdatePlotThreadState = {}
@@ -63,7 +64,7 @@ export function PlotThreadForm({ thread }: { thread: SerializedPlotThread }) {
 
             <div className="flex flex-col gap-1.5 sm:w-44">
               <Label htmlFor="status">Status</Label>
-              <Select name="status" defaultValue={thread.status}>
+              <Select name="status" items={PLOT_STATUSES} defaultValue={thread.status}>
                 <SelectTrigger id="status">
                   <SelectValue />
                 </SelectTrigger>
@@ -77,6 +78,8 @@ export function PlotThreadForm({ thread }: { thread: SerializedPlotThread }) {
               </Select>
             </div>
           </div>
+
+          <ResolvedInField projectId={thread.projectId} value={thread.resolvedChapterId} />
 
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="aliases">Also known as</Label>

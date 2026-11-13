@@ -39,6 +39,8 @@ function DraftEditor({ project }: { project: SerializedProject }) {
     status: "draft",
     synopsis: "",
     label: "",
+    flashback: false,
+    storyDate: "",
     updatedAt: "",
     content: initialChapterContent(project.type),
     version: 0,

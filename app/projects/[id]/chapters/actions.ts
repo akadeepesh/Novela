@@ -42,6 +42,12 @@ const metaSchema = z.object({
   status: z.enum(["draft", "in-progress", "done"]).optional(),
   synopsis: z.string().trim().max(1000).optional(),
   label: z.enum(CHAPTER_LABELS).optional(),
+  flashback: z.boolean().optional(),
+  storyDate: z
+    .string()
+    .trim()
+    .regex(/^(-?\d{1,4}(-\d{2}(-\d{2})?)?)?$/, "Use a year, or year-month-day")
+    .optional(),
 })
 
 export type ChapterMetaInput = z.infer<typeof metaSchema>
