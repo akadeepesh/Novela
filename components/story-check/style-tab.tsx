@@ -69,16 +69,14 @@ function StatsCard({ stats }: { stats: ChapterStats }) {
       </dl>
 
       <p className="mt-3 mb-1 flex justify-between">
-        <span>Dialogue</span>
-        <span className="text-foreground">{dialoguePct}%</span>
+        <span>Dialogue / narration</span>
+        <span className="text-foreground">
+          {dialoguePct}% / {100 - dialoguePct}%
+        </span>
       </p>
       <div className="h-1.5 overflow-hidden rounded-full bg-border" role="img" aria-label={`${dialoguePct}% dialogue, ${100 - dialoguePct}% narration`}>
         <div className="h-full bg-primary" style={{ width: `${dialoguePct}%` }} />
       </div>
-      <p className="mt-1 flex justify-between text-[11px]">
-        <span>Dialogue</span>
-        <span>Narration</span>
-      </p>
 
       {stats.dialogueWords > 0 ? (
         <>
@@ -202,7 +200,6 @@ function StyleSettingsForm({ settings, onChange }: { settings: StyleSettings; on
     onChange((s) => ({ ...s, fillerWords: words }))
     setFillerDraft(null)
   }
-  const number = (value: string, min: number, max: number, fallback: number) => Math.min(max, Math.max(min, Number(value) || fallback))
 
   return (
     <section className="flex flex-col gap-2.5 border-t border-border pt-3 text-xs text-muted-foreground">
@@ -211,47 +208,31 @@ function StyleSettingsForm({ settings, onChange }: { settings: StyleSettings; on
         <input
           type="checkbox"
           checked={settings.highlights}
-          onChange={(e) => onChange((s) => ({ ...s, highlights: e.target.checked }))}
+          onChange={(e) => {
+            // Read it now: the updater runs later, after React has reset the box.
+            const on = e.target.checked
+            onChange((s) => ({ ...s, highlights: on }))
+          }}
           className="size-3.5 accent-primary"
         />
       </label>
-      <label className="flex items-center justify-between gap-2">
-        Long sentence: more than
-        <span className="flex items-center gap-1">
-          <input
-            type="number"
-            min={10}
-            max={200}
-            value={settings.maxSentenceWords}
-            onChange={(e) => {
-              const n = number(e.target.value, 10, 200, 40)
-              onChange((s) => ({ ...s, maxSentenceWords: n }))
-            }}
-            className="w-12 rounded border border-border bg-transparent px-1 py-0.5 text-right text-foreground"
-          />
-          words
-        </span>
-      </label>
-      <label className="flex items-center justify-between gap-2">
-        Repeated word: within
-        <span className="flex items-center gap-1">
-          <input
-            type="number"
-            min={5}
-            max={200}
-            value={settings.repeatWindow}
-            onChange={(e) => {
-              const n = number(e.target.value, 5, 200, 30)
-              onChange((s) => ({ ...s, repeatWindow: n }))
-            }}
-            className="w-12 rounded border border-border bg-transparent px-1 py-0.5 text-right text-foreground"
-          />
-          words
-        </span>
-      </label>
-      <label className="flex flex-col gap-1">
+      <NumberSetting
+        label="Long sentence: more than"
+        value={settings.maxSentenceWords}
+        min={10}
+        max={200}
+        onCommit={(n) => onChange((s) => ({ ...s, maxSentenceWords: n }))}
+      />
+      <NumberSetting
+        label="Repeated word: within"
+        value={settings.repeatWindow}
+        min={5}
+        max={200}
+        onCommit={(n) => onChange((s) => ({ ...s, repeatWindow: n }))}
+      />
+      <div className="flex flex-col gap-1">
         <span className="flex items-center justify-between">
-          Filler words, separated by commas
+          <label htmlFor="style-filler-words">Filler words, separated by commas</label>
           <button
             type="button"
             onClick={() => {
@@ -260,17 +241,18 @@ function StyleSettingsForm({ settings, onChange }: { settings: StyleSettings; on
             }}
             className="font-medium text-primary hover:underline"
           >
-            Reset
+            Reset list
           </button>
         </span>
         <textarea
+          id="style-filler-words"
           value={fillerText}
           onChange={(e) => setFillerDraft(e.target.value)}
           onBlur={saveFiller}
           rows={3}
           className="resize-y rounded border border-border bg-transparent px-1.5 py-1 text-foreground"
         />
-      </label>
+      </div>
       {settings.ignored.length > 0 ? (
         <p className="flex items-center justify-between">
           {settings.ignored.length} ignored
@@ -280,5 +262,54 @@ function StyleSettingsForm({ settings, onChange }: { settings: StyleSettings; on
         </p>
       ) : null}
     </section>
+  )
+}
+
+/**
+ * A number of words, typed freely and saved on blur or Enter (clamping on
+ * every keystroke would turn "45" into "10" before the 5 is typed).
+ */
+function NumberSetting({
+  label,
+  value,
+  min,
+  max,
+  onCommit,
+}: {
+  label: string
+  value: number
+  min: number
+  max: number
+  onCommit: (n: number) => void
+}) {
+  const [draft, setDraft] = useState<string | null>(null)
+  const commit = () => {
+    if (draft === null) return
+    const n = Math.round(Number(draft))
+    if (Number.isFinite(n) && draft.trim() !== "") {
+      const clamped = Math.min(max, Math.max(min, n))
+      if (clamped !== value) onCommit(clamped)
+    }
+    setDraft(null)
+  }
+  return (
+    <label className="flex items-center justify-between gap-2">
+      {label}
+      <span className="flex items-center gap-1">
+        <input
+          type="number"
+          min={min}
+          max={max}
+          value={draft ?? value}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commit()
+          }}
+          className="w-12 rounded border border-border bg-transparent px-1 py-0.5 text-right text-foreground"
+        />
+        words
+      </span>
+    </label>
   )
 }

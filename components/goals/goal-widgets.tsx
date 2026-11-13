@@ -45,7 +45,8 @@ export function TodayGoal({ projectId }: { projectId: string }) {
       Today {p.today.toLocaleString()} / {p.goal.toLocaleString()}
       {p.streak > 1 ? (
         <span className="inline-flex items-center gap-0.5">
-          · <FireIcon className="size-3 text-orange-500" weight="fill" />
+          {" · "}
+          <FireIcon className="size-3 text-orange-500" weight="fill" />
           {p.streak} days
         </span>
       ) : null}
