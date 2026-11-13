@@ -52,8 +52,6 @@ export type PrintTemplate = {
     title: { size: number; align: "center" | "left"; font: "heading" | "body"; italic: boolean; upper: boolean; letterSpacing: number }
     /** An ornament under the heading: a glyph in the heading font, or an image. */
     ornament?: { glyph?: string; image?: string; widthIn?: number }
-    /** A large first letter on the chapter's first paragraph. */
-    initial: "none" | "raised"
     /** Set the first words of a chapter in capitals. */
     leadInWords: number
   }
@@ -217,7 +215,6 @@ export function validateTemplate(raw: unknown): PrintTemplate {
         letterSpacing: num(ch.title.letterSpacing, "chapter.title.letterSpacing", 0, 10),
       },
       ...(ch.ornament !== undefined && { ornament: decoration(ch.ornament, "chapter.ornament") }),
-      initial: oneOf(ch.initial, "chapter.initial", ["none", "raised"] as const),
       leadInWords: num(ch.leadInWords, "chapter.leadInWords", 0, 8),
     },
     sceneBreak: decoration(raw.sceneBreak, "sceneBreak"),

@@ -6,7 +6,7 @@ export default defineConfig({
     environment: "node",
     // A fresh in-memory IndexedDB for every test file.
     setupFiles: ["fake-indexeddb/auto"],
-    include: ["**/*.test.ts"],
+    include: ["**/*.test.ts", "**/*.test.tsx"],
     exclude: ["node_modules/**", ".next/**"],
   },
 })

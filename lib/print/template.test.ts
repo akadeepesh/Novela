@@ -24,8 +24,8 @@ describe("print templates", () => {
     tiny.body.fontSize = 3
     expect(() => validateTemplate(tiny)).toThrow(/body.fontSize/)
     const bad = clone(CLASSIC)
-    ;(bad.chapter as { initial: string }).initial = "dropped"
-    expect(() => validateTemplate(bad)).toThrow(/chapter.initial/)
+    ;(bad.folio as { position: string }).position = "middle"
+    expect(() => validateTemplate(bad)).toThrow(/folio.position/)
   })
 
   it("refuses file paths that escape the pack", () => {
