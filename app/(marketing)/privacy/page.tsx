@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/privacy" },
 }
 
-/** Keep in step with what the app really does; see docs/launch-checklist.md. */
+/** Keep in step with what the app really does: storage, the link preview, analytics. */
 const UPDATED = "14 November 2026"
 
 export default function PrivacyPage() {
