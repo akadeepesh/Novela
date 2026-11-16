@@ -1,6 +1,7 @@
 import { APP_NAME, BACKUP_FILE_EXTENSION } from "@/lib/brand"
+import { slugify } from "@/lib/filename"
 import { createBackup } from "./format"
-import { fullBackupFileName, localDate, slugify } from "./download"
+import { fullBackupFileName, localDate } from "./download"
 import { META_KEYS, deleteMeta, getMeta, recordBackup, setMeta } from "./status"
 
 /**

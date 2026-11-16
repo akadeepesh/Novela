@@ -1,17 +1,8 @@
 import { APP_NAME, BACKUP_FILE_EXTENSION } from "@/lib/brand"
+import { slugify } from "@/lib/filename"
 import { createBackup } from "./format"
 import { recordBackup } from "./status"
 import { db } from "@/lib/store/db"
-
-export function slugify(text: string): string {
-  return (
-    text
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "") || "book"
-  )
-}
 
 /** Today's date as YYYY-MM-DD, in the writer's own timezone. */
 export function localDate(date = new Date()): string {
