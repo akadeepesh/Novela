@@ -1,5 +1,7 @@
 # Novela
 
+[![CI](https://github.com/akadeepesh/Novela/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/akadeepesh/Novela/actions/workflows/ci.yml)
+
 **Free. Private. No AI. Catches your plot holes.**
 
 Novela is free novel writing software that runs in your browser and keeps
