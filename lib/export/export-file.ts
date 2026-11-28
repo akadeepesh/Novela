@@ -1,18 +1,9 @@
 import { getProject } from "@/lib/store/projects"
+import { slugify } from "@/lib/filename"
 import type { ExportOptions } from "./build-document"
 import type { PrintReport } from "@/lib/print/render-print"
 
 export type ExportFormat = "pdf" | "epub" | "docx"
-
-function slugify(text: string): string {
-  return (
-    text
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "") || "manuscript"
-  )
-}
 
 export type ExportResult =
   | { ok: true; print?: { report: PrintReport; missingGlyphs: string[]; templateName: string } }
@@ -82,7 +73,7 @@ export async function downloadExport(
   const url = URL.createObjectURL(blob)
   const a = document.createElement("a")
   a.href = url
-  a.download = `${slugify(project.title)}.${format}`
+  a.download = `${slugify(project.title, "manuscript")}.${format}`
   document.body.appendChild(a)
   a.click()
   a.remove()

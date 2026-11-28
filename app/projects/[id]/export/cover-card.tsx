@@ -10,7 +10,8 @@ import { coverSize, formatInches, MIN_PAGES, type Paper } from "@/lib/print/spec
 import { DEFAULT_PRINT_SETTINGS } from "@/lib/print/settings"
 import { getAssetBlob, resolveImageToDataUrl } from "@/lib/store/assets"
 import { updatePrintSettings, type SerializedProject } from "@/lib/store/projects"
-import { saveBlob, slugify } from "@/lib/backup/download"
+import { saveBlob } from "@/lib/backup/download"
+import { slugify } from "@/lib/filename"
 
 const PRINT_DPI = 300
 
